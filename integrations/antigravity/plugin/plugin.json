@@ -1,0 +1,5 @@
+{
+  "$schema": "https://antigravity.google/schemas/v1/plugin.json",
+  "name": "dockyardos",
+  "description": "DockyardOS context recovery, checkpointing, approval policy, specialist agents, and adaptive development orchestration."
+}
