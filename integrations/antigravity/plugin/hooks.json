@@ -1,0 +1,44 @@
+{
+  "dockyard-context": {
+    "PreInvocation": [
+      {
+        "type": "command",
+        "command": "dockyard hook pre-invocation",
+        "timeout": 10
+      }
+    ],
+    "Stop": [
+      {
+        "type": "command",
+        "command": "dockyard hook stop",
+        "timeout": 15
+      }
+    ]
+  },
+  "dockyard-safety-and-checkpoints": {
+    "PreToolUse": [
+      {
+        "matcher": "run_command|write_to_file|replace_file_content|multi_replace_file_content",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "dockyard hook pre-tool",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "run_command|write_to_file|replace_file_content|multi_replace_file_content",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "dockyard hook post-tool",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
