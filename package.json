@@ -1,0 +1,20 @@
+{
+  "name": "dockyardos",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Autonomous development orchestration, memory, safety, and provider routing layer for coding agents.",
+  "type": "module",
+  "bin": {
+    "dockyard": "./dist/cli.js"
+  },
+  "files": ["dist", "integrations", "registry", "README.md"],
+  "scripts": {
+    "clean": "node -e \"import('node:fs').then(fs=>fs.rmSync('dist',{recursive:true,force:true}))\"",
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test test/**/*.test.mjs",
+    "check": "npm test",
+    "dockyard": "node dist/cli.js"
+  },
+  "engines": { "node": ">=20" },
+  "devDependencies": { "typescript": "^5.8.3" }
+}
