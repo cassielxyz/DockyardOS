@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --ignore-scripts
+      - run: npm test
+      - name: CLI smoke test
+        run: |
+          node dist/cli.js --help
+          node dist/cli.js policy --command "git status" --json
+          node dist/cli.js plan --profile full --stack nextjs,supabase --security high --json
