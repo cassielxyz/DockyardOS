@@ -8,6 +8,7 @@ import { createSigningKey, publisherRegistryKeySnippet, remoteRegistryTrustKeySn
 import { executeCommunityCanary, planCommunityCanary, type CommunityCanaryBackend } from "./community-canary.js";
 import { findEffectiveCommunityPackage, loadEffectiveCommunityRegistry, searchEffectiveCommunityRegistry } from "./community-effective-registry.js";
 import { resolveAssessEffectiveCommunityPackage, resolveAssessInstallPinnedEffectiveCommunityPackage } from "./community-effective-install.js";
+import { applySafeCommunityUpdates, checkCommunityUpdates } from "./community-updates.js";
 import type { CommunityPackageManifest } from "./community-types.js";
 import type { SignedRegistryEnvelope } from "./community-remote-types.js";
 
@@ -181,6 +182,25 @@ async function handleCanary(rest: string[]): Promise<void> {
   if (result.status !== "pass") process.exitCode = 1;
 }
 
+async function handleUpdates(rest: string[]): Promise<void> {
+  const action = rest[0] ?? "check";
+  const args = rest.slice(1);
+  const id = value(args, "--id");
+  if (action === "check") {
+    const results = await checkCommunityUpdates(id);
+    console.log(JSON.stringify(results, null, 2));
+    if (results.some((item) => item.state === "error" || item.state === "quarantined")) process.exitCode = 1;
+    return;
+  }
+  if (action === "apply-safe") {
+    const results = await applySafeCommunityUpdates(id);
+    console.log(JSON.stringify(results, null, 2));
+    if (results.some((item) => item.action === "error")) process.exitCode = 1;
+    return;
+  }
+  throw new Error("Usage: dockyard community updates check [--id ID] | apply-safe [--id ID]");
+}
+
 export async function handleCommunityCommand(args: string[], json: boolean): Promise<void> {
   const subcommand = args[0] ?? "list";
   const rest = args.slice(1);
@@ -189,6 +209,7 @@ export async function handleCommunityCommand(args: string[], json: boolean): Pro
   if (subcommand === "publisher") return handlePublisher(rest);
   if (subcommand === "registry-key") return handleRegistrySigning(rest);
   if (subcommand === "canary") return handleCanary(rest);
+  if (subcommand === "updates") return handleUpdates(rest);
 
   const registry = await loadEffectiveCommunityRegistry();
 
@@ -314,5 +335,5 @@ export async function handleCommunityCommand(args: string[], json: boolean): Pro
     return;
   }
 
-  throw new Error("Usage: dockyard community list | search --query TEXT | sources | remote sources|sync|cached | publisher keygen|sign | registry-key keygen|sign | canary plan|run | inspect --id ID | resolve --id ID | install --id ID [--approve] [--expected-revision SHA] [--expected-sha256 SHA256] | update --id ID [same options] | status [--id ID] | active | read --id ID --entrypoint PATH | rollback --id ID [--revision SHA] | transparency verify|show | verify");
+  throw new Error("Usage: dockyard community list | search --query TEXT | sources | remote sources|sync|cached | updates check|apply-safe | publisher keygen|sign | registry-key keygen|sign | canary plan|run | inspect --id ID | resolve --id ID | install --id ID [--approve] [--expected-revision SHA] [--expected-sha256 SHA256] | update --id ID [same options] | status [--id ID] | active | read --id ID --entrypoint PATH | rollback --id ID [--revision SHA] | transparency verify|show | verify");
 }
