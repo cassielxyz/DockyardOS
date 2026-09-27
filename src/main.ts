@@ -4,6 +4,7 @@ import { handleTeamCommand } from "./team-command.js";
 import { handleHostCommand } from "./host-command.js";
 import { handleCommunityCommand } from "./community-command.js";
 import { handleCommunityContributionCommand } from "./community-contribution-command.js";
+import { handleCommunityMaintainerCommand } from "./community-maintainer-command.js";
 import { handleProviderActionCommand } from "./provider-command.js";
 import { handleSecurityEvidenceCommand } from "./security-command.js";
 
@@ -16,9 +17,11 @@ try {
     await handleHostCommand(findWorkspaceRoot(), args, args.includes("--json"));
   } else if (command === "community" && args[0] === "contribution") {
     await handleCommunityContributionCommand(args.slice(1));
+  } else if (command === "community" && args[0] === "maintainer") {
+    await handleCommunityMaintainerCommand(findWorkspaceRoot(), args.slice(1));
   } else if (command === "community") {
     await handleCommunityCommand(args, args.includes("--json"));
-  } else if (command === "providers" && (args[0] === "actions" || args[0] === "action" || args[0] === "preview")) {
+  } else if (command === "providers" && (args[0] === "health" || args[0] === "actions" || args[0] === "action" || args[0] === "preview")) {
     await handleProviderActionCommand(findWorkspaceRoot(), args);
   } else if (command === "security" && (args[0] === "policy" || args[0] === "sarif")) {
     await handleSecurityEvidenceCommand(findWorkspaceRoot(), args);

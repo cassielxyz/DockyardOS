@@ -30,8 +30,9 @@ Open the Command Palette and use:
 - `DockyardOS: Install/Update Agent Host Integration`
 - `DockyardOS: Open Community Hub`
 - `DockyardOS: Community Package Status`
+- `DockyardOS: Check Community Updates Now`
 
-The status bar shows whether the project is uninitialized, ready, or currently in a DockyardOS team phase.
+The status bar shows whether the project is uninitialized, ready, or currently in a DockyardOS team phase. In an untrusted workspace it stays locked and DockyardOS does not run project commands automatically.
 
 ## Community Hub
 
@@ -69,6 +70,44 @@ For `approval-required`, VS Code shows the policy reasons in a modal before it p
 The Hub uses a restrictive Content Security Policy with nonce-bound local scripts/styles. Registry strings are serialized with script-breaking characters escaped and rendered through DOM text nodes instead of HTML injection.
 
 Installed package versions remain under DockyardOS external state and can also be inspected through `Community Package Status`. Rollback stays exposed by the CLI so the exact target revision remains explicit.
+
+## Scheduled safe community updates
+
+Scheduled community update checks are optional and **disabled by default**. Enabling the scheduler does not grant approval to any package and does not change publisher or registry trust.
+
+The VS Code settings are:
+
+- `dockyardOS.communityUpdates.enabled` — enable recurring checks; default `false`.
+- `dockyardOS.communityUpdates.intervalMinutes` — check cadence; default 360 minutes, bounded to 60 minutes through 7 days.
+- `dockyardOS.communityUpdates.applySafeAutomatically` — separately opt in to unattended activation of only updates that still qualify for the existing `apply-safe` path; default `false`.
+- `dockyardOS.communityUpdates.notifyWhenNoUpdates` — optionally show a notification when everything is already current; default `false`.
+
+With only `enabled` turned on, the extension runs the equivalent of:
+
+```bash
+dockyard community updates check --json
+```
+
+It reports automatic-safe candidates separately from packages that require approval, are quarantined, are unavailable/ambiguous, or returned errors. `DockyardOS: Check Community Updates Now` performs the same check manually and never auto-applies, even when scheduled safe apply is enabled.
+
+If `applySafeAutomatically` is also explicitly enabled, the background scheduler may run only:
+
+```bash
+dockyard community updates apply-safe --json
+```
+
+That command performs a fresh pinned assessment and calls the package activation boundary with `approve: false`. The scheduler never invokes `community install`, never passes `--approve`, and cannot turn an approval-required or quarantined candidate into an unattended update. Permission expansion, trust downgrade, risk increase, invalid signatures, registry ambiguity, missing manifests, and quarantine findings remain review/blocking states.
+
+Additional scheduler safeguards:
+
+- no scheduled checks run in untrusted workspaces;
+- only one scheduled update cycle may run at a time;
+- the last attempt is stored per workspace so restarts do not create a rapid retry loop;
+- failed cycles are rescheduled at the bounded cadence rather than silently disabling future checks;
+- review-required/skipped/error results remain visible instead of being reported as successful updates;
+- notifications can open the Community Hub for inspection.
+
+The extension activates at VS Code startup so an explicitly enabled schedule can run, but when scheduling is disabled it does not run DockyardOS project commands just because VS Code started.
 
 ## Project separation
 
@@ -150,8 +189,9 @@ Normal CI verifies:
 8. cross-host install/doctor smoke tests using DockyardOS fixtures,
 9. Marketplace workflow guardrails and listing metadata,
 10. the opt-in real-host matrix definition and supported install surfaces,
-11. Community Hub CSP/serialization/state normalization and pinned-install guardrails.
+11. Community Hub CSP/serialization/state normalization and pinned-install guardrails,
+12. scheduled-update opt-in defaults, cadence bounds, workspace-trust guard, no-approval safe-apply boundary, and scheduler file inclusion in the VSIX.
 
 The separate manual real-host workflow supplies evidence that the current external CLIs are still discoverable by DockyardOS.
 
-After installing the VSIX, open a project and run `DockyardOS: Initialize Project`, then `DockyardOS: Run Doctor`. Close/reopen VS Code and use `DockyardOS: Project Status` or `Resume Context` to confirm persistent state recovery. Use `DockyardOS: Open Community Hub` to verify the searchable manifest-first community workflow.
+After installing the VSIX, open a project and run `DockyardOS: Initialize Project`, then `DockyardOS: Run Doctor`. Close/reopen VS Code and use `DockyardOS: Project Status` or `Resume Context` to confirm persistent state recovery. Use `DockyardOS: Open Community Hub` to verify the searchable manifest-first community workflow, and use `DockyardOS: Check Community Updates Now` before enabling any recurring update policy.

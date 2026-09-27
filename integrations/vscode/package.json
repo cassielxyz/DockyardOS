@@ -27,6 +27,7 @@
   },
   "categories": ["Other", "Programming Languages", "Testing"],
   "activationEvents": [
+    "onStartupFinished",
     "onCommand:dockyardOS.initialize",
     "onCommand:dockyardOS.doctor",
     "onCommand:dockyardOS.status",
@@ -36,7 +37,8 @@
     "onCommand:dockyardOS.hostDoctor",
     "onCommand:dockyardOS.hostInstall",
     "onCommand:dockyardOS.communityBrowse",
-    "onCommand:dockyardOS.communityStatus"
+    "onCommand:dockyardOS.communityStatus",
+    "onCommand:dockyardOS.communityUpdatesCheck"
   ],
   "main": "./extension.js",
   "contributes": {
@@ -50,7 +52,8 @@
       { "command": "dockyardOS.hostDoctor", "title": "DockyardOS: Check Agent Host", "category": "DockyardOS" },
       { "command": "dockyardOS.hostInstall", "title": "DockyardOS: Install/Update Agent Host Integration", "category": "DockyardOS" },
       { "command": "dockyardOS.communityBrowse", "title": "DockyardOS: Open Community Hub", "category": "DockyardOS" },
-      { "command": "dockyardOS.communityStatus", "title": "DockyardOS: Community Package Status", "category": "DockyardOS" }
+      { "command": "dockyardOS.communityStatus", "title": "DockyardOS: Community Package Status", "category": "DockyardOS" },
+      { "command": "dockyardOS.communityUpdatesCheck", "title": "DockyardOS: Check Community Updates Now", "category": "DockyardOS" }
     ],
     "configuration": {
       "title": "DockyardOS",
@@ -65,12 +68,34 @@
           "enum": ["antigravity", "gemini-cli", "codex", "claude-code", "cursor", "opencode"],
           "default": "antigravity",
           "description": "Agent host used by DockyardOS host checks from VS Code."
+        },
+        "dockyardOS.communityUpdates.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Periodically check installed DockyardOS community packages for immutable candidate updates. Disabled by default and never runs in untrusted workspaces."
+        },
+        "dockyardOS.communityUpdates.intervalMinutes": {
+          "type": "number",
+          "default": 360,
+          "minimum": 60,
+          "maximum": 10080,
+          "description": "Minutes between scheduled community update checks. DockyardOS enforces a minimum of 60 minutes and maximum of 7 days."
+        },
+        "dockyardOS.communityUpdates.applySafeAutomatically": {
+          "type": "boolean",
+          "default": false,
+          "description": "Opt in to unattended activation only for updates that remain automatic after the existing fresh pinned apply-safe assessment. Approval-required, quarantined, ambiguous, missing, or risk/trust-escalated updates are never auto-approved."
+        },
+        "dockyardOS.communityUpdates.notifyWhenNoUpdates": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show a VS Code notification when a scheduled update check finds everything up to date."
         }
       }
     }
   },
   "scripts": {
-    "check": "node --check extension.js && node --check community-hub-model.js && node --check community-hub-view.js && node --check scripts/prepare-core.cjs",
+    "check": "node --check extension.js && node --check community-hub-model.js && node --check community-hub-view.js && node --check community-update-scheduler.js && node --check scripts/prepare-core.cjs",
     "prepare-core": "node scripts/prepare-core.cjs",
     "package": "npm run prepare-core && npx @vscode/vsce package"
   },

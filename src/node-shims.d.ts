@@ -28,11 +28,16 @@ declare module "node:path" {
   export function resolve(...paths: string[]): string;
   export function join(...paths: string[]): string;
   export function relative(from: string, to: string): string;
+  export function isAbsolute(path: string): boolean;
   export function extname(path: string): string;
 }
 
 declare module "node:url" {
   export function fileURLToPath(url: any): string;
+}
+
+declare module "node:zlib" {
+  export function gzipSync(...args: any[]): any;
 }
 
 declare module "node:fs/promises" {

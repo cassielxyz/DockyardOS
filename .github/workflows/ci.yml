@@ -128,6 +128,7 @@ jobs:
       - name: VS Code bridge and bundled Core check
         run: |
           node --check integrations/vscode/extension.js
+          node --check integrations/vscode/community-update-scheduler.js
           node --check integrations/vscode/scripts/prepare-core.cjs
           node integrations/vscode/scripts/prepare-core.cjs
           test -f integrations/vscode/core/dist/main.js
@@ -158,6 +159,7 @@ jobs:
           test -s /tmp/dockyardos-vscode.vsix
           unzip -l /tmp/dockyardos-vscode.vsix | grep -q 'extension/community-hub-model.js'
           unzip -l /tmp/dockyardos-vscode.vsix | grep -q 'extension/community-hub-view.js'
+          unzip -l /tmp/dockyardos-vscode.vsix | grep -q 'extension/community-update-scheduler.js'
           unzip -l /tmp/dockyardos-vscode.vsix | grep -q 'extension/core/dist/mcp-server.js'
           unzip -l /tmp/dockyardos-vscode.vsix | grep -q 'extension/core/registry/community.json'
           unzip -l /tmp/dockyardos-vscode.vsix | grep -q 'extension/core/registry/publishers.json'
