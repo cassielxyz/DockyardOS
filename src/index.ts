@@ -2,6 +2,7 @@ export * from "./types.js";
 export * from "./project.js";
 export * from "./checkpoints.js";
 export * from "./policy.js";
+export * from "./process.js";
 export * from "./catalog.js";
 export * from "./registry.js";
 export * from "./registry-lock.js";
