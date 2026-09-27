@@ -1,5 +1,6 @@
 import { findCommunityPackage, loadCommunityRegistry, searchCommunityRegistry } from "./community-registry.js";
-import { communityStatus, resolveAssessCommunityPackage, resolveAssessInstallCommunityPackage, rollbackCommunityPackage } from "./community-manager.js";
+import { communityStatus, resolveAssessCommunityPackage, rollbackCommunityPackage } from "./community-manager.js";
+import { resolveAssessInstallPinnedCommunityPackage } from "./community-install.js";
 import { readTransparencyLog, verifyTransparencyLog } from "./community-transparency.js";
 
 function value(args: string[], name: string): string | undefined {
@@ -67,7 +68,11 @@ export async function handleCommunityCommand(args: string[], json: boolean): Pro
   }
 
   if (subcommand === "install" || subcommand === "update") {
-    const result = await resolveAssessInstallCommunityPackage(requiredId(rest), { approve: has(rest, "--approve") });
+    const result = await resolveAssessInstallPinnedCommunityPackage(requiredId(rest), {
+      approve: has(rest, "--approve"),
+      ...(value(rest, "--expected-revision") ? { expectedRevision: value(rest, "--expected-revision") } : {}),
+      ...(value(rest, "--expected-sha256") ? { expectedContentSha256: value(rest, "--expected-sha256") } : {}),
+    });
     console.log(JSON.stringify(result, null, 2));
     return;
   }
@@ -108,5 +113,5 @@ export async function handleCommunityCommand(args: string[], json: boolean): Pro
     return;
   }
 
-  throw new Error("Usage: dockyard community list | search --query TEXT | sources | inspect --id ID | resolve --id ID | install --id ID [--approve] | update --id ID [--approve] | status [--id ID] | rollback --id ID [--revision SHA] | transparency verify|show | verify");
+  throw new Error("Usage: dockyard community list | search --query TEXT | sources | inspect --id ID | resolve --id ID | install --id ID [--approve] [--expected-revision SHA] [--expected-sha256 SHA256] | update --id ID [same options] | status [--id ID] | rollback --id ID [--revision SHA] | transparency verify|show | verify");
 }
