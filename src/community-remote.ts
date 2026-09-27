@@ -14,6 +14,7 @@ import type {
 import { validateCommunityRegistry } from "./community-registry.js";
 import { readJson, writeJsonAtomic } from "./fs-utils.js";
 import { dockyardHome } from "./project.js";
+import type { TrustLevel } from "./types.js";
 
 interface RemoteRegistryState {
   schemaVersion: 1;
@@ -25,6 +26,7 @@ const CLOCK_SKEW_MS = 5 * 60 * 1000;
 const MIN_MAX_BYTES = 1024;
 const MAX_MAX_BYTES = 10 * 1024 * 1024;
 const MAX_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
+const TRUST_RANK: Record<TrustLevel, number> = { community: 0, maintainer: 1, dockyard: 2, official: 3 };
 
 function stableJson(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
@@ -61,6 +63,7 @@ export function validateRemoteRegistrySource(source: RemoteRegistrySource): stri
   if (!/^[a-z0-9][a-z0-9._-]{1,79}$/.test(source.id)) errors.push(`${source.id || "source"}: invalid id`);
   if (!source.displayName.trim()) errors.push(`${source.id}: displayName is required`);
   if (!source.keyId.trim()) errors.push(`${source.id}: keyId is required`);
+  if (!Object.prototype.hasOwnProperty.call(TRUST_RANK, source.trustCeiling)) errors.push(`${source.id}: invalid trustCeiling ${String(source.trustCeiling)}`);
   if (!source.allowedHostname.trim() || blockedHostname(source.allowedHostname)) errors.push(`${source.id}: allowedHostname is invalid or private/local`);
   if (!Number.isInteger(source.maxBytes) || source.maxBytes < MIN_MAX_BYTES || source.maxBytes > MAX_MAX_BYTES) errors.push(`${source.id}: maxBytes must be between 1 KiB and 10 MiB`);
   if (!Number.isInteger(source.maxAgeSeconds) || source.maxAgeSeconds < 60 || source.maxAgeSeconds > MAX_MAX_AGE_SECONDS) errors.push(`${source.id}: maxAgeSeconds must be between 60 seconds and 30 days`);
@@ -106,6 +109,18 @@ export async function loadRegistryTrustStore(path?: string): Promise<RegistryTru
   return parsed;
 }
 
+function enforceTrustCeiling(source: RemoteRegistrySource, index: CommunityRegistryIndex): string[] {
+  const errors: string[] = [];
+  const ceiling = TRUST_RANK[source.trustCeiling];
+  for (const pkg of index.packages) {
+    if (TRUST_RANK[pkg.trust] > ceiling) errors.push(`package ${pkg.id} trust ${pkg.trust} exceeds source trust ceiling ${source.trustCeiling}`);
+  }
+  for (const discovery of index.discoverySources) {
+    if (TRUST_RANK[discovery.trust] > ceiling) errors.push(`discovery source ${discovery.id} trust ${discovery.trust} exceeds source trust ceiling ${source.trustCeiling}`);
+  }
+  return errors;
+}
+
 export function verifySignedRegistryEnvelope(
   source: RemoteRegistrySource,
   envelope: SignedRegistryEnvelope,
@@ -128,6 +143,7 @@ export function verifySignedRegistryEnvelope(
   }
   const indexErrors = validateCommunityRegistry(envelope.index);
   if (indexErrors.length) errors.push(...indexErrors.map((error) => `registry index: ${error}`));
+  errors.push(...enforceTrustCeiling(source, envelope.index));
   if (envelope.signature.algorithm !== "ed25519") errors.push("unsupported registry signature algorithm");
   if (envelope.signature.keyId !== source.keyId) errors.push(`registry signature key mismatch: expected ${source.keyId}`);
   const key = trustStore.keys.find((item) => item.id === source.keyId && item.registryId === source.id);
@@ -186,7 +202,7 @@ async function readResponseBodyBounded(response: Response, maxBytes: number): Pr
 
 export async function syncRemoteRegistry(
   source: RemoteRegistrySource,
-  options: { trustStore?: RegistryTrustStore; now?: Date; timeoutMs?: number } = {},
+  options: { trustStore?: RegistryTrustStore; now?: Date; timeoutMs?: number; fetchImpl?: typeof fetch } = {},
 ): Promise<RemoteRegistrySyncResult> {
   const sourceErrors = validateRemoteRegistrySource(source);
   if (sourceErrors.length) throw new Error(sourceErrors.join("; "));
@@ -200,7 +216,8 @@ export async function syncRemoteRegistry(
   const timer = setTimeout(() => controller.abort(), options.timeoutMs ?? 15_000);
   let response: Response;
   try {
-    response = await fetch(source.url, { method: "GET", headers, redirect: "manual", signal: controller.signal });
+    const fetchImpl = options.fetchImpl ?? fetch;
+    response = await fetchImpl(source.url, { method: "GET", headers, redirect: "manual", signal: controller.signal });
   } finally {
     clearTimeout(timer);
   }
@@ -258,6 +275,7 @@ export async function syncRemoteRegistry(
 export async function cachedRemoteRegistryIndexes(): Promise<Array<{ sourceId: string; record: RemoteRegistryCacheRecord; index: CommunityRegistryIndex }>> {
   const sources = await loadRemoteRegistrySources();
   const now = Date.now();
+  const trustStore = await loadRegistryTrustStore();
   const result: Array<{ sourceId: string; record: RemoteRegistryCacheRecord; index: CommunityRegistryIndex }> = [];
   for (const source of sources.sources.filter((item) => item.enabled)) {
     const state = await loadRemoteState(source.id);
@@ -266,7 +284,6 @@ export async function cachedRemoteRegistryIndexes(): Promise<Array<{ sourceId: s
     if (Date.parse(record.expiresAt) <= now) continue;
     const envelope = await readJson<SignedRegistryEnvelope>(record.path);
     if (!envelope) continue;
-    const trustStore = await loadRegistryTrustStore();
     const verification = verifySignedRegistryEnvelope(source, envelope, trustStore, new Date());
     if (!verification.ok || verification.envelopeSha256 !== record.envelopeSha256 || verification.indexSha256 !== record.indexSha256) continue;
     result.push({ sourceId: source.id, record, index: envelope.index });
