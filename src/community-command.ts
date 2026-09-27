@@ -1,6 +1,7 @@
 import { findCommunityPackage, loadCommunityRegistry, searchCommunityRegistry } from "./community-registry.js";
 import { communityStatus, resolveAssessCommunityPackage, rollbackCommunityPackage } from "./community-manager.js";
 import { resolveAssessInstallPinnedCommunityPackage } from "./community-install.js";
+import { activeCommunityPackages, readActiveCommunityEntrypoint } from "./community-runtime.js";
 import { readTransparencyLog, verifyTransparencyLog } from "./community-transparency.js";
 
 function value(args: string[], name: string): string | undefined {
@@ -82,6 +83,18 @@ export async function handleCommunityCommand(args: string[], json: boolean): Pro
     return;
   }
 
+  if (subcommand === "active") {
+    console.log(JSON.stringify(await activeCommunityPackages(), null, 2));
+    return;
+  }
+
+  if (subcommand === "read") {
+    const entrypoint = value(rest, "--entrypoint");
+    if (!entrypoint) throw new Error("community read requires --entrypoint PATH");
+    console.log(JSON.stringify(await readActiveCommunityEntrypoint(requiredId(rest), entrypoint), null, 2));
+    return;
+  }
+
   if (subcommand === "rollback") {
     console.log(JSON.stringify(await rollbackCommunityPackage(requiredId(rest), value(rest, "--revision")), null, 2));
     return;
@@ -113,5 +126,5 @@ export async function handleCommunityCommand(args: string[], json: boolean): Pro
     return;
   }
 
-  throw new Error("Usage: dockyard community list | search --query TEXT | sources | inspect --id ID | resolve --id ID | install --id ID [--approve] [--expected-revision SHA] [--expected-sha256 SHA256] | update --id ID [same options] | status [--id ID] | rollback --id ID [--revision SHA] | transparency verify|show | verify");
+  throw new Error("Usage: dockyard community list | search --query TEXT | sources | inspect --id ID | resolve --id ID | install --id ID [--approve] [--expected-revision SHA] [--expected-sha256 SHA256] | update --id ID [same options] | status [--id ID] | active | read --id ID --entrypoint PATH | rollback --id ID [--revision SHA] | transparency verify|show | verify");
 }
