@@ -1,0 +1,9 @@
+# DockyardOS trust and release boundaries.
+# Repository settings should require Code Owner review on protected branches for these paths.
+/registry/community.json @cassielxyz
+/registry/publishers.json @cassielxyz
+/registry/registry-keys.json @cassielxyz
+/registry/remotes.json @cassielxyz
+/.github/workflows/community-contributions.yml @cassielxyz
+/.github/workflows/vscode-extension.yml @cassielxyz
+/.github/workflows/real-host-matrix.yml @cassielxyz
