@@ -24,6 +24,10 @@ declare module "node:path" {
   export function join(...paths: string[]): string;
 }
 
+declare module "node:url" {
+  export function fileURLToPath(url: any): string;
+}
+
 declare module "node:fs/promises" {
   export function access(...args: any[]): Promise<any>;
   export function mkdir(...args: any[]): Promise<any>;
