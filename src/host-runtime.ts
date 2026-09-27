@@ -6,7 +6,7 @@ import { hostAdapter, hostAdapters } from "./host-adapters.js";
 import type { DockyardHostId, HostProbeResult, PortableHostContext } from "./host-types.js";
 import { commandExists } from "./process.js";
 import { requireProject } from "./project.js";
-import { loadTeamRun, teamRunSummary } from "./team-state.js";
+import { loadTeamRun } from "./team-state.js";
 
 function packageRoot(): string {
   return resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -54,7 +54,9 @@ export async function buildPortableHostContext(root: string, host: DockyardHostI
   const project = await requireProject(root);
   const checkpoint = await loadLatestCheckpoint(project.root).catch(() => undefined);
   const team = await loadTeamRun(project.root).catch(() => undefined);
-  const teamSummary = team && (team.status === "active" || team.status === "blocked") ? teamRunSummary(team) : undefined;
+  const activeTeam = team && (team.status === "active" || team.status === "blocked") ? team : undefined;
+  const phaseRuntime = activeTeam?.phases.find((phase) => phase.id === activeTeam.currentPhase);
+  const phasePlan = activeTeam?.composition.phases.find((phase) => phase.id === activeTeam.currentPhase);
 
   const instructions = [
     "Treat DockyardOS state as the continuity source for this project; do not restart completed work.",
@@ -86,17 +88,17 @@ export async function buildPortableHostContext(root: string, host: DockyardHostI
         },
       },
     } : {}),
-    ...(teamSummary ? {
+    ...(activeTeam ? {
       team: {
-        id: String(teamSummary.id),
-        status: String(teamSummary.status),
-        currentPhase: String(teamSummary.currentPhase),
-        activeAgents: (teamSummary.activeAgents as string[]) ?? [],
-        gates: (teamSummary.gates as string[]) ?? [],
-        expectedOutputs: (teamSummary.expectedOutputs as string[]) ?? [],
-        worktrees: (teamSummary.worktrees as PortableHostContext["team"] extends infer T ? T extends { worktrees: infer W } ? W : never : never) ?? [],
-        recentDecisions: (teamSummary.recentDecisions as string[]) ?? [],
-        failures: (teamSummary.failures as PortableHostContext["team"] extends infer T ? T extends { failures: infer F } ? F : never : never) ?? [],
+        id: activeTeam.id,
+        status: activeTeam.status,
+        currentPhase: activeTeam.currentPhase,
+        activeAgents: phaseRuntime?.activeAgents ?? [],
+        gates: phasePlan?.gates ?? [],
+        expectedOutputs: phasePlan?.outputs ?? [],
+        worktrees: phaseRuntime?.worktrees ?? [],
+        recentDecisions: activeTeam.decisions.slice(-10),
+        failures: activeTeam.failures.slice(-5),
       },
     } : {}),
     instructions,
