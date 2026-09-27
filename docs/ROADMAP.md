@@ -54,12 +54,20 @@
 
 ## P3 — Security and verification
 
-- [ ] OWASP web/API/mobile profiles
-- [ ] Strix integration runner
-- [ ] Gitleaks / OSV / Semgrep adapters
-- [ ] Threat-model artifact
-- [ ] Safe attack -> proof -> fix -> rerun workflow
-- [ ] Dependency and secret policies
+- [x] OWASP Web 2025 / API 2023 / Mobile 2024 / GenAI-LLM 2026 profiles
+- [x] Project-root security scope enforcement and explicit remote-target authorization
+- [x] Gitleaks runner + normalized findings
+- [x] OSV-Scanner runner + normalized findings
+- [x] Semgrep CE runner + normalized findings
+- [x] Strix headless runner with explicit budget and completed-run verification
+- [x] External security run artifacts and normalized `result.json`
+- [x] Profile-aware threat-model artifact
+- [x] Scan/evidence -> fix -> same-scope rerun -> regression gate workflow
+- [x] Missing required scanner cannot produce a clean result
+- [x] Antigravity security-reviewer workflow integration
+- [ ] Project-specific secret allowlists/baselines and expiry policy
+- [ ] Dependency exception policy with owner/expiry/rationale
+- [ ] SARIF aggregation/export for code-host security dashboards
 
 ## P4 — Agent team composer
 
