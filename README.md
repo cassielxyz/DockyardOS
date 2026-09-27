@@ -2,34 +2,53 @@
 
 **Build. Orchestrate. Ship.**
 
-DockyardOS is a persistent autonomous-development layer for coding agents. It adds project memory, resumable checkpoints, approval policy, adaptive specialist teams, a curated capability/provider registry, security gates, testing, and deployment orchestration around agent hosts such as Google Antigravity.
+DockyardOS is a persistent autonomous-development layer for coding agents. It adds project memory, resumable checkpoints, approval policy, adaptive specialist teams, a curated capability/provider registry, security gates, testing, and deployment orchestration around hosts such as Google Antigravity, Gemini CLI, Codex, Claude Code, Cursor, OpenCode, and VS Code.
 
 ## What works now
 
 - project identity and memory stored outside the repository
 - manual, timed, session-stop, and team-phase checkpoints
-- Git status plus bounded patch capture for uncommitted tracked changes
 - `dockyard resume` context recovery
 - Safe / Balanced / Autonomous approval modes
-- Antigravity `PreInvocation`, `PreToolUse`, `PostToolUse`, and `Stop` hook integration
-- broad skill/agent/tool/MCP catalogue with provenance, permissions, risk, host compatibility, context cost, and update channels
+- broad skill/agent/tool/MCP catalogue with provenance, permissions, risk, compatibility, context cost, and update channels
 - practical project recipes and bounded adaptive specialist selection
 - phase-aware teams: discovery → architecture → planning → implementation → verification → security → release
-- persistent team runs restored across sessions/accounts/models through external DockyardOS state
+- persistent team runs restored across sessions/accounts/models/agent hosts
 - compact phase handoffs instead of replaying full chat transcripts
 - isolated Git worktrees for parallel implementation writers
 - independent QA/security/release reviewers separated from implementation write roles
 - conservative team/agent outcome learning for future routing
 - provider detection and capability-based fallback planning across Vercel, Cloudflare, Supabase and alternatives
-- local-only provider inspection plus optional safe live account/status probes
-- `free-first` provider plans that require live pricing/free-tier validation before activation
 - runnable OWASP-aligned web/API/mobile/LLM security profiles
 - Gitleaks, OSV-Scanner, Semgrep, and opt-in budget-bounded Strix execution
-- persistent threat-model and normalized security result artifacts outside source repositories
-- proof → fix → same-scope rerun regression gates
-- capability locks with exact revisions/content hashes and permission-aware update approval
+- proof → fix → same-scope rerun security regression gates
+- portable Agent Skill and verified host adapters for Antigravity, Gemini CLI, Codex/Agents, Claude Code, Cursor, and OpenCode
+- one-time VS Code extension with a bundled DockyardOS Core fallback
+- one external DockyardOS state shared by every supported host
 
-## Local development
+## Install once, use across projects
+
+The normal user-facing setup is the VS Code extension. Release packaging puts DockyardOS Core inside the VSIX, so normal extension use does not require a separate global CLI.
+
+After installing the VSIX:
+
+1. Open a project folder.
+2. Run `DockyardOS: Initialize Project` once for that project.
+3. Run `DockyardOS: Install/Update Agent Host Integration` once for the agent host you use.
+4. Give your requirement to the agent in normal language.
+5. DockyardOS restores/creates the team workflow, selects bounded capabilities, checkpoints progress, and resumes later from the same external state.
+
+Project/team state lives under:
+
+```text
+~/.dockyardos/projects/<project-id>/
+```
+
+It is not duplicated into `.claude`, `.cursor`, `.opencode`, or another host directory. Switching agent hosts therefore does not fork the project's memory.
+
+See [`integrations/vscode/README.md`](integrations/vscode/README.md) for VSIX behavior and [`docs/HOSTS.md`](docs/HOSTS.md) for the host matrix.
+
+## CLI development / advanced use
 
 ```bash
 npm install
@@ -41,19 +60,21 @@ dockyard doctor
 dockyard resume
 ```
 
-DockyardOS project state is stored under `~/.dockyardos/projects/` rather than adding private runtime state to your application repository.
+Inspect and install host integrations:
+
+```bash
+dockyard host list
+dockyard host inspect
+dockyard host plan --host cursor --scope user
+dockyard host install --host cursor --scope user
+dockyard host doctor --host cursor
+```
+
+DockyardOS refuses to silently replace a different existing portable skill. Project scope is available when you intentionally want integration files in a repository; user scope is preferred for one installation across projects when the host supports it.
 
 ## Start a real project team
 
-You can still inspect recommendations directly:
-
-```bash
-dockyard recommend \
-  --task "Build a production SaaS dashboard" \
-  --stack web,nextjs,react,supabase,postgres
-```
-
-For substantial work, start a resumable DockyardOS team instead:
+For substantial work:
 
 ```bash
 dockyard team start \
@@ -61,13 +82,13 @@ dockyard team start \
   --stack web,nextjs,react,supabase,postgres
 ```
 
-DockyardOS selects the bounded best-fit capabilities, creates the project/team checkpoint, and activates only the first relevant phase. Inspect it with:
+DockyardOS selects a bounded best-fit capability set, creates the project/team checkpoint, and activates only the first relevant phase.
 
 ```bash
 dockyard team status
 ```
 
-The normal lifecycle is:
+Normal lifecycle:
 
 ```text
 Discovery → Architecture → Planning → Implementation → Verification → Security → Release
@@ -81,7 +102,7 @@ dockyard team advance \
   --decision "Use Postgres with row-level authorization"
 ```
 
-The returned handoff is intentionally compact. It carries the task, decisions, unresolved blockers, required gates, phase outputs and relevant context—not the full previous transcript.
+The handoff carries decisions, blockers, required gates, outputs, and relevant context—not the full previous transcript.
 
 If work is blocked:
 
@@ -90,11 +111,11 @@ dockyard team block --reason "Preview database is unavailable" --agent database-
 dockyard team unblock
 ```
 
-A stopped Antigravity session still saves the active team run/phase in the project checkpoint, so a later **continue** can recover the correct phase instead of reconstructing the project from chat history.
+A stopped supported host can recover the active Dockyard team/phase through shared project state, so a later **continue** does not depend on reconstructing the project from one chat transcript.
 
 ## Parallel implementation without agents overwriting each other
 
-During the implementation phase, logical writer roles can receive isolated Git worktrees:
+During implementation, logical writer roles can receive isolated Git worktrees:
 
 ```bash
 dockyard team worktree create \
@@ -103,21 +124,11 @@ dockyard team worktree create \
   --agent backend-agent
 ```
 
-Worktrees are stored in DockyardOS external project state rather than inside the application repository. DockyardOS enforces the phase's parallel-writer budget and refuses worktrees for reviewer-only roles.
-
-The Antigravity plugin includes a reusable `dockyard-phase-worker` that receives one logical role, one scoped task, acceptance criteria, relevant context, and the isolated worktree path. Independent QA/security/release reviewers remain separate and do not self-approve implementation work.
-
-## Team learning
-
-DockyardOS stores recipe/agent outcomes outside the repository. Repeated successful or blocked runs produce a small historical routing adjustment for the same task class. The adjustment is deliberately conservative and cannot override required security gates, trust rules, explicit preferences, or provider requirements.
-
-```bash
-dockyard team metrics
-```
+Worktrees are stored in DockyardOS external project state. DockyardOS enforces the phase's parallel-writer budget and refuses writer worktrees for reviewer-only roles.
 
 ## Let DockyardOS choose providers
 
-Inspect existing project/provider readiness without remote account calls:
+Inspect existing readiness without remote account calls:
 
 ```bash
 dockyard providers inspect
@@ -133,59 +144,53 @@ dockyard providers plan \
   --free-first
 ```
 
-The planner prefers compatible existing setup where useful, keeps ranked fallbacks, surfaces migration caveats, and does not pretend DNS/WAF/DDoS or different auth/realtime/storage models are interchangeable. Add `--live` only when read-only account readiness is necessary for the decision.
+The planner prefers compatible existing setup where useful, keeps ranked fallbacks, surfaces migration caveats, and does not pretend DNS/WAF/DDoS or different auth/realtime/storage models are interchangeable. `free-first` requires current pricing/free-tier validation before activation.
 
 ## Security verification
-
-List the available security baselines and build a project-scoped plan:
 
 ```bash
 dockyard security profiles
 dockyard security threat-model --profile web
 dockyard security plan --profile web --target . --target-type source --mode standard
-```
-
-Run the configured source security gates when the scanner tools are installed:
-
-```bash
 dockyard security scan --profile web --target . --target-type source --mode standard
 ```
 
-DockyardOS normalizes findings into external project-state artifacts. Missing required scanners produce an `incomplete` result rather than a false clean result. Remote security targets require explicit authorization, and Strix is opt-in with an explicit positive budget.
+DockyardOS stores normalized evidence outside the source repository. Missing required scanners produce `incomplete`, not a false clean result. Remote security targets require explicit authorization, and Strix is opt-in with an explicit positive budget.
 
-After a verified finding is fixed, rerun the same scope and compare the two `result.json` files:
+After a verified finding is fixed:
 
 ```bash
 dockyard security compare --before <first>/result.json --after <rerun>/result.json
 ```
 
-The regression gate fails when high/critical findings remain or are newly introduced, or when the rerun is incomplete/error.
+The gate fails when high/critical findings remain or are newly introduced, or when the rerun is incomplete/error.
 
-## Antigravity plugin
+## Antigravity full plugin
 
-After building/linking the CLI, install the plugin directory:
+Antigravity gets the richest current integration because its native plugin/hook lifecycle is available:
 
 ```bash
-agy plugin install ./integrations/antigravity/plugin
+dockyard host install --host antigravity --scope user
 ```
 
-The plugin restores DockyardOS project and team context before model invocations, gates risky tool actions, checkpoints mutating work, and saves a final checkpoint when the Antigravity execution loop stops. Substantial requests can be routed through `dockyard team start`, infrastructure work uses provider inspection/planning, isolated implementation can use `dockyard-phase-worker`, and high-risk work uses independent security verification.
+The plugin restores project/team context before invocations, gates risky tool actions, checkpoints mutating work, and saves a final checkpoint on stop. It also includes independent architecture/security/QA workers and a reusable scoped implementation worker.
+
+Other hosts use the portable skill and verified native mechanisms available to them; DockyardOS does not falsely claim identical hook/subagent behavior where the host does not expose it.
 
 ## Approval philosophy
 
 Balanced mode is the default:
 
 - reversible project work can proceed automatically
-- parallel writers are isolated and bounded rather than unrestricted
+- parallel writers are isolated and bounded
 - independent reviewers do not share implementation write roles
-- production deploys, destructive database actions, force pushes, infrastructure deletion, and sensitive operations force an approval prompt
+- production deploys, destructive database actions, force pushes, infrastructure deletion, DNS changes, secret rotation, and sensitive operations require approval
 - obviously machine-destructive commands are denied
 - community capability updates do not silently gain new sensitive permissions
-- production provider plans are read-only until explicit approval permits the mutation step
 - remote dynamic security testing requires explicit authorization and never infers permission from public accessibility
 
 ## Provider philosophy
 
-DockyardOS selects by **capability and fit**, not by brand. A project may prefer Supabase + Vercel + Cloudflare, while another may use Neon/Firebase/Appwrite/PocketBase plus Cloudflare/Render or another compatible combination. Availability, pricing/free-tier claims, and provider limits must be checked live at selection time rather than permanently hard-coded.
+DockyardOS selects by **capability and fit**, not by brand. A project may prefer Supabase + Vercel + Cloudflare, while another may use Neon/Firebase/Appwrite/PocketBase plus Cloudflare/Render or another compatible combination. Availability, pricing/free-tier claims, and provider limits are live facts and must not be permanently hard-coded.
 
-See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), [`docs/CAPABILITY-REGISTRY.md`](docs/CAPABILITY-REGISTRY.md), [`docs/PROVIDERS.md`](docs/PROVIDERS.md), [`docs/SECURITY.md`](docs/SECURITY.md), and [`docs/ROADMAP.md`](docs/ROADMAP.md).
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), [`docs/CAPABILITY-REGISTRY.md`](docs/CAPABILITY-REGISTRY.md), [`docs/PROVIDERS.md`](docs/PROVIDERS.md), [`docs/SECURITY.md`](docs/SECURITY.md), [`docs/HOSTS.md`](docs/HOSTS.md), and [`docs/ROADMAP.md`](docs/ROADMAP.md).
