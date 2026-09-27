@@ -1,4 +1,4 @@
-import { writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { projectDirectory, requireProject } from "./project.js";
 import { securityProfile } from "./security-profiles.js";
@@ -74,7 +74,9 @@ export async function createThreatModel(
       verification: verification(control.title),
     })),
   };
-  const path = resolve(projectDirectory(project.id), "security", `threat-model-${profileId}.json`);
+  const directory = resolve(projectDirectory(project.id), "security");
+  await mkdir(directory, { recursive: true });
+  const path = resolve(directory, `threat-model-${profileId}.json`);
   await writeFile(path, `${JSON.stringify(model, null, 2)}\n`, { mode: 0o600 });
   return { model, path };
 }
