@@ -27,7 +27,6 @@ export interface ActiveCommunityPackage {
   tags: string[];
   hosts: CommunityPackageManifest["hosts"];
   entrypoints: CommunityPackageManifest["entrypoints"];
-  destination: string;
   integrity: "verified";
 }
 
@@ -94,7 +93,6 @@ export async function activeCommunityPackages(): Promise<ActiveCommunityPackage[
       tags: manifest.tags,
       hosts: manifest.hosts,
       entrypoints: manifest.entrypoints,
-      destination: installed.destination,
       integrity: "verified",
     });
   }
