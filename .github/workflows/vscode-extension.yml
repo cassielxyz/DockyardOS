@@ -2,6 +2,17 @@ name: VS Code Extension
 
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Existing release tag to package (required when publishing, e.g. v0.1.0)"
+        required: false
+        default: ""
+        type: string
+      publish_marketplace:
+        description: "Publish the validated VSIX to the VS Code Marketplace"
+        required: false
+        default: false
+        type: boolean
   push:
     tags:
       - "v*"
@@ -9,14 +20,37 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: vscode-extension-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   package:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag != '' && inputs.release_tag || github.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Validate release identity
+        shell: bash
+        env:
+          REQUESTED_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || '' }}
+          PUBLISH_MARKETPLACE: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_marketplace || false }}
+        run: |
+          set -euo pipefail
+          VERSION="$(node -p "require('./integrations/vscode/package.json').version")"
+          EXPECTED_TAG="v${VERSION}"
+          echo "extension_version=${VERSION}" >> "$GITHUB_ENV"
+          echo "expected_tag=${EXPECTED_TAG}" >> "$GITHUB_ENV"
+          if [[ "$PUBLISH_MARKETPLACE" == "true" ]]; then
+            test -n "$REQUESTED_TAG" || { echo "release_tag is required for Marketplace publishing" >&2; exit 1; }
+            test "$REQUESTED_TAG" = "$EXPECTED_TAG" || { echo "release_tag $REQUESTED_TAG does not match extension version $EXPECTED_TAG" >&2; exit 1; }
+            git tag --points-at HEAD | grep -Fx "$EXPECTED_TAG" >/dev/null || { echo "checked out commit is not tagged $EXPECTED_TAG" >&2; exit 1; }
+          fi
       - name: Build DockyardOS Core
         run: |
           npm install --ignore-scripts
@@ -27,8 +61,19 @@ jobs:
           npm install --ignore-scripts
           npm run package -- --out dockyardos-vscode.vsix
           test -s dockyardos-vscode.vsix
+          unzip -p dockyardos-vscode.vsix extension/package.json > /tmp/vsix-package.json
+          node -e "const p=require('/tmp/vsix-package.json'); if(p.name!=='dockyardos-vscode'||p.publisher!=='cassielxyz'||p.version!==process.env.extension_version) process.exit(1)"
       - uses: actions/upload-artifact@v4
         with:
-          name: dockyardos-vscode
+          name: dockyardos-vscode-${{ env.extension_version }}
           path: integrations/vscode/dockyardos-vscode.vsix
           if-no-files-found: error
+      - name: Publish to VS Code Marketplace
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_marketplace == true }}
+        working-directory: integrations/vscode
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          set -euo pipefail
+          test -n "${VSCE_PAT:-}" || { echo "VSCE_PAT secret is required for Marketplace publishing" >&2; exit 1; }
+          npx @vscode/vsce publish --packagePath dockyardos-vscode.vsix -p "$VSCE_PAT"
