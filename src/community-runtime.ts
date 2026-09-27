@@ -1,8 +1,10 @@
 import { lstat, readFile } from "node:fs/promises";
 import { relative, resolve } from "node:path";
 import type { CommunityPackageManifest, InstalledCommunityPackage } from "./community-types.js";
+import type { EffectiveRegistryOrigin } from "./community-effective-registry.js";
+import { findEffectiveCommunityPackage } from "./community-effective-registry.js";
+import { loadInstalledManifestSnapshot } from "./community-manifest-store.js";
 import { communityTreeSha256 } from "./community-manager.js";
-import { findCommunityPackage, loadCommunityRegistry } from "./community-registry.js";
 import { readJson } from "./fs-utils.js";
 import { dockyardHome } from "./project.js";
 
@@ -27,6 +29,7 @@ export interface ActiveCommunityPackage {
   tags: string[];
   hosts: CommunityPackageManifest["hosts"];
   entrypoints: CommunityPackageManifest["entrypoints"];
+  origin: EffectiveRegistryOrigin;
   integrity: "verified";
 }
 
@@ -49,17 +52,31 @@ async function loadState(): Promise<CommunityState> {
   return (await readJson<CommunityState>(statePath())) ?? { schemaVersion: 1, packages: {} };
 }
 
-async function verifiedActiveRecord(id: string): Promise<{ manifest: CommunityPackageManifest; installed: InstalledCommunityPackage }> {
+async function manifestForInstalledRevision(
+  id: string,
+  revision: string,
+): Promise<{ manifest: CommunityPackageManifest; origin: EffectiveRegistryOrigin }> {
+  const snapshot = await loadInstalledManifestSnapshot(id, revision);
+  if (snapshot) return { manifest: snapshot.manifest, origin: snapshot.origin };
+
+  // Backward compatibility for P6 installations created before manifest snapshots existed.
+  const effective = await findEffectiveCommunityPackage(id);
+  if (!effective) throw new Error(`Active community package no longer has an installable manifest or stored manifest snapshot: ${id}`);
+  return { manifest: effective.manifest, origin: effective.origin };
+}
+
+async function verifiedActiveRecord(id: string): Promise<{
+  manifest: CommunityPackageManifest;
+  installed: InstalledCommunityPackage;
+  origin: EffectiveRegistryOrigin;
+}> {
   const state = await loadState();
   const entry = state.packages[id];
   if (!entry?.activeRevision) throw new Error(`Community package is not active: ${id}`);
   const installed = entry.versions.find((version) => version.revision === entry.activeRevision);
   if (!installed) throw new Error(`Active community revision is missing from state: ${id}@${entry.activeRevision}`);
 
-  const registry = await loadCommunityRegistry();
-  const manifest = findCommunityPackage(registry, id);
-  if (!manifest) throw new Error(`Active community package no longer has an installable manifest: ${id}`);
-
+  const { manifest, origin } = await manifestForInstalledRevision(id, installed.revision);
   const expectedRoot = resolve(packagesRoot(), id, installed.revision);
   if (!isInside(resolve(packagesRoot(), id), installed.destination) || resolve(installed.destination) !== expectedRoot) {
     throw new Error(`Active community package path is invalid: ${id}`);
@@ -71,7 +88,7 @@ async function verifiedActiveRecord(id: string): Promise<{ manifest: CommunityPa
     maxBytes: manifest.maxBytes ?? 20 * 1024 * 1024,
   });
   if (digest !== installed.contentSha256) throw new Error(`Active community package failed integrity verification: ${id}@${installed.revision}`);
-  return { manifest, installed };
+  return { manifest, installed, origin };
 }
 
 export async function activeCommunityPackages(): Promise<ActiveCommunityPackage[]> {
@@ -79,7 +96,7 @@ export async function activeCommunityPackages(): Promise<ActiveCommunityPackage[
   const result: ActiveCommunityPackage[] = [];
   for (const id of Object.keys(state.packages).sort()) {
     if (!state.packages[id]?.activeRevision) continue;
-    const { manifest, installed } = await verifiedActiveRecord(id);
+    const { manifest, installed, origin } = await verifiedActiveRecord(id);
     result.push({
       id,
       displayName: installed.displayName,
@@ -93,6 +110,7 @@ export async function activeCommunityPackages(): Promise<ActiveCommunityPackage[
       tags: manifest.tags,
       hosts: manifest.hosts,
       entrypoints: manifest.entrypoints,
+      origin,
       integrity: "verified",
     });
   }
@@ -102,11 +120,12 @@ export async function activeCommunityPackages(): Promise<ActiveCommunityPackage[
 export async function readActiveCommunityEntrypoint(id: string, entrypointPath: string): Promise<{
   packageId: string;
   revision: string;
+  origin: EffectiveRegistryOrigin;
   entrypoint: string;
   type: CommunityPackageManifest["entrypoints"][number]["type"];
   content: string;
 }> {
-  const { manifest, installed } = await verifiedActiveRecord(id);
+  const { manifest, installed, origin } = await verifiedActiveRecord(id);
   const entrypoint = manifest.entrypoints.find((item) => item.path === entrypointPath);
   if (!entrypoint) throw new Error(`Path is not a declared entrypoint for ${id}: ${entrypointPath}`);
   const absolute = resolve(installed.destination, entrypoint.path);
@@ -116,5 +135,5 @@ export async function readActiveCommunityEntrypoint(id: string, entrypointPath: 
   if (Number(metadata.size ?? 0) > 2 * 1024 * 1024) throw new Error(`Community entrypoint is too large to expose through Dockyard MCP: ${entrypoint.path}`);
   const content = await readFile(absolute, "utf8");
   if (content.includes("\u0000")) throw new Error(`Community entrypoint appears binary and cannot be exposed as text: ${entrypoint.path}`);
-  return { packageId: id, revision: installed.revision, entrypoint: entrypoint.path, type: entrypoint.type, content };
+  return { packageId: id, revision: installed.revision, origin, entrypoint: entrypoint.path, type: entrypoint.type, content };
 }
