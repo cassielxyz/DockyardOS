@@ -32,6 +32,10 @@ export * from "./community-registry.js";
 export * from "./community-fetch.js";
 export * from "./community-signature.js";
 export * from "./community-transparency.js";
+export * from "./community-remote-types.js";
+export * from "./community-remote.js";
+export * from "./community-publisher.js";
+export * from "./community-canary.js";
 export {
   communityTreeSha256,
   assessCommunityPackage,

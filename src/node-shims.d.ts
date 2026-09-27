@@ -12,7 +12,10 @@ declare module "node:crypto" {
   export function createHash(...args: any[]): any;
   export function randomUUID(): string;
   export function verify(...args: any[]): boolean;
+  export function sign(...args: any[]): any;
   export function createPublicKey(...args: any[]): any;
+  export function createPrivateKey(...args: any[]): any;
+  export function generateKeyPairSync(...args: any[]): any;
 }
 
 declare module "node:os" {

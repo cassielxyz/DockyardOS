@@ -32,8 +32,8 @@
 - [x] Persisted team/agent success-failure metrics with conservative routing adjustment
 - [x] Ed25519 community package signature verification + trusted/revoked key registry
 - [x] Local tamper-evident package transparency metadata
+- [x] Sandboxed dynamic canary runner for quarantined executable capability versions
 - [ ] External/public transparency anchoring
-- [ ] Sandboxed dynamic canary execution for executable capability versions
 
 ## P2 — Provider connector layer
 
@@ -137,9 +137,40 @@
 - [x] Basic manifest-first VS Code community package browser with quarantine/approval flow
 - [x] Community runtime data bundled into VSIX Core with package-level CI assertions
 - [x] Deterministic non-network tests for registry/signature/approval/update/activation/rollback/transparency logic
-- [ ] Remote registry synchronization / contribution validation service
-- [ ] Sandboxed dynamic canary execution for executable community capabilities
+- [x] Signed/size-bounded remote registry synchronization and verified cache history
+- [x] Sandboxed fail-closed dynamic canary execution for quarantined community capabilities
+- [x] Publisher + remote-registry Ed25519 key generation/signing workflow
+- [ ] Registry contribution-validation service/CI for third-party submissions
+- [ ] Publisher key rotation/revocation UX and migration guidance
 - [ ] External/public transparency anchoring
-- [ ] Publisher onboarding/signing workflow and key rotation UX
 - [ ] Safe automatic install/merge for host-native project config bundles
 - [ ] Rich searchable package marketplace/discovery UI in VS Code
+
+## P7 — Signed registry sync and sandboxed community canaries
+
+- [x] Remote source configuration with exact HTTPS hostname and trust ceiling
+- [x] Ed25519 signed registry envelope verification
+- [x] Sequence-based replay/rollback protection and same-sequence equivocation detection
+- [x] Expiry/max-age validation and revoked/unknown registry-key rejection
+- [x] Streaming response byte limits, redirect refusal, and local/private endpoint rejection
+- [x] Verified immutable registry-version cache with current/history metadata
+- [x] `dockyard community remote sources|sync|cached`
+- [x] Local Ed25519 publisher and registry key generation with private key mode `0600`
+- [x] Package-manifest and registry-envelope signing commands without private-key output
+- [x] Digest-pinned Docker/Podman canary planning
+- [x] Dynamic canary execution with no network, read-only root, dropped capabilities, no-new-privileges, and bounded CPU/memory/PIDs/time/output
+- [x] No host-execution fallback and no automatic canary-image pulls
+- [x] Quarantine-only read-only package mount
+- [x] Unit/integration coverage plus VSIX/Core packaging assertions for P7 registry trust data
+- [ ] Merge verified remote registry packages into a collision-safe effective discovery view
+- [ ] Contribution-validation workflow that signs only reviewed registry envelopes
+- [ ] Key rotation/revocation assistant without silently rewriting trust policy
+- [ ] External transparency anchoring
+
+## Next production milestones
+
+- Authenticated provider action adapters and preview provisioning/verification
+- Secret/dependency exception policy + SARIF aggregation
+- Published VS Code Marketplace release channel and opt-in real-host matrix CI
+- Collision-safe remote marketplace discovery with contribution validation
+- External transparency anchoring and publisher key-rotation workflow
