@@ -327,8 +327,11 @@ function scheduleCommunityUpdateChecks(context) {
   scheduledUpdateTimer = setTimeout(() => {
     scheduledUpdateTimer = undefined;
     void guarded(async () => {
-      await runCommunityUpdateCycle(context);
-      scheduleCommunityUpdateChecks(context);
+      try {
+        await runCommunityUpdateCycle(context);
+      } finally {
+        scheduleCommunityUpdateChecks(context);
+      }
     });
   }, delay);
 }
@@ -337,6 +340,11 @@ async function refreshStatus(statusBar) {
   if (!vscode.workspace.workspaceFolders?.length) {
     statusBar.text = "$(tools) DockyardOS";
     statusBar.tooltip = "Open a project folder to use DockyardOS";
+    return;
+  }
+  if (!vscode.workspace.isTrusted) {
+    statusBar.text = "$(lock) DockyardOS";
+    statusBar.tooltip = "Workspace trust is required before DockyardOS runs project commands.";
     return;
   }
   try {
@@ -475,7 +483,15 @@ function activate(context) {
   if (typeof vscode.workspace.onDidGrantWorkspaceTrust === "function") {
     context.subscriptions.push(vscode.workspace.onDidGrantWorkspaceTrust(() => scheduleCommunityUpdateChecks(context)));
   }
-  refreshStatus(statusBar);
+
+  const initialSchedule = scheduledUpdateConfig();
+  if (initialSchedule.enabled && vscode.workspace.isTrusted) void refreshStatus(statusBar);
+  else {
+    statusBar.text = vscode.workspace.isTrusted ? "$(tools) DockyardOS" : "$(lock) DockyardOS";
+    statusBar.tooltip = vscode.workspace.isTrusted
+      ? "Scheduled community update checks are disabled. Use DockyardOS commands when needed."
+      : "Workspace trust is required before DockyardOS runs project commands.";
+  }
   scheduleCommunityUpdateChecks(context);
 }
 
