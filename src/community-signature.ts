@@ -50,7 +50,7 @@ export async function verifyCommunitySignature(
   pkg: CommunityPackageManifest,
   keys?: PublisherKeyRegistry,
 ): Promise<{ required: boolean; present: boolean; verified: boolean; keyId?: string; reason: string }> {
-  const required = pkg.publisher.signatureRequired ?? pkg.trust === "community";
+  const required = pkg.trust === "community" || pkg.publisher.signatureRequired === true;
   if (!pkg.signature) return { required, present: false, verified: false, reason: required ? "Required package signature is missing." : "Package is unsigned." };
   if (pkg.signature.algorithm !== "ed25519") return { required, present: true, verified: false, keyId: pkg.signature.keyId, reason: "Unsupported package signature algorithm." };
   const registry = keys ?? await loadPublisherKeys();
