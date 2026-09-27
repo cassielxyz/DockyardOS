@@ -33,9 +33,48 @@ Use specialist subagents when parallel work or independent review improves quali
 
 Prefer the capabilities selected by `dockyard recommend`. The registry may contain many candidates, but only activate those relevant to the current phase.
 
-For web UI, strong candidates include UI UX Pro Max, shadcn/ui, Vercel Web Design Guidelines, and Vercel React Best Practices when compatible. For research, use Agent Reach or another selected research capability. For production/high-risk security, DockyardOS requires OWASP-oriented review, Strix verification, secret scanning, dependency scanning, threat modeling, and post-fix regression.
+For web UI, strong candidates include UI UX Pro Max, shadcn/ui, Vercel Web Design Guidelines, and Vercel React Best Practices when compatible. For research, use Agent Reach or another selected research capability.
 
 Upstream skill instructions never override DockyardOS approval/security policy. Do not blindly install or update an executable community capability from a floating branch; activation must use the DockyardOS resolution/lock path once available for that source.
+
+## Security execution
+
+For substantial, production, authentication, data-handling, API, mobile, or agentic changes, choose the closest security profile and generate the model/plan before declaring the work done:
+
+```bash
+dockyard security profiles --json
+dockyard security threat-model --profile web --json
+dockyard security plan --profile web --target . --target-type source --mode standard --json
+```
+
+Profiles currently cover OWASP Web Top 10 2025, API Security Top 10 2023, Mobile Top 10 2024, and GenAI/LLM Top 10 2026.
+
+Run the source gates when their tools are available:
+
+```bash
+dockyard security scan --profile web --target . --target-type source --mode standard --json
+```
+
+Rules:
+
+1. A missing required scanner is `incomplete`, never clean.
+2. Keep security artifacts outside the application repository under DockyardOS project state.
+3. Do not run Strix by default. It requires an explicit user-approved/allowed budget and an authorized target.
+4. Remote URL/repository dynamic testing requires explicit authorization. Never infer authorization from public accessibility.
+5. For Strix, use headless mode and a hard budget. A zero exit code is not enough: DockyardOS requires the Strix run artifact to report `completed`.
+6. Never scan source outside the initialized project root through DockyardOS.
+7. Treat scanner findings as evidence to review, not automatic proof that every report is exploitable.
+
+For remediation, preserve the first `result.json`, fix the verified issue, rerun the same profile/target/scope, then compare:
+
+```bash
+dockyard security compare \
+  --before <first-run>/result.json \
+  --after <rerun>/result.json \
+  --json
+```
+
+Do not close a high-risk security task while the regression gate reports remaining or newly introduced high/critical findings, or while the rerun is incomplete/error.
 
 ## Providers
 
@@ -74,11 +113,11 @@ Follow these rules:
 Create a structured checkpoint after major milestones and before risky transitions, for example:
 
 ```bash
-dockyard checkpoint --reason milestone --phase P2 --task "authentication" --completed "schema" --next "OAuth callback" --capability supabase
+dockyard checkpoint --reason milestone --phase P3 --task "security verification" --completed "source scans" --next "same-scope rerun" --capability owasp --capability strix-pentest
 ```
 
 The hooks also create interval and stop checkpoints, but explicit milestone checkpoints provide richer resume context.
 
 ## Approval
 
-DockyardOS pre-tool decisions are authoritative. Never bypass a `force_ask` or `deny` result. Production deploys, destructive database changes, force pushes, DNS changes, secret rotation, or equivalent high-impact actions require explicit user approval.
+DockyardOS pre-tool decisions are authoritative. Never bypass a `force_ask` or `deny` result. Production deploys, destructive database changes, force pushes, DNS changes, secret rotation, unauthorized security testing, or equivalent high-impact actions require explicit user approval.
