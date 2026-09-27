@@ -7,6 +7,7 @@ import test from "node:test";
 
 process.env.DOCKYARD_HOME = await mkdtemp(join(tmpdir(), "dockyard-community-home-"));
 const dockyard = await import("../dist/index.js");
+const communityManager = await import("../dist/community-manager.js");
 
 function manifest(overrides = {}) {
   return {
@@ -160,12 +161,12 @@ test("immutable community versions are hash-verified and can be rolled back", as
   const firstHash = await dockyard.communityTreeSha256(q1, { maxFiles: pkg.maxFiles, maxBytes: pkg.maxBytes });
   const secondHash = await dockyard.communityTreeSha256(q2, { maxFiles: pkg.maxFiles, maxBytes: pkg.maxBytes });
 
-  const first = await dockyard.installResolvedCommunityPackage(
+  const first = await communityManager.installResolvedCommunityPackage(
     pkg,
     resolution(pkg, q1, "a".repeat(40), firstHash),
     automaticAssessment(pkg, "a".repeat(40)),
   );
-  const second = await dockyard.installResolvedCommunityPackage(
+  const second = await communityManager.installResolvedCommunityPackage(
     pkg,
     resolution(pkg, q2, "b".repeat(40), secondHash),
     automaticAssessment(pkg, "b".repeat(40)),
@@ -187,7 +188,7 @@ test("activation refuses quarantine content modified after assessment", async ()
   const assessed = automaticAssessment(pkg, revision);
   await writeFile(join(q, "SKILL.md"), "---\nname: fixture\ndescription: changed-after-assessment\n---\n", "utf8");
   await assert.rejects(
-    () => dockyard.installResolvedCommunityPackage(pkg, resolution(pkg, q, revision, assessedHash), assessed),
+    () => communityManager.installResolvedCommunityPackage(pkg, resolution(pkg, q, revision, assessedHash), assessed),
     /changed after assessment/,
   );
 });
@@ -200,8 +201,8 @@ test("rollback refuses a locally modified immutable revision", async () => {
   await writeFile(join(q2, "SKILL.md"), "---\nname: fixture\ndescription: two\n---\n", "utf8");
   const h1 = await dockyard.communityTreeSha256(q1, { maxFiles: pkg.maxFiles, maxBytes: pkg.maxBytes });
   const h2 = await dockyard.communityTreeSha256(q2, { maxFiles: pkg.maxFiles, maxBytes: pkg.maxBytes });
-  const first = await dockyard.installResolvedCommunityPackage(pkg, resolution(pkg, q1, "d".repeat(40), h1), automaticAssessment(pkg, "d".repeat(40)));
-  await dockyard.installResolvedCommunityPackage(pkg, resolution(pkg, q2, "e".repeat(40), h2), automaticAssessment(pkg, "e".repeat(40)));
+  const first = await communityManager.installResolvedCommunityPackage(pkg, resolution(pkg, q1, "d".repeat(40), h1), automaticAssessment(pkg, "d".repeat(40)));
+  await communityManager.installResolvedCommunityPackage(pkg, resolution(pkg, q2, "e".repeat(40), h2), automaticAssessment(pkg, "e".repeat(40)));
   await writeFile(join(first.destination, "SKILL.md"), "tampered\n", "utf8");
   await assert.rejects(() => dockyard.rollbackCommunityPackage(pkg.id, first.revision), /modified; rollback refused/);
 });
