@@ -23,3 +23,7 @@ jobs:
           node dist/cli.js --help
           node dist/cli.js policy --command "git status" --json
           node dist/cli.js plan --profile full --stack nextjs,supabase --security high --json
+          node dist/cli.js registry verify
+          node dist/cli.js catalog --category security --json
+          node dist/cli.js recipes --id saas-web --json
+          node dist/cli.js recommend --task "Build a production SaaS dashboard" --stack web,nextjs,react,supabase,postgres --security standard --json
