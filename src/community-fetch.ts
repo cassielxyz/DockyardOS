@@ -3,12 +3,13 @@ import { lstat, mkdir, readFile, readdir, rm } from "node:fs/promises";
 import { extname, relative, resolve } from "node:path";
 import type { CommunityPackageManifest, CommunityResolution, CommunityScanFinding, CommunityScanReport } from "./community-types.js";
 import { dockyardHome } from "./project.js";
-import { run } from "./process.js";
+import { run, type RunOptions } from "./process.js";
 import type { PermissionId } from "./types.js";
 
 const SCRIPT_EXTENSIONS = new Set([".sh", ".bash", ".zsh", ".fish", ".ps1", ".bat", ".cmd", ".py", ".js", ".mjs", ".cjs", ".ts", ".tsx"]);
 const BINARY_EXTENSIONS = new Set([".exe", ".dll", ".so", ".dylib", ".bin", ".msi", ".apk", ".jar", ".class", ".wasm"]);
 const SENSITIVE_NAMES = [/^\.env(?:\.|$)/i, /^id_(?:rsa|ed25519|ecdsa)$/i, /(?:private|secret).*key/i, /\.p(?:em|12|fx)$/i];
+const MAX_DIRECTORY_DEPTH = 64;
 
 interface ScannedFile {
   absolute: string;
@@ -34,17 +35,37 @@ function ensureInside(root: string, candidate: string): string {
   const resolvedRoot = resolve(root);
   const resolved = resolve(candidate);
   const rel = relative(resolvedRoot, resolved);
-  if (rel === "" || (!rel.startsWith("..") && !rel.startsWith("/"))) return resolved;
+  if (rel === "" || (rel !== ".." && !rel.startsWith(`..${process.platform === "win32" ? "\\" : "/"}`) && !rel.startsWith("/"))) return resolved;
   throw new Error(`Path escaped quarantine root: ${candidate}`);
+}
+
+function isolatedGitEnvironment(): Record<string, string | undefined> {
+  return {
+    GIT_CONFIG_NOSYSTEM: "1",
+    GIT_CONFIG_GLOBAL: process.platform === "win32" ? "NUL" : "/dev/null",
+    GIT_TERMINAL_PROMPT: "0",
+    GCM_INTERACTIVE: "Never",
+    GIT_LFS_SKIP_SMUDGE: "1",
+  };
+}
+
+function runGit(args: string[], cwd: string, options: Omit<RunOptions, "cwd" | "env"> = {}) {
+  return run("git", args, { cwd, env: isolatedGitEnvironment(), ...options });
 }
 
 async function walk(root: string, maxFiles: number, maxBytes: number): Promise<{ files: ScannedFile[]; findings: CommunityScanFinding[] }> {
   const files: ScannedFile[] = [];
   const findings: CommunityScanFinding[] = [];
   let totalBytes = 0;
+  let entriesSeen = 0;
+  const maxEntries = Math.max(maxFiles * 4, maxFiles + 256);
 
-  async function visit(directory: string): Promise<void> {
+  async function visit(directory: string, depth: number): Promise<void> {
+    if (depth > MAX_DIRECTORY_DEPTH) throw new Error(`Community package exceeds directory depth limit (${MAX_DIRECTORY_DEPTH}).`);
     const entries = await readdir(directory, { withFileTypes: true });
+    entriesSeen += entries.length;
+    if (entriesSeen > maxEntries) throw new Error(`Community package exceeds filesystem entry limit (${maxEntries}).`);
+
     for (const entry of entries) {
       if (entry.name === ".git") continue;
       const absolute = ensureInside(root, resolve(directory, entry.name));
@@ -55,7 +76,7 @@ async function walk(root: string, maxFiles: number, maxBytes: number): Promise<{
         continue;
       }
       if (metadata.isDirectory()) {
-        await visit(absolute);
+        await visit(absolute, depth + 1);
         continue;
       }
       if (!metadata.isFile()) {
@@ -70,7 +91,7 @@ async function walk(root: string, maxFiles: number, maxBytes: number): Promise<{
     }
   }
 
-  await visit(root);
+  await visit(root, 0);
   return { files, findings };
 }
 
@@ -78,6 +99,8 @@ async function contentDigest(files: ScannedFile[]): Promise<string> {
   const hash = createHash("sha256");
   for (const file of [...files].sort((a, b) => a.relative.localeCompare(b.relative))) {
     hash.update(file.relative);
+    hash.update("\0");
+    hash.update(file.executable ? "100755" : "100644");
     hash.update("\0");
     hash.update(await readFile(file.absolute));
     hash.update("\0");
@@ -87,6 +110,15 @@ async function contentDigest(files: ScannedFile[]): Promise<string> {
 
 function uniquePermissions(values: PermissionId[]): PermissionId[] {
   return [...new Set(values)].sort();
+}
+
+function gitObjectBytes(output: string): number {
+  let kib = 0;
+  for (const line of output.split(/\r?\n/)) {
+    const match = /^(size|size-pack):\s*(\d+)\s*$/.exec(line.trim());
+    if (match) kib += Number(match[2]);
+  }
+  return kib * 1024;
 }
 
 async function scanPackage(root: string, pkg: CommunityPackageManifest, revision: string): Promise<CommunityScanReport> {
@@ -181,15 +213,26 @@ export async function resolveAndQuarantine(pkg: CommunityPackageManifest): Promi
   await mkdir(quarantinePath, { recursive: true });
 
   try {
-    const init = run("git", ["init", "--quiet"], { cwd: quarantinePath, timeoutMs: 10_000, maxOutputBytes: 8_192 });
+    const init = runGit(["init", "--quiet"], quarantinePath, { timeoutMs: 10_000, maxOutputBytes: 8_192 });
     if (!init.ok) throw new Error(`git init failed: ${init.stderr || init.stdout}`);
-    const remote = run("git", ["remote", "add", "origin", source], { cwd: quarantinePath, timeoutMs: 10_000, maxOutputBytes: 8_192 });
+    await mkdir(resolve(quarantinePath, ".git", "dockyard-empty-hooks"), { recursive: true });
+    const hooks = runGit(["config", "core.hooksPath", ".git/dockyard-empty-hooks"], quarantinePath, { timeoutMs: 5_000, maxOutputBytes: 4_096 });
+    if (!hooks.ok) throw new Error(`git hook isolation failed: ${hooks.stderr || hooks.stdout}`);
+    const remote = runGit(["remote", "add", "origin", source], quarantinePath, { timeoutMs: 10_000, maxOutputBytes: 8_192 });
     if (!remote.ok) throw new Error(`git remote failed: ${remote.stderr || remote.stdout}`);
-    const fetched = run("git", ["fetch", "--depth=1", "--no-tags", "origin", pkg.source.ref], { cwd: quarantinePath, timeoutMs: 120_000, maxOutputBytes: 32_768 });
+    const fetched = runGit(["fetch", "--depth=1", "--no-tags", "origin", pkg.source.ref], quarantinePath, { timeoutMs: 120_000, maxOutputBytes: 32_768 });
     if (!fetched.ok) throw new Error(`git fetch failed for ${pkg.source.repository}@${pkg.source.ref}: ${fetched.stderr || fetched.stdout}`);
-    const checkedOut = run("git", ["checkout", "--quiet", "--detach", "FETCH_HEAD"], { cwd: quarantinePath, timeoutMs: 30_000, maxOutputBytes: 16_384 });
+
+    const objectStats = runGit(["count-objects", "-v"], quarantinePath, { timeoutMs: 5_000, maxOutputBytes: 8_192 });
+    if (!objectStats.ok) throw new Error(`Unable to inspect fetched Git object size: ${objectStats.stderr || objectStats.stdout}`);
+    const maxPackageBytes = pkg.maxBytes ?? 20 * 1024 * 1024;
+    const maxGitObjectBytes = Math.min(Math.max(maxPackageBytes * 8, 32 * 1024 * 1024), 256 * 1024 * 1024);
+    const fetchedBytes = gitObjectBytes(objectStats.stdout);
+    if (fetchedBytes > maxGitObjectBytes) throw new Error(`Fetched Git objects exceed quarantine limit (${fetchedBytes} > ${maxGitObjectBytes} bytes).`);
+
+    const checkedOut = runGit(["checkout", "--quiet", "--detach", "FETCH_HEAD"], quarantinePath, { timeoutMs: 30_000, maxOutputBytes: 16_384 });
     if (!checkedOut.ok) throw new Error(`git checkout failed: ${checkedOut.stderr || checkedOut.stdout}`);
-    const head = run("git", ["rev-parse", "HEAD"], { cwd: quarantinePath, timeoutMs: 5_000, maxOutputBytes: 4_096 });
+    const head = runGit(["rev-parse", "HEAD"], quarantinePath, { timeoutMs: 5_000, maxOutputBytes: 4_096 });
     if (!head.ok || !/^[a-f0-9]{40}$/i.test(head.stdout.trim())) throw new Error("Unable to resolve fetched community package to an immutable Git commit.");
     const revision = head.stdout.trim().toLowerCase();
     const packageRoot = ensureInside(quarantinePath, resolve(quarantinePath, safeSubdirectory(pkg.source.subdirectory)));
