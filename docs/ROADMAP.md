@@ -144,7 +144,7 @@
 - [x] Automatic-only safe update check/apply flow with no approval bypass
 - [x] Offline installed-manifest snapshots for remote package runtime continuity
 - [x] Registry contribution-validation staging/CI for third-party submissions
-- [ ] Publisher key rotation/revocation UX and migration guidance
+- [x] Publisher key rotation/revocation UX and migration guidance
 - [ ] External/public transparency anchoring
 - [ ] Safe automatic install/merge for host-native project config bundles
 - [x] Rich searchable package marketplace/discovery UI in VS Code
@@ -168,7 +168,7 @@
 - [x] Merge verified remote registry packages into a collision-safe effective discovery view
 - [x] Read-only third-party contribution validation with no signing secrets in PR CI
 - [ ] Maintainer promotion/signing workflow for reviewed registry envelopes
-- [ ] Key rotation/revocation assistant without silently rewriting trust policy
+- [x] Key rotation/revocation assistant without silently rewriting trust policy
 - [ ] External transparency anchoring
 
 ## P8 — Effective registry and safe capability updates
@@ -190,7 +190,8 @@
 - [ ] Background/scheduled update checks exposed through host automation integrations
 - [x] Rich VS Code remote marketplace view with provenance/conflict/update-state filters
 - [x] Contribution-validation workflow for third-party registry submissions
-- [ ] Maintainer-controlled signing/promotion automation for reviewed submissions
+- [x] Maintainer-controlled bundled contribution promotion after independent review
+- [ ] Maintainer-controlled signing/publication automation for reviewed remote registry envelopes
 
 ## P9 — Authenticated provider actions and verified previews
 
@@ -273,7 +274,7 @@
 - [x] CODEOWNERS boundary covers trust files, release workflows, and CODEOWNERS itself
 - [x] Deterministic contribution/signature/onboarding/collision tests
 - [x] Contributor documentation for the two-review trust flow
-- [ ] Maintainer-controlled publisher onboarding/promotion automation after independent identity review
+- [x] Maintainer-controlled publisher onboarding/promotion automation after independent identity review
 - [ ] Signed reviewed registry-envelope publication pipeline
 
 ## P13 — VS Code Community Hub
@@ -290,10 +291,29 @@
 - [x] Nonce-bound CSP, script-safe serialization, and DOM text rendering guard against registry-content injection
 - [x] Deterministic Community Hub tests and actual VSIX packaging assertions
 
+## P14 — Maintainer trust operations
+
+- [x] Maintainer-only read-only plans for publisher onboarding, key rotation/revocation, and bundled contribution promotion
+- [x] Publisher onboarding/rotation confined to the inert `registry/publisher-proposals` queue
+- [x] Contribution promotion confined to the inert `registry/contributions` queue
+- [x] Staged maintainer inputs reject symlinks and paths outside their review queues
+- [x] Publisher proposals reject private-key PEM material and unsupported secret-bearing fields
+- [x] Rotation adds the replacement public key and revokes the previous key as one reviewed transition
+- [x] Final-key revocation emits a visible warning instead of weakening signature requirements
+- [x] Promotion reuses P12 signature validation and bundled package-ID collision checks
+- [x] Promoted third-party manifests remain `trust: community` with immutable source revision and publisher signature intact
+- [x] Mutation targets restricted to canonical `registry/publishers.json` / `registry/community.json`
+- [x] Apply requires explicit operation approval plus exact reviewed current-state SHA-256
+- [x] Apply reuses the reviewed timestamp and requires the exact reviewed next-state SHA-256
+- [x] Deterministic unit/CLI regression coverage for plan/apply, stale state, altered after-state, staging confinement, and approval guards
+- [x] Maintainer migration/runbook documentation for onboarding, rotation, revocation, and promotion
+- [ ] Signed reviewed remote-registry envelope publication pipeline
+- [ ] External/public transparency anchoring
+
 ## Next production milestones
 
 - Complete a green real-host matrix run and first guarded VS Code Marketplace publication
 - Optional scheduled safe-update checks through host automation integrations
-- Maintainer-controlled contribution promotion, publisher key rotation/revocation, and external transparency anchoring
+- Maintainer-controlled remote-registry envelope signing/publication and external transparency anchoring
 - Alternative-provider actions, live pricing/health signals, and migration rollback executors
 - Optional approved SARIF upload and expiring-policy reminder integrations
