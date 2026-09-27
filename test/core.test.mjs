@@ -59,10 +59,13 @@ test("SaaS recommendation upgrades to high security and keeps mandatory gates", 
   const ids = dockyard.selectedIds(result);
   assert.equal(result.recipe?.id, "saas-web");
   assert.equal(result.request.security, "high");
-  for (const id of ["owasp", "gitleaks", "osv-scanner", "playwright"]) assert.ok(ids.includes(id), `missing ${id}`);
+  for (const id of ["owasp", "strix-pentest", "gitleaks", "osv-scanner", "playwright"]) assert.ok(ids.includes(id), `missing ${id}`);
   assert.ok(ids.includes("ui-ux-pro-max"));
   assert.ok(ids.includes("shadcn"));
   assert.ok(result.securityGates.includes("strix-verification"));
+  assert.ok(result.agents.length <= request.maxAgents, `agent budget exceeded: ${result.agents.length}`);
+  assert.ok(ids.includes("security-reviewer-agent"));
+  assert.ok(ids.includes("qa-reviewer-agent"));
 });
 
 test("landing-page recommendation prefers UI and browser quality capabilities", () => {
