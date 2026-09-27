@@ -1,4 +1,4 @@
-import { access, readFile, writeFile } from "node:fs/promises";
+import { access, readFile, readdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { commandExists, run } from "./process.js";
 import type {
@@ -112,6 +112,23 @@ function parseStrixSummary(stdout: string, stderr: string): SecurityFinding[] {
   }];
 }
 
+async function latestStrixRun(cwd: string): Promise<any | undefined> {
+  const runsRoot = resolve(cwd, "strix_runs");
+  try {
+    const entries = await readdir(runsRoot, { withFileTypes: true });
+    const runs: any[] = [];
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      const data = await jsonArtifact(resolve(runsRoot, entry.name, "run.json"));
+      if (data) runs.push({ ...data, __directory: entry.name });
+    }
+    runs.sort((a, b) => String(b.started_at ?? b.created_at ?? b.__directory).localeCompare(String(a.started_at ?? a.created_at ?? a.__directory)));
+    return runs[0];
+  } catch {
+    return undefined;
+  }
+}
+
 async function resultForStep(plan: SecurityScanPlan, step: SecurityScanPlan["steps"][number]): Promise<SecurityStepResult> {
   const startedAt = new Date().toISOString();
   if (!commandExists(step.command)) {
@@ -139,8 +156,10 @@ async function resultForStep(plan: SecurityScanPlan, step: SecurityScanPlan["ste
   else if (step.scanner === "osv-scanner") findings = parseOsv(artifact ?? safeJson(executed.stdout));
   else findings = parseStrixSummary(executed.stdout, executed.stderr);
 
+  const strixRun = step.scanner === "strix" ? await latestStrixRun(step.cwd) : undefined;
+  const strixIncomplete = step.scanner === "strix" && (!strixRun || String(strixRun.status ?? "").toLowerCase() !== "completed");
   const findingExit = executed.status !== null && step.findingExitCodes.includes(executed.status);
-  const status = executed.timedOut || (executed.status !== 0 && !findingExit)
+  const status = executed.timedOut || strixIncomplete || (executed.status !== 0 && !findingExit)
     ? "error"
     : findings.length || findingExit
       ? "findings"
@@ -154,11 +173,13 @@ async function resultForStep(plan: SecurityScanPlan, step: SecurityScanPlan["ste
     findings,
     summary: executed.timedOut
       ? `${step.command} exceeded the DockyardOS scan timeout.`
-      : status === "clean"
-        ? `${step.command} completed without reported findings.`
-        : status === "findings"
-          ? `${step.command} reported ${findings.length || "one or more"} finding(s).`
-          : `${step.command} failed: ${executed.stderr || executed.stdout || `exit ${executed.status}`}`,
+      : strixIncomplete
+        ? `Strix did not produce a completed run.json; a budget stop or interrupted run cannot be treated as clean.`
+        : status === "clean"
+          ? `${step.command} completed without reported findings.`
+          : status === "findings"
+            ? `${step.command} reported ${findings.length || "one or more"} finding(s).`
+            : `${step.command} failed: ${executed.stderr || executed.stdout || `exit ${executed.status}`}`,
     startedAt,
     finishedAt: new Date().toISOString(),
   };
