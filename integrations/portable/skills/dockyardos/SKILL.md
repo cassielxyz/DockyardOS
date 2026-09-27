@@ -1,6 +1,6 @@
 ---
 name: dockyardos
-description: Resume and orchestrate software projects with DockyardOS persistent checkpoints, phase-aware teams, capability selection, provider planning, approval gates, and security verification. Use for substantial coding/project work when DockyardOS is initialized.
+description: Resume and orchestrate software projects with DockyardOS persistent checkpoints, phase-aware teams, capability selection, provider planning, approval gates, security verification, and safely installed community capabilities. Use for substantial coding/project work when DockyardOS is initialized.
 ---
 
 # DockyardOS portable skill
@@ -39,6 +39,22 @@ dockyard team advance --artifact "<evidence>" --decision "<durable decision>" --
 ```
 
 Use the compact handoff returned by DockyardOS plus relevant repository files. Do not replay or reconstruct the entire prior conversation.
+
+## Installed community capabilities
+
+Do not load the full community catalogue or every installed package into context. When the current phase could benefit from an installed community capability, inspect only integrity-verified active packages:
+
+```bash
+dockyard community active --json
+```
+
+On MCP-capable hosts use `dockyard_community_active`. If one active package is relevant, read only the manifest-declared entrypoint needed for the task with `dockyard_community_entrypoint` or:
+
+```bash
+dockyard community read --id <package> --entrypoint <declared/path> --json
+```
+
+Never read an undeclared package path as a substitute. DockyardOS re-verifies the immutable package digest before exposing active metadata or entrypoints. Discovery-source listings are metadata only and are not executable capabilities.
 
 ## Parallel writers
 
