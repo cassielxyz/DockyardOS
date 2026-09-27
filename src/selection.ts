@@ -110,7 +110,7 @@ export function scoreCandidate(candidate: Candidate, request: SelectionRequest, 
   const taskTerms = new Set([candidate.category, ...candidate.tags, ...candidate.capabilities].map((value) => value.toLowerCase()));
   if (taskTerms.has(request.taskType.toLowerCase())) {
     score += 12;
-    reasons.push(`task match +12`);
+    reasons.push("task match +12");
   }
 
   if (request.preferred?.includes(candidate.id)) {
@@ -124,9 +124,24 @@ export function scoreCandidate(candidate: Candidate, request: SelectionRequest, 
     score += 28;
     reasons.push("recipe preferred +28");
   }
-  if (recipe?.agents.includes(candidate.id)) {
-    score += 120;
-    reasons.push("recipe specialist +120");
+
+  const specialistIndex = recipe?.agents.indexOf(candidate.id) ?? -1;
+  if (specialistIndex >= 0) {
+    const points = 72 + Math.max(0, 18 - specialistIndex * 2);
+    score += points;
+    reasons.push(`recipe specialist +${points}`);
+    if (request.security === "high" && candidate.id.includes("security")) {
+      score += 22;
+      reasons.push("high-security specialist +22");
+    }
+    if (candidate.id === "qa-reviewer-agent") {
+      score += 16;
+      reasons.push("independent QA +16");
+    }
+    if (request.taskType === "release" && candidate.id === "release-verifier-agent") {
+      score += 20;
+      reasons.push("release verifier +20");
+    }
   }
 
   const quality = Math.round(candidate.maturity * 0.08 + candidate.maintenance * 0.08);
@@ -161,13 +176,12 @@ function pickKind(scored: ScoredCandidate[], kind: Candidate["kind"], limit: num
   }
 
   for (const entry of pool) {
-    if (picked.length >= Math.max(limit, picked.length)) break;
+    if (picked.length >= limit) break;
     if (pickedIds.has(entry.candidate.id)) continue;
     const conflict = entry.candidate.conflictsWith?.some((id) => pickedIds.has(id));
     if (conflict) continue;
     picked.push(entry);
     pickedIds.add(entry.candidate.id);
-    if (picked.length >= limit) break;
   }
   return picked;
 }
@@ -196,8 +210,7 @@ export function selectCapabilities(request: SelectionRequest): SelectionResult {
 
   const requiredIds = new Set<string>([
     ...(recipe?.required ?? []),
-    ...(recipe?.agents ?? []),
-    ...(effectiveRequest.security === "high" ? ["owasp", "gitleaks", "osv-scanner"] : []),
+    ...(effectiveRequest.security === "high" ? ["owasp", "gitleaks", "osv-scanner", "strix-pentest"] : []),
   ]);
 
   const providerList = [...providers]
