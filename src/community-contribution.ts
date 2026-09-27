@@ -12,6 +12,7 @@ import {
 
 const IMMUTABLE_GIT_COMMIT = /^[0-9a-f]{40}$/;
 const SAFE_ID = /^[a-z0-9][a-z0-9._-]{1,79}$/;
+const PUBLISHER_PROPOSAL_FIELDS = new Set(["schemaVersion", "id", "publisherId", "algorithm", "publicKeyPem", "createdAt", "notes"]);
 
 type DirectoryEntry = { name: string; isFile(): boolean };
 
@@ -202,6 +203,9 @@ export function validatePublisherKeyProposal(value: unknown, file = "<memory>"):
   const errors: string[] = [];
   const warnings: string[] = [];
   if (!isPlainObject(value)) return { file, status: "invalid", errors: ["Publisher key proposal must be a JSON object."], warnings, trustedAutomatically: false };
+  for (const field of Object.keys(value)) {
+    if (!PUBLISHER_PROPOSAL_FIELDS.has(field)) errors.push(`Publisher key proposal contains unsupported field ${field}; only public onboarding metadata is allowed.`);
+  }
   const proposal = value as unknown as PublisherKeyProposal;
   if (proposal.schemaVersion !== 1) errors.push("Publisher key proposal schemaVersion must be 1.");
   if (!SAFE_ID.test(String(proposal.id ?? ""))) errors.push("Publisher key proposal id is invalid.");
