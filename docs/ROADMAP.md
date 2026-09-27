@@ -50,7 +50,7 @@
 - [x] Authenticated action adapters for GitHub, Vercel, Cloudflare, and Supabase
 - [ ] Authenticated action adapters for alternative providers
 - [ ] Live pricing/free-tier metadata fetchers with freshness timestamps
-- [ ] Provider outage/health verification
+- [x] Provider outage/health verification
 - [x] Automated preview provisioning and verification
 - [ ] Migration executors with rollback artifacts
 
@@ -167,7 +167,7 @@
 - [x] Unit/integration coverage plus VSIX/Core packaging assertions for P7 registry trust data
 - [x] Merge verified remote registry packages into a collision-safe effective discovery view
 - [x] Read-only third-party contribution validation with no signing secrets in PR CI
-- [ ] Maintainer promotion/signing workflow for reviewed registry envelopes
+- [x] Maintainer promotion/signing workflow for reviewed registry envelopes
 - [x] Key rotation/revocation assistant without silently rewriting trust policy
 - [ ] External transparency anchoring
 
@@ -182,16 +182,16 @@
 - [x] Existing P6 quarantine/signature/permission/integrity/approval installer reused unchanged as the activation boundary
 - [x] Exact assessed manifest/provenance snapshot persisted per installed immutable revision
 - [x] Active remote capabilities and declared entrypoints remain available offline after remote cache expiry
-- [x] `dockyard community updates check [--id ID]`
-- [x] `dockyard community updates apply-safe [--id ID]`
+- [x] `community updates check [--id ID]`
+- [x] `community updates apply-safe [--id ID]`
 - [x] Safe update application performs a fresh pinned assessment and never supplies approval automatically
 - [x] Permission expansion/trust downgrade/risk increase/quarantine/ambiguity/missing-manifest states cannot be unattended updates
 - [x] Deterministic collision, provenance, snapshot, offline-runtime, and fail-closed update tests
-- [ ] Background/scheduled update checks exposed through host automation integrations
+- [x] Background/scheduled update checks exposed through host automation integrations
 - [x] Rich VS Code remote marketplace view with provenance/conflict/update-state filters
 - [x] Contribution-validation workflow for third-party registry submissions
 - [x] Maintainer-controlled bundled contribution promotion after independent review
-- [ ] Maintainer-controlled signing/publication automation for reviewed remote registry envelopes
+- [x] Maintainer-controlled signing/publication automation for reviewed remote registry envelopes
 
 ## P9 — Authenticated provider actions and verified previews
 
@@ -210,7 +210,7 @@
 - [x] Deterministic action/approval/injection/preview orchestration tests and CI smoke plans
 - [ ] Authenticated action adapters for alternative providers
 - [ ] Live pricing/free-tier metadata fetchers with freshness timestamps
-- [ ] Provider outage/health verification
+- [x] Provider outage/health verification
 - [ ] Migration executors with rollback artifacts
 
 ## P10 — Expiring security exceptions and SARIF evidence
@@ -232,8 +232,8 @@
 - [x] `dockyard security policy show|add-secret|add-dependency|remove|evaluate`
 - [x] `dockyard security sarif --result PATH`
 - [x] Deterministic policy/expiry/incomplete/SARIF tests plus real CLI smoke evidence
-- [ ] Optional code-host upload adapter for generated SARIF with explicit approval
-- [ ] Policy-review reminders for exceptions nearing expiry
+- [x] Optional code-host upload adapter for generated SARIF with explicit approval
+- [x] Policy-review reminders for exceptions nearing expiry
 
 ## P11 — Guarded Marketplace release and real-host CI
 
@@ -275,7 +275,7 @@
 - [x] Deterministic contribution/signature/onboarding/collision tests
 - [x] Contributor documentation for the two-review trust flow
 - [x] Maintainer-controlled publisher onboarding/promotion automation after independent identity review
-- [ ] Signed reviewed registry-envelope publication pipeline
+- [x] Signed reviewed registry-envelope publication pipeline
 
 ## P13 — VS Code Community Hub
 
@@ -307,13 +307,62 @@
 - [x] Apply reuses the reviewed timestamp and requires the exact reviewed next-state SHA-256
 - [x] Deterministic unit/CLI regression coverage for plan/apply, stale state, altered after-state, staging confinement, and approval guards
 - [x] Maintainer migration/runbook documentation for onboarding, rotation, revocation, and promotion
-- [ ] Signed reviewed remote-registry envelope publication pipeline
+- [x] Signed reviewed remote-registry envelope publication pipeline
 - [ ] External/public transparency anchoring
+
+## P15 — Scheduled safe community updates
+
+- [x] Opt-in scheduled update checks remain disabled by default
+- [x] Bounded 60-minute to 7-day interval with a 6-hour default
+- [x] Separate opt-in unattended path calls only the existing `apply-safe` boundary
+- [x] Trusted-workspace, single-flight, restart-throttle, and retry behavior
+- [x] Scheduler syntax, regression tests, bundled Core checks, and VSIX packaging assertions
+
+## P16 — Security policy expiry reminders
+
+- [x] Read-only `security policy reminders` reporting without policy mutation
+- [x] Bounded 1-90 day review window with case-insensitive owner filtering
+- [x] Expired/expiring-soon classification, signed day counts, context, summary, and `needsReview`
+- [x] Deterministic unit/CLI tests plus normal and bundled-Core CI smoke coverage
+
+## P17 — Guarded GitHub SARIF upload
+
+- [x] Read-only upload plan plus explicitly approved upload run
+- [x] Exact SARIF SHA-256 approval binding and immediate pre-upload rehash
+- [x] Current-project/run-path, repository, full commit, and full-ref validation
+- [x] Gzip/Base64 GitHub upload through authenticated `gh` with no token argument
+- [x] Symlink SARIF rejection and bounded path-safe returned upload-ID verification
+- [x] Post-upload status evidence and durable external audit metadata
+- [x] Exact final-head CI executed successfully on a real GitHub-hosted runner
+
+## P18 — Public provider health evidence
+
+- [x] Credential-free public status checks for GitHub, Vercel, Cloudflare, and Supabase
+- [x] Pinned official Statuspage provenance with redirect refusal and cache bypass
+- [x] Bounded timeout plus declared/streamed 512 KiB response limits
+- [x] Explicit healthy/degraded/outage/unavailable/invalid states and aggregate exit behavior
+- [x] Deterministic no-network tests and exact final-head CI on a real GitHub-hosted runner
+
+## P19 — Reviewed remote-registry publication
+
+- [x] Runtime-inert `registry/remote-publications` review queue
+- [x] Read-only publication plan that never reads the registry private key
+- [x] Approval SHA-256 binds review metadata, index/key/sequence/expiry, GitHub target, and exact observed remote state
+- [x] Trusted non-revoked Ed25519 key requirement and non-symlink trust/index inputs
+- [x] Explicit `--approve-publication` run with exact reviewed timestamp and plan digest
+- [x] Local signature verification before mutation and 1 MiB signed-envelope bound
+- [x] GitHub Contents API publication through authenticated `gh` with existing blob-SHA race protection
+- [x] Strict remote Base64/blob metadata validation and exact post-publication byte/sequence verification
+- [x] `published-unverified` state when mutation response or post-publication verification is incomplete
+- [x] Durable external signed-envelope and audit evidence without credentials/private keys
+- [x] Deterministic mocked-GitHub regression coverage
+- [ ] External/public transparency anchoring for published registry state
 
 ## Next production milestones
 
 - Complete a green real-host matrix run and first guarded VS Code Marketplace publication
-- Optional scheduled safe-update checks through host automation integrations
-- Maintainer-controlled remote-registry envelope signing/publication and external transparency anchoring
-- Alternative-provider actions, live pricing/health signals, and migration rollback executors
-- Optional approved SARIF upload and expiring-policy reminder integrations
+- External/public transparency anchoring for signed remote-registry publications
+- Authenticated action adapters for alternative providers
+- Live pricing/free-tier metadata fetchers with freshness timestamps
+- Migration executors with rollback artifacts
+- Safe automatic install/merge for review-first host-native project configuration without clobbering existing files
