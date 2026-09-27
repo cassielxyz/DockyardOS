@@ -1,6 +1,7 @@
 import { resolve } from "node:path";
 import { scanCommunityPackageTree, resolveAndQuarantine } from "./community-fetch.js";
 import { findEffectiveCommunityPackage } from "./community-effective-registry.js";
+import { storeInstalledManifestSnapshot } from "./community-manifest-store.js";
 import {
   assessCommunityPackage,
   communityStatus,
@@ -53,11 +54,19 @@ export async function resolveAssessInstallPinnedEffectiveCommunityPackage(
   );
   assertExpectedCommunityResolution(resolved.resolution, expectations);
 
+  // Preserve the exact assessed manifest/provenance before activation so an installed
+  // remote package remains self-describing even when the remote cache later expires.
+  const manifestSnapshot = await storeInstalledManifestSnapshot(
+    resolved.manifest,
+    resolved.resolution.revision,
+    resolved.origin,
+  );
+
   const installed = await installResolvedCommunityPackage(
     resolved.manifest,
     resolved.resolution,
     freshAssessment,
     { approve: expectations.approve },
   );
-  return { ...resolved, assessment: freshAssessment, installed };
+  return { ...resolved, assessment: freshAssessment, manifestSnapshot, installed };
 }
