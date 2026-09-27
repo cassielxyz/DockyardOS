@@ -12,16 +12,16 @@ This is what lets the same project resume after switching VS Code, Antigravity, 
 
 ## Host matrix
 
-| Host | Preferred DockyardOS surface | User-wide option | Native hooks/subagents | Dockyard durable resume |
+| Host | Preferred surface | Optional richer bridge | User-wide option | Dockyard durable resume |
 |---|---|---|---|---|
-| Google Antigravity | full DockyardOS plugin | `agy plugin install ...` | yes | yes |
-| Gemini CLI | Agent Skill / extension | `~/.agents/skills/dockyardos` | richer extension path available | yes |
-| OpenAI Codex / Agents | Agent Skill / plugin / Agents API capability directory | runtime-dependent | host-dependent | yes |
-| Claude Code | Agent Skill / plugin | `~/.claude/skills/dockyardos` | yes | yes |
-| Cursor | portable Agent Skill | `~/.agents/skills/dockyardos` | host-native features | yes |
-| OpenCode | portable Agent Skill | `~/.config/opencode/skills/dockyardos` or interoperable alias | limited Dockyard hook parity | yes |
+| Google Antigravity | full DockyardOS plugin | native plugin/hook lifecycle | `agy plugin install ...` | yes |
+| Gemini CLI | portable Agent Skill | native extension + local MCP + lifecycle hooks | `~/.agents/skills/dockyardos` | yes |
+| OpenAI Codex / Agents | Agent Skill / capability directory | compatibility plugin + local MCP | runtime-dependent | yes |
+| Claude Code | personal/project Agent Skill | `CLAUDE.md` + local MCP template | `~/.claude/skills/dockyardos` | yes |
+| Cursor | portable Agent Skill | project rule + local MCP template | `~/.agents/skills/dockyardos` | yes |
+| OpenCode | portable Agent Skill | MCP/config + read-only reviewer template | `~/.config/opencode/skills/dockyardos` or interoperable alias | yes |
 
-The `yes` in the final column means DockyardOS itself can restore the project/team state even when the host has no native conversation resume feature.
+The final column means DockyardOS itself restores project/team state even when the host has no native conversation-resume feature.
 
 ## Install and inspect
 
@@ -38,19 +38,23 @@ dockyard host inspect
 dockyard host inspect --host claude-code
 ```
 
-Preview an install:
+Preview/install the safe portable integration:
 
 ```bash
 dockyard host plan --host cursor --scope user
-```
-
-Install the portable integration where a verified path exists:
-
-```bash
 dockyard host install --host cursor --scope user
 ```
 
-DockyardOS refuses to silently replace a different existing `dockyardos` skill. `--force` exists for an intentional reviewed replacement.
+DockyardOS refuses to silently replace a different existing `dockyardos` skill. `--force` exists only for an intentional reviewed replacement.
+
+Inspect whether a richer native bridge is packaged:
+
+```bash
+dockyard host native-info --host gemini-cli
+dockyard host native-info --host codex
+```
+
+Native project-file bundles for Claude/Cursor/OpenCode are intentionally **review-first**: DockyardOS will not silently overwrite an existing `CLAUDE.md`, `.cursor/mcp.json`, Cursor rules, OpenCode config, or similar user configuration.
 
 ## Portable skill
 
@@ -60,49 +64,72 @@ The canonical host-neutral skill lives at:
 integrations/portable/skills/dockyardos/SKILL.md
 ```
 
-It tells compatible agents to:
+It tells compatible agents to restore project/team state first, continue only the active phase, use bounded capabilities, isolate parallel writers, keep reviewers independent, use provider/security gates, and preserve Dockyard approval decisions.
 
-1. restore DockyardOS status/team state first,
-2. continue only the active phase,
-3. use bounded selected capabilities,
-4. use isolated worktrees for parallel writers,
-5. keep QA/security/release review independent,
-6. use provider planning and security gates,
-7. respect Dockyard approval decisions.
+## Local structured MCP bridge
 
-The portable skill intentionally does not duplicate provider credentials, memory, checkpoints, or agent scratch state.
+DockyardOS also ships `dockyard-mcp`, a **local stdio** MCP server. It opens no network listener. Its tool surface is deliberately limited to orchestration/state:
 
-## Verified host behavior
+- `dockyard_context`
+- `dockyard_recommend`
+- `dockyard_team_start`
+- `dockyard_team_status`
+- `dockyard_team_advance`
+- `dockyard_checkpoint`
+- `dockyard_policy`
+
+Every tool accepts an optional `workspace` path so a host that launches an MCP process from a plugin/cache directory still resolves the correct DockyardOS project identity.
+
+The MCP bridge does **not** expose arbitrary shell execution, provider credentials, provider mutations, DNS changes, destructive database actions, or production deployment. Those remain behind the normal DockyardOS/provider/host approval paths.
+
+## Native bundle locations
+
+Optional richer integrations are packaged under:
+
+```text
+integrations/native/gemini-cli/
+integrations/native/codex/
+integrations/native/claude-code/
+integrations/native/cursor/
+integrations/native/opencode/
+```
+
+The portable skill remains the default because it is easy to update safely and share across hosts. Native bundles are additive when the host-specific lifecycle/MCP features materially improve automation.
 
 ### Gemini CLI
 
-Current Gemini CLI documentation recognizes user skills under `~/.gemini/skills/` **or the interoperable `~/.agents/skills/` alias**, and workspace skills under `.gemini/skills/` or `.agents/skills/`. Extensions can bundle skills plus richer tools such as hooks/MCP/subagents. DockyardOS prefers `.agents/skills` for the portable path because other compatible hosts can share the same skill copy.
-
-### Claude Code
-
-Current Claude Code documentation recognizes personal skills at `~/.claude/skills/<name>/SKILL.md` and project skills at `.claude/skills/<name>/SKILL.md`. Claude Code also supports plugin skills and richer skill features. DockyardOS still uses its own project/team checkpoint state so native Claude conversation resume is helpful but not required.
+The native bundle includes `gemini-extension.json`, `GEMINI.md`, local MCP registration, and lifecycle hooks. The hooks restore DockyardOS context before agent work and create checkpoints around mutating/session lifecycle events while failing softly if DockyardOS is not initialized.
 
 ### OpenAI Codex / Agents
 
-OpenAI's current Agents API documents open Agent Skills loaded through sandbox capability directories, and OpenAI plugins can package skills plus MCP configuration. DockyardOS does **not** invent a local Codex client search path where current OpenAI documentation does not guarantee one. The `runtime` install plan therefore describes the documented capability-directory integration; project `.agents/skills` is exposed only as a portable option whose discovery must be verified by the active client.
+The native compatibility bundle contains `.codex-plugin/plugin.json`, `.mcp.json`, and a DockyardOS skill. The skill instructs Codex to pass the current workspace explicitly to MCP tools where plugin/cache launch paths differ from the repository root and never weakens Codex sandbox/approval policy.
 
-### Cursor and OpenCode
+### Claude Code
 
-Both currently support open Agent Skills-compatible locations. DockyardOS prefers the interoperable `.agents/skills` path when possible to avoid maintaining duplicated copies for multiple coding agents.
+The optional native template contains project `CLAUDE.md` plus `.mcp.json`. The existing portable installer remains the safe way to install the DockyardOS skill; users review/merge the richer project files with any existing Claude configuration.
+
+### Cursor
+
+The optional native template contains project `.cursor/mcp.json` plus a compact always-on DockyardOS rule. It is not automatically copied over existing Cursor project configuration.
+
+### OpenCode
+
+The optional native template contains local MCP configuration, compact `AGENTS.md`, and a read-only Dockyard reviewer subagent. The reviewer denies edit/shell permissions so it cannot self-approve implementation changes.
 
 ## VS Code
 
-The DockyardOS VS Code extension is not another agent runtime. It is a one-time control surface over the same Core and project state. Release packaging includes a built Core fallback inside the VSIX, so users do not need a separate global CLI for normal extension usage.
+The DockyardOS VS Code extension is a one-time control surface over the same Core and project state. Release packaging includes a built Core fallback inside the VSIX. P5.1 additionally bundles the local MCP runtime, production MCP dependencies, and native host templates into that Core; CI inspects the produced VSIX to prove those artifacts are present.
 
-Use `DockyardOS: Install/Update Agent Host Integration` to preview and install a selected agent host integration from VS Code.
+The existing VS Code host installer still defaults to safe portable-skill installation. Review-first native project files are not sprayed into repositories automatically.
 
-## Safety
+## Safety invariants
 
 Host adapters must never:
 
 - copy `~/.dockyardos/projects` into a repository,
-- store provider/API credentials in a skill,
-- silently overwrite a different existing host skill,
-- claim unsupported hook/subagent parity,
-- treat a host conversation transcript as the authoritative project state,
-- bypass Dockyard approval/security gates.
+- store provider/API credentials in a skill or MCP template,
+- silently overwrite a different existing host skill or project config,
+- claim identical hook/subagent behavior where a host does not expose it,
+- treat a host conversation transcript as authoritative project state,
+- bypass host-native or Dockyard approval/security gates,
+- expose destructive/provider mutation actions merely because MCP is available.

@@ -26,5 +26,6 @@ export * from "./worktrees.js";
 export * from "./host-types.js";
 export * from "./host-adapters.js";
 export * from "./host-manager.js";
+export * from "./dockyard-context.js";
 export * from "./workflow.js";
 export * from "./doctor.js";

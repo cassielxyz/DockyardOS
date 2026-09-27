@@ -100,8 +100,16 @@
 - [x] VS Code extension command/status surface
 - [x] VS Code VSIX bundled Core fallback (no separate CLI required for normal packaged use)
 - [x] Reproducible VSIX CI artifact workflow
+- [x] Local stdio `dockyard-mcp` bridge for context/recommend/team/checkpoint/policy
+- [x] Workspace-explicit MCP tools to prevent plugin/cache directory project confusion
+- [x] Optional native Gemini extension + lifecycle bridge
+- [x] Optional Codex compatibility plugin + MCP bridge
+- [x] Review-first Claude Code / Cursor / OpenCode MCP/instruction templates
+- [x] Read-only OpenCode independent reviewer template
+- [x] Native bridge metadata surfaced through host list/doctor/native-info
+- [x] MCP runtime/dependencies/native templates included in bundled VSIX Core with package-level CI assertions
 - [ ] Publish VS Code Marketplace listing/release channel
-- [ ] Rich native plugin/hook bundles for every non-Antigravity host where APIs permit equivalent behavior
+- [ ] Safe automatic merge/install of review-first native project files without clobbering existing host config
 - [ ] Cross-host end-to-end matrix tests against installed real host CLIs in opt-in CI environments
 
 ## P6 — Community distribution

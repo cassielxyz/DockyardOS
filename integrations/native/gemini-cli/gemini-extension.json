@@ -1,0 +1,12 @@
+{
+  "name": "dockyardos",
+  "version": "0.1.0",
+  "description": "DockyardOS persistent project continuity, phase teams, local MCP tools, approvals, and checkpoints for Gemini CLI.",
+  "contextFileName": "GEMINI.md",
+  "mcpServers": {
+    "dockyardos": {
+      "command": "dockyard-mcp",
+      "args": []
+    }
+  }
+}

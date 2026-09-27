@@ -1,0 +1,7 @@
+{
+  "name": "dockyardos",
+  "version": "0.1.0",
+  "description": "DockyardOS project continuity, phase teams, checkpoints, and local MCP tools for Codex.",
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json"
+}

@@ -36,6 +36,7 @@ export async function handleHostCommand(root: string, args: string[], json: bool
       features: adapter.features,
       supportsNativeResume: adapter.supportsNativeResume,
       supportsDockyardHooks: adapter.supportsDockyardHooks,
+      nativeBundle: adapter.nativeBundle ?? null,
       verifiedAgainst: adapter.verifiedAgainst,
     }));
     console.log(JSON.stringify(data, null, 2));
@@ -64,6 +65,21 @@ export async function handleHostCommand(root: string, args: string[], json: bool
     return;
   }
 
+  if (subcommand === "native-info") {
+    const host = parseHost(value(rest, "--host"));
+    const adapter = hostAdapter(host);
+    const inspection = await inspectHost(root, host);
+    console.log(JSON.stringify({
+      host,
+      available: inspection.nativeBundleAvailable ?? false,
+      bundle: adapter.nativeBundle ?? null,
+      note: adapter.nativeBundle
+        ? "Native bundles are additive to the portable skill. Review-first bundles are intentionally not copied over existing project config automatically."
+        : "No additional native bundle is registered for this host.",
+    }, null, 2));
+    return;
+  }
+
   if (subcommand === "doctor") {
     const host = parseHost(value(rest, "--host"));
     const adapter = hostAdapter(host);
@@ -74,12 +90,13 @@ export async function handleHostCommand(root: string, args: string[], json: bool
       { name: "host-definition", status: "pass", detail: `${adapter.displayName} adapter is available.` },
       { name: "shared-dockyard-state", status: "pass", detail: "Host adapter uses the same DockyardOS external project state; no host-specific memory fork is created." },
       ...(adapter.executable ? [{ name: "host-executable", status: inspection.executableAvailable ? "pass" : "warn", detail: inspection.executableAvailable ? `${adapter.executable} is available on PATH.` : `${adapter.executable} is not currently available on PATH.` }] : []),
-      { name: "portable-skill", status: discovered ? "pass" : preferred.length ? "warn" : "warn", detail: discovered ? "A verified DockyardOS host integration signal is present." : "DockyardOS portable skill/plugin has not been detected for this host in the inspected locations." },
+      { name: "portable-skill", status: discovered ? "pass" : "warn", detail: discovered ? "A verified DockyardOS portable host integration signal is present." : preferred.length ? "DockyardOS portable skill/plugin has not been detected for this host in the inspected locations." : "No portable skill location is configured for this host." },
+      ...(adapter.nativeBundle ? [{ name: "native-bundle", status: inspection.nativeBundleAvailable ? "pass" : "warn", detail: inspection.nativeBundleAvailable ? `Optional ${adapter.nativeBundle.mode} bundle is packaged at ${adapter.nativeBundle.path}.` : `Configured native bundle is missing: ${adapter.nativeBundle.path}` }] : []),
       { name: "resume", status: "pass", detail: adapter.supportsNativeResume ? "Host has native resume in addition to DockyardOS durable resume." : "DockyardOS durable resume is available even without a host-native resume feature." },
     ];
     console.log(JSON.stringify(json ? { host, inspection, checks } : checks, null, 2));
     return;
   }
 
-  throw new Error("Usage: dockyard host list | inspect [--host HOST] | plan --host HOST [--scope user|project|runtime] | install --host HOST [--scope ...] [--force] | doctor --host HOST");
+  throw new Error("Usage: dockyard host list | inspect [--host HOST] | plan --host HOST [--scope user|project|runtime] | install --host HOST [--scope ...] [--force] | native-info --host HOST | doctor --host HOST");
 }
