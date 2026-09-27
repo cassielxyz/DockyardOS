@@ -13,6 +13,7 @@ export * from "./provider-detection.js";
 export * from "./provider-planner.js";
 export * from "./provider-actions.js";
 export * from "./provider-preview.js";
+export * from "./provider-health.js";
 export * from "./security-types.js";
 export * from "./security-profiles.js";
 export * from "./security-plan.js";

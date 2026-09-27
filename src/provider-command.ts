@@ -1,5 +1,6 @@
 import type { ProviderEnvironment } from "./types.js";
 import { executeProviderAction, listProviderActions, planProviderAction } from "./provider-actions.js";
+import { checkProviderHealthSet, providerHealthExitCode } from "./provider-health.js";
 import { executePreviewEnvironment, planPreviewEnvironment, type PreviewDatabaseTarget, type PreviewWebTarget, type PreviewWorkflowTarget } from "./provider-preview.js";
 
 function value(args: string[], name: string): string | undefined {
@@ -49,9 +50,41 @@ function previewRequest(args: string[]) {
   };
 }
 
+function healthIds(args: string[]): string[] | undefined {
+  const raw = value(args, "--provider");
+  if (!raw) return undefined;
+  const ids = raw.split(",").map((item) => item.trim()).filter(Boolean);
+  if (!ids.length) throw new Error("--provider must contain at least one provider id.");
+  return ids;
+}
+
+function healthTimeout(args: string[]): number | undefined {
+  const raw = value(args, "--timeout-ms");
+  if (raw === undefined) return undefined;
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed) || parsed < 1_000 || parsed > 15_000) {
+    throw new Error("--timeout-ms must be an integer from 1000 through 15000.");
+  }
+  return parsed;
+}
+
 export async function handleProviderActionCommand(root: string, args: string[]): Promise<void> {
   const subcommand = args[0] ?? "actions";
   const rest = args.slice(1);
+
+  if (subcommand === "health") {
+    const results = await checkProviderHealthSet({ ids: healthIds(rest), timeoutMs: healthTimeout(rest) });
+    const exitCode = providerHealthExitCode(results);
+    console.log(JSON.stringify({
+      schemaVersion: 1,
+      checkedAt: new Date().toISOString(),
+      health: exitCode === 0 ? "healthy" : exitCode === 1 ? "degraded-or-outage" : "verification-incomplete",
+      exitCode,
+      providers: results,
+    }, null, 2));
+    process.exitCode = exitCode;
+    return;
+  }
 
   if (subcommand === "actions") {
     const providerId = value(rest, "--provider");
@@ -111,5 +144,5 @@ export async function handleProviderActionCommand(root: string, args: string[]):
     return;
   }
 
-  throw new Error("Usage: dockyard providers actions [--provider ID] | action plan|run --provider ID --action ID --environment preview|production [--param key=value] [--approve] [--approve-production] | preview plan|run [--web vercel|cloudflare-pages|cloudflare-worker] [--database supabase] [--workflow github] [--param provider.key=value] [--approve]");
+  throw new Error("Usage: dockyard providers health [--provider github,vercel,cloudflare,supabase] [--timeout-ms 1000-15000] | actions [--provider ID] | action plan|run --provider ID --action ID --environment preview|production [--param key=value] [--approve] [--approve-production] | preview plan|run [--web vercel|cloudflare-pages|cloudflare-worker] [--database supabase] [--workflow github] [--param provider.key=value] [--approve]");
 }
