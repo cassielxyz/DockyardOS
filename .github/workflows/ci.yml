@@ -27,3 +27,6 @@ jobs:
           node dist/cli.js catalog --category security --json
           node dist/cli.js recipes --id saas-web --json
           node dist/cli.js recommend --task "Build a production SaaS dashboard" --stack web,nextjs,react,supabase,postgres --security standard --json
+          node dist/cli.js providers inspect --id vercel,supabase --json
+          node dist/cli.js providers chain --capability postgres --json
+          node dist/cli.js providers plan --capability web-hosting,postgres,auth --stack web,nextjs,postgres --environment preview --free-first --json

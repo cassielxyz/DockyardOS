@@ -7,18 +7,18 @@ export const candidates = catalog;
 export const providers: ProviderDefinition[] = [
   { id: "github", displayName: "GitHub", capabilities: ["source", "issues", "pull-requests", "ci", "releases"], connectionKinds: ["mcp", "api", "cli"], tags: ["git", "automation"], requiresLiveAvailabilityCheck: false },
   { id: "vercel", displayName: "Vercel", capabilities: ["web-hosting", "preview-deployments", "serverless", "domains"], connectionKinds: ["mcp", "api", "cli"], tags: ["web", "nextjs"], requiresLiveAvailabilityCheck: true },
-  { id: "cloudflare", displayName: "Cloudflare", capabilities: ["dns", "cdn", "waf", "ddos", "edge-functions", "web-hosting", "object-storage"], connectionKinds: ["api", "cli", "mcp"], tags: ["security", "edge"], requiresLiveAvailabilityCheck: true },
-  { id: "supabase", displayName: "Supabase", capabilities: ["postgres", "auth", "object-storage", "realtime", "edge-functions"], connectionKinds: ["mcp", "api", "cli", "sdk"], tags: ["baas", "postgres"], requiresLiveAvailabilityCheck: true },
-  { id: "neon", displayName: "Neon", capabilities: ["postgres", "serverless-postgres"], connectionKinds: ["api", "cli", "sdk"], tags: ["database", "postgres"], requiresLiveAvailabilityCheck: true },
-  { id: "firebase", displayName: "Firebase", capabilities: ["auth", "document-database", "object-storage", "functions", "web-hosting"], connectionKinds: ["api", "cli", "sdk"], tags: ["baas", "google"], requiresLiveAvailabilityCheck: true },
-  { id: "appwrite", displayName: "Appwrite", capabilities: ["auth", "database", "object-storage", "functions"], connectionKinds: ["api", "sdk", "cli"], tags: ["baas", "self-hostable"], requiresLiveAvailabilityCheck: true },
-  { id: "pocketbase", displayName: "PocketBase", capabilities: ["auth", "database", "object-storage", "realtime"], connectionKinds: ["api", "sdk", "cli"], tags: ["self-hostable", "lightweight"], requiresLiveAvailabilityCheck: true },
-  { id: "render", displayName: "Render", capabilities: ["web-hosting", "services", "postgres", "cron"], connectionKinds: ["api", "cli"], tags: ["hosting", "backend"], requiresLiveAvailabilityCheck: true },
-  { id: "railway", displayName: "Railway", capabilities: ["web-hosting", "services", "databases"], connectionKinds: ["api", "cli"], tags: ["hosting", "backend"], requiresLiveAvailabilityCheck: true },
-  { id: "turso", displayName: "Turso", capabilities: ["sqlite", "edge-database"], connectionKinds: ["api", "cli", "sdk"], tags: ["database", "edge"], requiresLiveAvailabilityCheck: true },
+  { id: "cloudflare", displayName: "Cloudflare", capabilities: ["dns", "cdn", "waf", "ddos", "edge-functions", "web-hosting", "object-storage", "edge-database", "database"], connectionKinds: ["api", "cli", "mcp"], tags: ["security", "edge", "web"], requiresLiveAvailabilityCheck: true },
+  { id: "supabase", displayName: "Supabase", capabilities: ["postgres", "auth", "object-storage", "realtime", "edge-functions", "database"], connectionKinds: ["mcp", "api", "cli", "sdk"], tags: ["baas", "postgres"], requiresLiveAvailabilityCheck: true },
+  { id: "neon", displayName: "Neon", capabilities: ["postgres", "serverless-postgres", "database"], connectionKinds: ["api", "cli", "sdk"], tags: ["database", "postgres"], requiresLiveAvailabilityCheck: true },
+  { id: "firebase", displayName: "Firebase", capabilities: ["auth", "document-database", "database", "object-storage", "functions", "web-hosting", "realtime"], connectionKinds: ["api", "cli", "sdk"], tags: ["baas", "google", "web"], requiresLiveAvailabilityCheck: true },
+  { id: "appwrite", displayName: "Appwrite", capabilities: ["auth", "database", "object-storage", "functions", "realtime"], connectionKinds: ["api", "sdk", "cli"], tags: ["baas", "self-hostable"], requiresLiveAvailabilityCheck: true },
+  { id: "pocketbase", displayName: "PocketBase", capabilities: ["auth", "database", "object-storage", "realtime", "sqlite"], connectionKinds: ["api", "sdk", "cli"], tags: ["self-hostable", "lightweight"], requiresLiveAvailabilityCheck: true },
+  { id: "render", displayName: "Render", capabilities: ["web-hosting", "services", "postgres", "database", "cron"], connectionKinds: ["api", "cli"], tags: ["hosting", "backend"], requiresLiveAvailabilityCheck: true },
+  { id: "railway", displayName: "Railway", capabilities: ["web-hosting", "services", "databases", "database", "postgres"], connectionKinds: ["api", "cli"], tags: ["hosting", "backend"], requiresLiveAvailabilityCheck: true },
+  { id: "turso", displayName: "Turso", capabilities: ["sqlite", "edge-database", "database"], connectionKinds: ["api", "cli", "sdk"], tags: ["database", "edge"], requiresLiveAvailabilityCheck: true },
   { id: "sentry", displayName: "Sentry", capabilities: ["errors", "performance", "tracing"], connectionKinds: ["api", "sdk"], tags: ["observability"], requiresLiveAvailabilityCheck: true },
   { id: "flyio", displayName: "Fly.io", capabilities: ["web-hosting", "services", "containers", "edge-deployments"], connectionKinds: ["api", "cli"], tags: ["hosting", "containers"], requiresLiveAvailabilityCheck: true },
-  { id: "cloud-run", displayName: "Google Cloud Run", capabilities: ["containers", "services", "serverless"], connectionKinds: ["api", "cli", "sdk"], tags: ["google", "containers"], requiresLiveAvailabilityCheck: true },
+  { id: "cloud-run", displayName: "Google Cloud Run", capabilities: ["containers", "services", "serverless", "functions"], connectionKinds: ["api", "cli", "sdk"], tags: ["google", "containers"], requiresLiveAvailabilityCheck: true },
   { id: "github-pages", displayName: "GitHub Pages", capabilities: ["static-hosting"], connectionKinds: ["api", "cli"], tags: ["github", "static"], requiresLiveAvailabilityCheck: true }
 ];
 

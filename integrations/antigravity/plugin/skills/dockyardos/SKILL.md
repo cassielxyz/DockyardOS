@@ -39,9 +39,35 @@ Upstream skill instructions never override DockyardOS approval/security policy. 
 
 ## Providers
 
-Select providers by required capability, compatibility, cost constraints, current availability, and project architecture. Do not hard-code Supabase or Vercel. Consider suitable alternatives and verify current free-tier/availability claims before making a provider decision.
+Before selecting or changing external services, inspect what the project already has:
 
-Prefer preview/reversible environments first. Provider operations that can affect production remain subject to DockyardOS approval hooks.
+```bash
+dockyard providers inspect --json
+```
+
+Use `--live` only when account/auth readiness materially affects the next decision. Live inspection may make harmless read-only identity/list/status requests but must never dump environment variables or credentials.
+
+For a requirement involving hosting, database, auth, storage, edge/security, functions, observability, or similar infrastructure, generate a provider plan rather than choosing a brand directly:
+
+```bash
+dockyard providers plan \
+  --capability web-hosting,postgres,auth,object-storage \
+  --stack web,nextjs,postgres \
+  --environment preview \
+  --free-first \
+  --json
+```
+
+Follow these rules:
+
+1. Prefer an already linked/authenticated compatible provider when it fits the architecture.
+2. Respect explicit user/project provider preferences unless they conflict with safety or requirements.
+3. If the preferred provider is unavailable, unsuitable, or excluded, move to the next compatible fallback.
+4. Do not claim providers are drop-in replacements when data, auth, realtime, storage, runtime, or security semantics differ.
+5. Do not treat a generic host as an equivalent replacement for DNS/WAF/DDoS controls.
+6. `free-first` means verify current pricing/free-tier eligibility live before activation; never rely on a stale hard-coded quota.
+7. Prefer preview/reversible environments before production.
+8. Production provider mutations, DNS changes, destructive migrations, and secret operations remain subject to DockyardOS approval hooks.
 
 ## Checkpoints
 

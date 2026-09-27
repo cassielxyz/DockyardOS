@@ -16,7 +16,9 @@ DockyardOS is a persistent autonomous-development layer for coding agents. It ad
 - broad skill/agent/tool/MCP catalogue with provenance, permissions, risk, host compatibility, context cost, and update channels
 - practical project recipes and bounded adaptive specialist selection
 - natural-language task classification through `dockyard recommend`
-- provider candidates including Vercel, Cloudflare, Supabase and alternatives
+- provider detection and capability-based fallback planning across Vercel, Cloudflare, Supabase and alternatives
+- local-only provider inspection plus optional safe live account/status probes
+- `free-first` provider plans that require live pricing/free-tier validation before activation
 - high-security selection that enforces OWASP review, Strix verification, secret scanning, dependency scanning, threat modeling, and regression verification
 - capability locks with exact revisions/content hashes and permission-aware update approval
 
@@ -29,7 +31,7 @@ npm link
 
 dockyard init
 dockyard doctor
-dockyard checkpoint --reason milestone --phase P1 --task "registry engine" --next "provider connectors"
+dockyard checkpoint --reason milestone --phase P2 --task "provider orchestration" --next "authenticated action adapters"
 dockyard resume
 ```
 
@@ -48,6 +50,26 @@ dockyard recommend \
 
 DockyardOS matches the task against practical recipes, then scores compatible skills, agents, tools, MCPs, and providers. A large registry stays available for discovery, while only a bounded best-fit set is selected for the active workflow.
 
+## Let DockyardOS choose providers
+
+Inspect existing project/provider readiness without remote account calls:
+
+```bash
+dockyard providers inspect
+```
+
+Plan by capability rather than brand:
+
+```bash
+dockyard providers plan \
+  --capability web-hosting,postgres,auth,object-storage \
+  --stack web,nextjs,postgres \
+  --environment preview \
+  --free-first
+```
+
+The planner prefers compatible existing setup where useful, keeps ranked fallbacks, surfaces migration caveats, and does not pretend DNS/WAF/DDoS or different auth/realtime/storage models are interchangeable. Add `--live` only when read-only account readiness is necessary for the decision.
+
 ## Antigravity plugin
 
 After building/linking the CLI, install the plugin directory:
@@ -56,7 +78,7 @@ After building/linking the CLI, install the plugin directory:
 agy plugin install ./integrations/antigravity/plugin
 ```
 
-The plugin restores DockyardOS context before model invocations, gates risky tool actions, creates throttled checkpoints after successful mutating operations, and saves a final checkpoint when the Antigravity execution loop stops.
+The plugin restores DockyardOS context before model invocations, gates risky tool actions, creates throttled checkpoints after successful mutating operations, and saves a final checkpoint when the Antigravity execution loop stops. For substantial work it routes through DockyardOS capability recommendations; for infrastructure work it also uses provider inspection/planning before choosing a service.
 
 ## Approval philosophy
 
@@ -66,9 +88,10 @@ Balanced mode is the default:
 - production deploys, destructive database actions, force pushes, infrastructure deletion, and sensitive operations force an approval prompt
 - obviously machine-destructive commands are denied
 - community capability updates do not silently gain new sensitive permissions
+- production provider plans are read-only until explicit approval permits the mutation step
 
 ## Provider philosophy
 
 DockyardOS selects by **capability and fit**, not by brand. A project may prefer Supabase + Vercel + Cloudflare, while another may use Neon/Firebase/Appwrite/PocketBase plus Cloudflare/Render or another compatible combination. Availability, pricing/free-tier claims, and provider limits must be checked live at selection time rather than permanently hard-coded.
 
-See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), [`docs/CAPABILITY-REGISTRY.md`](docs/CAPABILITY-REGISTRY.md), [`docs/SECURITY.md`](docs/SECURITY.md), and [`docs/ROADMAP.md`](docs/ROADMAP.md).
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), [`docs/CAPABILITY-REGISTRY.md`](docs/CAPABILITY-REGISTRY.md), [`docs/PROVIDERS.md`](docs/PROVIDERS.md), [`docs/SECURITY.md`](docs/SECURITY.md), and [`docs/ROADMAP.md`](docs/ROADMAP.md).

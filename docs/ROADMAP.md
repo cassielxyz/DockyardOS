@@ -35,14 +35,22 @@
 
 ## P2 — Provider connector layer
 
-- [ ] GitHub connector adapter
-- [ ] Vercel connector adapter
-- [ ] Cloudflare connector adapter
-- [ ] Supabase connector adapter
-- [ ] Neon / Firebase / Appwrite / PocketBase alternatives
-- [ ] Observability, email, storage, CI/CD provider categories
-- [ ] Live availability and free-tier validation before provider selection
-- [ ] Fallback and migration plans
+- [x] Safe local provider detection framework
+- [x] Optional read-only live auth/status probes with timeout/output redaction
+- [x] GitHub / Vercel / Cloudflare / Supabase detection adapters
+- [x] Neon / Firebase / Appwrite / PocketBase detection alternatives
+- [x] Render / Railway / Fly.io / Turso / Sentry / Cloud Run detection metadata
+- [x] Capability-based provider fallback chains
+- [x] Stack/readiness/preference/environment-aware provider planner
+- [x] Free-first decisions marked for live pricing/availability validation
+- [x] Explicit migration/compatibility warnings instead of false drop-in equivalence
+- [x] Production provider plans marked approval-required before mutation
+- [ ] Authenticated action adapters for GitHub, Vercel, Cloudflare, and Supabase
+- [ ] Authenticated action adapters for alternative providers
+- [ ] Live pricing/free-tier metadata fetchers with freshness timestamps
+- [ ] Provider outage/health verification
+- [ ] Automated preview provisioning and verification
+- [ ] Migration executors with rollback artifacts
 
 ## P3 — Security and verification
 

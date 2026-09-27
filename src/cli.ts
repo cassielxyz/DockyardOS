@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import type { Candidate, CheckpointState, HostId, OperatingMode, SecurityLevel, UpdateChannel, WorkflowProfile } from "./types.js";
+import type { Candidate, CheckpointState, CostPreference, HostId, OperatingMode, ProviderEnvironment, SecurityLevel, UpdateChannel, WorkflowProfile } from "./types.js";
 import { initProject, findWorkspaceRoot, loadProject } from "./project.js";
 import { createCheckpoint, loadLatestCheckpoint } from "./checkpoints.js";
 import { runDoctor } from "./doctor.js";
@@ -8,6 +8,8 @@ import { evaluateCommand } from "./policy.js";
 import { catalogSearch, categoryNames, providersFor, validateCatalog } from "./registry.js";
 import { recipes, recipeById } from "./recipes.js";
 import { defaultSelectionRequest, selectCapabilities, selectionSummary } from "./selection.js";
+import { probeProviders } from "./provider-detection.js";
+import { fallbackChain, planProviders, providerPlanSummary } from "./provider-planner.js";
 import { handlePostTool, handlePreInvocation, handlePreTool, handleStop } from "./hooks.js";
 
 function values(args: string[], name: string): string[] {
@@ -39,7 +41,7 @@ function print(data: unknown, json = false): void {
 }
 
 function usage(): void {
-  console.log(`DockyardOS CLI\n\nCommands:\n  init [--name NAME] [--mode safe|balanced|autonomous]\n  status [--json]\n  checkpoint [--reason TEXT] [--phase NAME] [--task TEXT] [--next TEXT] [--completed TEXT] [--blocked TEXT] [--capability ID]\n  resume [--json]\n  doctor [--json]\n  plan --profile fast|standard|full --stack nextjs,supabase --security standard|high [--json]\n  recommend --task \"build a SaaS dashboard\" --stack nextjs,supabase [--security high] [--host antigravity]\n  catalog [--query TEXT] [--category NAME] [--kind skill|agent|tool|mcp] [--stack NAME] [--host NAME]\n  categories\n  recipes [--id RECIPE]\n  registry verify\n  providers --capability CAPABILITY [--json]\n  policy --command \"...\" [--mode MODE] [--json]\n  hook pre-tool|post-tool|pre-invocation|stop\n`);
+  console.log(`DockyardOS CLI\n\nCommands:\n  init [--name NAME] [--mode safe|balanced|autonomous]\n  status [--json]\n  checkpoint [--reason TEXT] [--phase NAME] [--task TEXT] [--next TEXT] [--completed TEXT] [--blocked TEXT] [--capability ID]\n  resume [--json]\n  doctor [--json]\n  plan --profile fast|standard|full --stack nextjs,supabase --security standard|high [--json]\n  recommend --task \"build a SaaS dashboard\" --stack nextjs,supabase [--security high] [--host antigravity]\n  catalog [--query TEXT] [--category NAME] [--kind skill|agent|tool|mcp] [--stack NAME] [--host NAME]\n  categories\n  recipes [--id RECIPE]\n  registry verify\n  providers --capability CAPABILITY\n  providers inspect [--live] [--id vercel,supabase]\n  providers chain --capability CAPABILITY\n  providers plan --capability CAPABILITY[,CAPABILITY] --stack STACK [--environment preview|production] [--free-first] [--live]\n  policy --command \"...\" [--mode MODE] [--json]\n  hook pre-tool|post-tool|pre-invocation|stop\n`);
 }
 
 async function main(): Promise<void> {
@@ -176,8 +178,42 @@ async function main(): Promise<void> {
       break;
     }
     case "providers": {
+      const subcommand = args[0];
+      if (subcommand === "inspect") {
+        const result = await probeProviders(root, { live: has(args, "--live"), ids: values(args, "--id") });
+        print(result, true);
+        break;
+      }
+      if (subcommand === "chain") {
+        const capability = value(args, "--capability");
+        if (!capability) throw new Error("--capability is required");
+        print({ capability, providers: fallbackChain(capability) }, true);
+        break;
+      }
+      if (subcommand === "plan") {
+        const capabilities = values(args, "--capability");
+        if (!capabilities.length) throw new Error("At least one --capability is required");
+        const environment = (value(args, "--environment") ?? "preview") as ProviderEnvironment;
+        if (!["local", "preview", "production"].includes(environment)) throw new Error(`Invalid environment: ${environment}`);
+        const costPreference: CostPreference = has(args, "--free-first") ? "free-first" : (value(args, "--cost") ?? "balanced") as CostPreference;
+        if (!["free-first", "balanced", "performance"].includes(costPreference)) throw new Error(`Invalid cost preference: ${costPreference}`);
+        const preferredProviders = values(args, "--prefer");
+        const excludedProviders = values(args, "--exclude");
+        const request = {
+          stack: values(args, "--stack"),
+          requirements: capabilities.map((capability) => ({ capability, required: true })),
+          environment,
+          costPreference,
+          live: has(args, "--live"),
+          ...(preferredProviders.length ? { preferredProviders } : {}),
+          ...(excludedProviders.length ? { excludedProviders } : {}),
+        };
+        const plan = await planProviders(root, request);
+        print(json ? plan : providerPlanSummary(plan), true);
+        break;
+      }
       const capability = value(args, "--capability");
-      if (!capability) throw new Error("--capability is required");
+      if (!capability) throw new Error("Usage: dockyard providers --capability CAPABILITY | inspect | chain | plan");
       print(providersFor(capability), true);
       break;
     }
