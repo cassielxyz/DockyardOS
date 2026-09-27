@@ -93,9 +93,39 @@ npm run package
 
 The packaging step copies the already-built DockyardOS runtime, registry metadata, portable/native integration assets, and production MCP dependencies into the VSIX staging directory before invoking `vsce`.
 
+## Marketplace release channel
+
+`.github/workflows/vscode-extension.yml` is the release workflow. Ordinary pull requests do not publish anything. Tag pushes and manual runs can package a VSIX, but **Marketplace publication happens only on an explicit manual dispatch** with all of these conditions satisfied:
+
+1. `publish_marketplace=true` is selected manually.
+2. `release_tag` is supplied and exactly equals `v<integrations/vscode/package.json version>`.
+3. The checked-out commit is actually pointed to by that exact tag.
+4. The repository has a `VSCE_PAT` Actions secret for the `cassielxyz` Marketplace publisher.
+5. The full DockyardOS tests and VSIX manifest/package checks pass before `vsce publish` runs.
+
+For the current `0.1.0` extension version, the first publish therefore requires an existing `v0.1.0` tag on the intended release commit plus the configured publisher token. DockyardOS intentionally does not create tags or silently publish from a normal push.
+
+The workflow always uploads the validated VSIX as a GitHub Actions artifact before the optional Marketplace mutation, so the exact package can be inspected independently.
+
+## Opt-in real-host CI
+
+`.github/workflows/real-host-matrix.yml` is deliberately `workflow_dispatch`-only. It is not part of every PR because it downloads current third-party host CLIs.
+
+The matrix currently covers:
+
+- Gemini CLI (`gemini`)
+- OpenAI Codex CLI (`codex`)
+- Claude Code (`claude`)
+- Cursor CLI (`agent`)
+- OpenCode (`opencode`)
+
+For npm-distributed hosts, the workflow resolves the current registry version first and records that exact version before installation. For official installer-script hosts, it downloads the installer over HTTPS, records its SHA-256, and only then executes it. Each job records the executable path and reported version, then verifies DockyardOS `host inspect`, `host doctor`, and project-scope portable integration against that actually installed CLI. It does not send prompts to a model or require model/API credentials.
+
+Antigravity remains covered by DockyardOS static plugin/package tests until a stable official noninteractive public CI-install surface is available and verified. The matrix does not invent one.
+
 ## Verify
 
-CI verifies:
+Normal CI verifies:
 
 1. the root DockyardOS test suite,
 2. community registry and publisher-key JSON,
@@ -104,6 +134,10 @@ CI verifies:
 5. bundled Core CLI/community execution,
 6. actual VSIX packaging,
 7. required Core/community/MCP files inside the produced VSIX,
-8. cross-host install/doctor smoke tests.
+8. cross-host install/doctor smoke tests using DockyardOS fixtures,
+9. Marketplace workflow guardrails and listing metadata,
+10. the opt-in real-host matrix definition and supported install surfaces.
+
+The separate manual real-host workflow supplies evidence that the current external CLIs are still discoverable by DockyardOS.
 
 After installing the VSIX, open a project and run `DockyardOS: Initialize Project`, then `DockyardOS: Run Doctor`. Close/reopen VS Code and use `DockyardOS: Project Status` or `Resume Context` to confirm persistent state recovery. Use `Browse Community Packages` to verify the manifest-first community workflow.
