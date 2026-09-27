@@ -1,5 +1,12 @@
-import type { CommunityResolution } from "./community-types.js";
-import { installResolvedCommunityPackage, resolveAssessCommunityPackage } from "./community-manager.js";
+import { resolve } from "node:path";
+import { scanCommunityPackageTree } from "./community-fetch.js";
+import {
+  assessCommunityPackage,
+  communityStatus,
+  installResolvedCommunityPackage,
+  resolveAssessCommunityPackage,
+} from "./community-manager.js";
+import type { CommunityResolution, InstalledCommunityPackage } from "./community-types.js";
 
 export interface CommunityInstallExpectations {
   approve?: boolean;
@@ -31,11 +38,29 @@ export async function resolveAssessInstallPinnedCommunityPackage(
 ) {
   const resolved = await resolveAssessCommunityPackage(id);
   assertExpectedCommunityResolution(resolved.resolution, expectations);
+
+  const sourceRoot = resolve(resolved.resolution.quarantinePath, resolved.manifest.source.subdirectory ?? ".");
+  const freshScan = await scanCommunityPackageTree(sourceRoot, resolved.manifest, resolved.resolution.revision);
+  const status = await communityStatus(id) as {
+    activeRevision?: string;
+    versions?: InstalledCommunityPackage[];
+  };
+  const previous = status.activeRevision
+    ? status.versions?.find((version) => version.revision === status.activeRevision)
+    : undefined;
+  const freshAssessment = await assessCommunityPackage(
+    resolved.manifest,
+    resolved.resolution,
+    freshScan,
+    previous,
+  );
+  assertExpectedCommunityResolution(resolved.resolution, expectations);
+
   const installed = await installResolvedCommunityPackage(
     resolved.manifest,
     resolved.resolution,
-    resolved.assessment,
+    freshAssessment,
     { approve: expectations.approve },
   );
-  return { ...resolved, installed };
+  return { ...resolved, assessment: freshAssessment, installed };
 }
