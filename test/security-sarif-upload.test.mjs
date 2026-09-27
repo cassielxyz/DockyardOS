@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
 const dockyard = await import("../dist/index.js");
+const CLI = join(process.cwd(), "dist", "main.js");
 
 async function setupSarif() {
   const home = await mkdtemp(join(tmpdir(), "dockyard-sarif-upload-home-"));
@@ -34,7 +36,7 @@ async function setupSarif() {
     }],
   };
   await writeFile(sarifPath, `${JSON.stringify(sarif, null, 2)}\n`, "utf8");
-  return { root, runId, sarifPath };
+  return { home, root, runId, sarifPath };
 }
 
 function target(sarifPath) {
@@ -44,6 +46,18 @@ function target(sarifPath) {
     commitSha: "a".repeat(40),
     ref: "refs/heads/main",
   };
+}
+
+function cliArgs(action, sarifPath, extras = []) {
+  return [
+    CLI,
+    "security", "sarif", "upload", action,
+    "--sarif", sarifPath,
+    "--repository", "cassielxyz/DockyardOS",
+    "--commit", "a".repeat(40),
+    "--ref", "refs/heads/main",
+    ...extras,
+  ];
 }
 
 test("SARIF upload plan binds the exact DockyardOS artifact and target", async () => {
@@ -119,6 +133,20 @@ test("SARIF upload validates explicit GitHub repository, commit, and ref", async
   );
   const prPlan = await dockyard.planSecuritySarifUpload(root, { ...target(sarifPath), ref: "refs/pull/20/head" });
   assert.equal(prPlan.ref, "refs/pull/20/head");
+});
+
+test("SARIF upload CLI plans without network and run refuses missing approval", async () => {
+  const { home, root, sarifPath } = await setupSarif();
+  const env = { ...process.env, DOCKYARD_HOME: home };
+  const planned = spawnSync(process.execPath, cliArgs("plan", sarifPath), { cwd: root, env, encoding: "utf8" });
+  assert.equal(planned.status, 0, planned.stderr);
+  const plan = JSON.parse(planned.stdout);
+  assert.equal(plan.approvalRequired, true);
+  assert.match(plan.sarifSha256, /^[a-f0-9]{64}$/);
+
+  const refused = spawnSync(process.execPath, cliArgs("run", sarifPath, ["--expected-sha256", plan.sarifSha256]), { cwd: root, env, encoding: "utf8" });
+  assert.notEqual(refused.status, 0);
+  assert.match(`${refused.stderr}\n${refused.stdout}`, /requires explicit --approve/i);
 });
 
 test("SARIF uploader source uses an ephemeral request file and never accepts token arguments", async () => {
