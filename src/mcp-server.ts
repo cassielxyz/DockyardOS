@@ -14,9 +14,10 @@ import type { HostId, SecurityLevel } from "./types.js";
 
 const HOSTS = ["antigravity", "gemini-cli", "codex", "claude-code", "cursor", "opencode", "vscode"] as const;
 const SELECTION_HOSTS = new Set<HostId>(["antigravity", "gemini-cli", "codex", "claude-code", "cursor", "opencode", "universal"]);
+const workspace = z.string().min(1).optional().describe("Absolute or relative project workspace path. Pass this when the MCP process was launched outside the project directory.");
 
-function root(): string {
-  return findWorkspaceRoot(process.cwd());
+function root(workspacePath?: string): string {
+  return findWorkspaceRoot(workspacePath ?? process.cwd());
 }
 
 function result(value: unknown) {
@@ -35,9 +36,9 @@ serveStdio(() => {
     "dockyard_context",
     {
       description: "Read the latest DockyardOS project checkpoint, active team phase, specialists, gates, worktrees, and continuity instructions.",
-      inputSchema: z.object({ host: z.enum(HOSTS).default("codex") }),
+      inputSchema: z.object({ host: z.enum(HOSTS).default("codex"), workspace }),
     },
-    async ({ host }) => result(await buildPortableHostContext(root(), host as DockyardHostId)),
+    async ({ host, workspace: workspacePath }) => result(await buildPortableHostContext(root(workspacePath), host as DockyardHostId)),
   );
 
   server.registerTool(
@@ -50,9 +51,12 @@ serveStdio(() => {
         capabilities: z.array(z.string()).default([]),
         security: z.enum(["standard", "high"]).default("standard"),
         host: z.enum(HOSTS).default("codex"),
+        workspace,
       }),
     },
-    async ({ task, stack, capabilities, security, host }) => {
+    async ({ task, stack, capabilities, security, host, workspace: workspacePath }) => {
+      const projectRoot = root(workspacePath);
+      await requireProject(projectRoot);
       const selection = selectCapabilities(defaultSelectionRequest({
         task,
         stack,
@@ -74,9 +78,11 @@ serveStdio(() => {
         capabilities: z.array(z.string()).default([]),
         security: z.enum(["standard", "high"]).default("standard"),
         host: z.enum(HOSTS).default("codex"),
+        workspace,
       }),
     },
-    async ({ task, stack, capabilities, security, host }) => {
+    async ({ task, stack, capabilities, security, host, workspace: workspacePath }) => {
+      const projectRoot = root(workspacePath);
       const selection = selectCapabilities(defaultSelectionRequest({
         task,
         stack,
@@ -84,7 +90,7 @@ serveStdio(() => {
         security: security as SecurityLevel,
         host: selectionHost(host as DockyardHostId),
       }));
-      const started = await startTeamForSelection(root(), task, selection);
+      const started = await startTeamForSelection(projectRoot, task, selection);
       return result({ selection: selectionSummary(selection), team: teamRunSummary(started.state) });
     },
   );
@@ -93,10 +99,10 @@ serveStdio(() => {
     "dockyard_team_status",
     {
       description: "Read the active DockyardOS team run and current phase without replaying previous chat history.",
-      inputSchema: z.object({}),
+      inputSchema: z.object({ workspace }),
     },
-    async () => {
-      const team = await loadTeamRun(root());
+    async ({ workspace: workspacePath }) => {
+      const team = await loadTeamRun(root(workspacePath));
       return result(team ? teamRunSummary(team) : { active: false });
     },
   );
@@ -110,9 +116,10 @@ serveStdio(() => {
         artifacts: z.array(z.string()).default([]),
         decisions: z.array(z.string()).default([]),
         unresolved: z.array(z.string()).default([]),
+        workspace,
       }),
     },
-    async ({ notes, artifacts, decisions, unresolved }) => result(await completeTeamPhase(root(), {
+    async ({ notes, artifacts, decisions, unresolved, workspace: workspacePath }) => result(await completeTeamPhase(root(workspacePath), {
       ...(notes ? { notes } : {}),
       artifacts,
       decisions,
@@ -132,9 +139,10 @@ serveStdio(() => {
         blocked: z.array(z.string()).default([]),
         next: z.array(z.string()).default([]),
         capabilities: z.array(z.string()).default([]),
+        workspace,
       }),
     },
-    async ({ reason, phase, task, completed, blocked, next, capabilities }) => result(await createCheckpoint(root(), reason, {
+    async ({ reason, phase, task, completed, blocked, next, capabilities, workspace: workspacePath }) => result(await createCheckpoint(root(workspacePath), reason, {
       ...(phase ? { phase } : {}),
       ...(task ? { activeTask: task } : {}),
       completed,
@@ -148,10 +156,10 @@ serveStdio(() => {
     "dockyard_policy",
     {
       description: "Evaluate a shell command against the current DockyardOS Safe/Balanced/Autonomous policy before execution.",
-      inputSchema: z.object({ command: z.string().min(1) }),
+      inputSchema: z.object({ command: z.string().min(1), workspace }),
     },
-    async ({ command }) => {
-      const project = await requireProject(root());
+    async ({ command, workspace: workspacePath }) => {
+      const project = await requireProject(root(workspacePath));
       return result(evaluateCommand(command, project.mode));
     },
   );
