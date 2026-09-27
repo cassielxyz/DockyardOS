@@ -1,0 +1,9 @@
+{
+  "name": "dockyardos",
+  "version": "0.1.0",
+  "description": "DockyardOS project continuity, adaptive team orchestration, approval-aware workflows, and checkpoints for Gemini CLI.",
+  "contextFileName": "GEMINI.md",
+  "plan": {
+    "directory": ".gemini/plans"
+  }
+}
