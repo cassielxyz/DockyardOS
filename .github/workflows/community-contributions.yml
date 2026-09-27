@@ -1,0 +1,83 @@
+name: Community Contribution Validation
+
+on:
+  pull_request:
+    paths:
+      - "registry/contributions/**"
+      - "registry/publisher-proposals/**"
+      - "registry/community.json"
+      - "registry/publishers.json"
+      - "registry/registry-keys.json"
+      - "src/community-contribution.ts"
+      - "src/community-contribution-command.ts"
+      - "src/community-registry.ts"
+      - "src/community-signature.ts"
+      - "test/community-contribution.test.mjs"
+      - ".github/CODEOWNERS"
+      - ".github/workflows/community-contributions.yml"
+  push:
+    branches: [main]
+    paths:
+      - "registry/contributions/**"
+      - "registry/publisher-proposals/**"
+      - "registry/community.json"
+      - "registry/publishers.json"
+      - "registry/registry-keys.json"
+      - "src/community-contribution.ts"
+      - "src/community-contribution-command.ts"
+      - "src/community-registry.ts"
+      - "src/community-signature.ts"
+      - "test/community-contribution.test.mjs"
+      - ".github/CODEOWNERS"
+      - ".github/workflows/community-contributions.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Prevent self-authorization in one pull request
+        if: ${{ github.event_name == 'pull_request' }}
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          git diff --name-only "$BASE_SHA" HEAD > /tmp/community-changed-files.txt
+          cat /tmp/community-changed-files.txt
+          if grep -Eq '^registry/(contributions|publisher-proposals)/' /tmp/community-changed-files.txt \
+             && grep -Eq '^registry/(community\.json|publishers\.json|registry-keys\.json)$' /tmp/community-changed-files.txt; then
+            echo "A contribution/key proposal PR cannot also change trusted registry or trust-key files. Stage the proposal first, then use a separate code-owner-reviewed trust/promotion PR." >&2
+            exit 1
+          fi
+      - name: Build contribution validator
+        run: |
+          npm install --ignore-scripts
+          npm run build
+      - name: Validate staged package and publisher proposals
+        run: |
+          set -euo pipefail
+          node dist/main.js community contribution validate \
+            --dir registry/contributions \
+            --publisher-proposals registry/publisher-proposals \
+            > /tmp/community-contribution-report.json
+          node -e "const r=JSON.parse(require('fs').readFileSync('/tmp/community-contribution-report.json','utf8')); if(r.ok!==true || !r.counts) process.exit(1)"
+      - name: Upload review evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: community-contribution-validation-${{ github.run_id }}
+          path: |
+            /tmp/community-contribution-report.json
+            /tmp/community-changed-files.txt
+          if-no-files-found: warn
+          retention-days: 14
