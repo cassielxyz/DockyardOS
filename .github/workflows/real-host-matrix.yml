@@ -1,0 +1,137 @@
+name: Real Host Matrix
+
+on:
+  workflow_dispatch:
+    inputs:
+      host:
+        description: "Optional single host to test; leave all for the full matrix"
+        required: false
+        default: "all"
+        type: choice
+        options:
+          - all
+          - gemini-cli
+          - codex
+          - claude-code
+          - cursor
+          - opencode
+
+permissions:
+  contents: read
+
+concurrency:
+  group: real-host-matrix-${{ github.ref }}-${{ inputs.host || 'all' }}
+  cancel-in-progress: false
+
+jobs:
+  test-real-host:
+    if: ${{ inputs.host == 'all' || inputs.host == matrix.host }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - host: gemini-cli
+            executable: gemini
+            install_kind: npm
+            install_source: "@google/gemini-cli"
+          - host: codex
+            executable: codex
+            install_kind: npm
+            install_source: "@openai/codex"
+          - host: claude-code
+            executable: claude
+            install_kind: script
+            install_source: "https://claude.ai/install.sh"
+          - host: cursor
+            executable: agent
+            install_kind: script
+            install_source: "https://cursor.com/install"
+          - host: opencode
+            executable: opencode
+            install_kind: npm
+            install_source: "@opencode/cli"
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      DOCKYARD_REAL_HOST: ${{ matrix.host }}
+      DOCKYARD_REAL_EXECUTABLE: ${{ matrix.executable }}
+      DOCKYARD_INSTALL_KIND: ${{ matrix.install_kind }}
+      DOCKYARD_INSTALL_SOURCE: ${{ matrix.install_source }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build DockyardOS
+        run: |
+          set -euo pipefail
+          npm install --ignore-scripts
+          npm run build
+      - name: Prepare evidence directory
+        run: |
+          mkdir -p "$RUNNER_TEMP/dockyard-real-host-evidence"
+          printf 'host=%s\nexecutable=%s\ninstall_kind=%s\ninstall_source=%s\n' \
+            "$DOCKYARD_REAL_HOST" "$DOCKYARD_REAL_EXECUTABLE" "$DOCKYARD_INSTALL_KIND" "$DOCKYARD_INSTALL_SOURCE" \
+            > "$RUNNER_TEMP/dockyard-real-host-evidence/install.txt"
+      - name: Install current official npm CLI release
+        if: ${{ matrix.install_kind == 'npm' }}
+        run: |
+          set -euo pipefail
+          VERSION="$(npm view "$DOCKYARD_INSTALL_SOURCE" version)"
+          test -n "$VERSION"
+          printf 'resolved_version=%s\n' "$VERSION" >> "$RUNNER_TEMP/dockyard-real-host-evidence/install.txt"
+          npm install -g "${DOCKYARD_INSTALL_SOURCE}@${VERSION}"
+      - name: Install current official script CLI release
+        if: ${{ matrix.install_kind == 'script' }}
+        run: |
+          set -euo pipefail
+          INSTALLER="$RUNNER_TEMP/dockyard-host-installer.sh"
+          curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
+            "$DOCKYARD_INSTALL_SOURCE" -o "$INSTALLER"
+          test "$(wc -c < "$INSTALLER")" -gt 100
+          sha256sum "$INSTALLER" | tee "$RUNNER_TEMP/dockyard-real-host-evidence/installer.sha256"
+          bash "$INSTALLER"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          echo "$HOME/.local/share/bin" >> "$GITHUB_PATH"
+          echo "$HOME/.cursor/bin" >> "$GITHUB_PATH"
+      - name: Verify installed real host CLI
+        run: |
+          set -euo pipefail
+          command -v "$DOCKYARD_REAL_EXECUTABLE" | tee "$RUNNER_TEMP/dockyard-real-host-evidence/executable-path.txt"
+          "$DOCKYARD_REAL_EXECUTABLE" --version 2>&1 | tee "$RUNNER_TEMP/dockyard-real-host-evidence/version.txt"
+      - name: Exercise DockyardOS against installed host
+        run: |
+          set -euo pipefail
+          ROOT="$PWD"
+          export DOCKYARD_HOME="$(mktemp -d)"
+          PROJECT="$(mktemp -d)"
+          cd "$PROJECT"
+          node "$ROOT/dist/main.js" init --name "real-host-${DOCKYARD_REAL_HOST}" --mode balanced > "$RUNNER_TEMP/dockyard-real-host-evidence/init.json"
+          node "$ROOT/dist/main.js" host inspect --host "$DOCKYARD_REAL_HOST" --json > "$RUNNER_TEMP/dockyard-real-host-evidence/inspect-before.json"
+          node "$ROOT/dist/main.js" host doctor --host "$DOCKYARD_REAL_HOST" --json > "$RUNNER_TEMP/dockyard-real-host-evidence/doctor-before.json"
+          node - "$RUNNER_TEMP/dockyard-real-host-evidence/inspect-before.json" "$RUNNER_TEMP/dockyard-real-host-evidence/doctor-before.json" <<'NODE'
+          const fs = require('fs');
+          const inspection = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          const doctor = JSON.parse(fs.readFileSync(process.argv[3], 'utf8'));
+          if (inspection.executableAvailable !== true) throw new Error('DockyardOS did not detect the installed host executable');
+          const executableCheck = doctor.checks.find((item) => item.name === 'host-executable');
+          if (!executableCheck || executableCheck.status !== 'pass') throw new Error('host doctor did not pass the real executable check');
+          NODE
+          node "$ROOT/dist/main.js" host install --host "$DOCKYARD_REAL_HOST" --scope project --json > "$RUNNER_TEMP/dockyard-real-host-evidence/install-dockyard.json"
+          node "$ROOT/dist/main.js" host doctor --host "$DOCKYARD_REAL_HOST" --json > "$RUNNER_TEMP/dockyard-real-host-evidence/doctor-after.json"
+          node - "$RUNNER_TEMP/dockyard-real-host-evidence/doctor-after.json" <<'NODE'
+          const fs = require('fs');
+          const doctor = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+          const executableCheck = doctor.checks.find((item) => item.name === 'host-executable');
+          const skillCheck = doctor.checks.find((item) => item.name === 'portable-skill');
+          if (!executableCheck || executableCheck.status !== 'pass') throw new Error('real executable stopped passing after Dockyard integration');
+          if (!skillCheck || skillCheck.status !== 'pass') throw new Error('Dockyard portable host integration was not detected after install');
+          NODE
+      - name: Upload exact host evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: real-host-${{ matrix.host }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/dockyard-real-host-evidence
+          if-no-files-found: warn
+          retention-days: 14
