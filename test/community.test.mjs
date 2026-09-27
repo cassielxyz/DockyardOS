@@ -64,6 +64,25 @@ function resolution(pkg, quarantinePath, revision = "a".repeat(40), hash = "1".r
   };
 }
 
+function automaticAssessment(pkg, revision = "a".repeat(40)) {
+  return {
+    packageId: pkg.id,
+    decision: "automatic",
+    reasons: ["fixture"],
+    signature: { required: false, present: false, verified: false },
+    declaredPermissions: ["filesystem-read"],
+    inferredPermissions: ["filesystem-read"],
+    permissionExpansion: [],
+    scan: scan(pkg, revision),
+  };
+}
+
+async function quarantineDirectory(pkg, prefix) {
+  const base = join(process.env.DOCKYARD_HOME, "community", "quarantine", pkg.id);
+  await mkdir(base, { recursive: true });
+  return mkdtemp(join(base, `${prefix}-`));
+}
+
 test("bundled community registry validates and exposes broad discovery sources", async () => {
   const registry = await dockyard.loadCommunityRegistry();
   assert.equal(dockyard.validateCommunityRegistry(registry).length, 0);
@@ -132,31 +151,59 @@ test("update permission expansion forces explicit approval", async () => {
   assert.ok(assessment.reasons.some((reason) => reason.includes("adds declared permissions")));
 });
 
-test("immutable community versions can be installed and rolled back", async () => {
+test("immutable community versions are hash-verified and can be rolled back", async () => {
   const pkg = manifest();
-  const q1 = await mkdtemp(join(tmpdir(), "dockyard-community-q1-"));
-  const q2 = await mkdtemp(join(tmpdir(), "dockyard-community-q2-"));
+  const q1 = await quarantineDirectory(pkg, "q1");
+  const q2 = await quarantineDirectory(pkg, "q2");
   await writeFile(join(q1, "SKILL.md"), "---\nname: fixture\ndescription: first\n---\n", "utf8");
   await writeFile(join(q2, "SKILL.md"), "---\nname: fixture\ndescription: second\n---\n", "utf8");
+  const firstHash = await dockyard.communityTreeSha256(q1, { maxFiles: pkg.maxFiles, maxBytes: pkg.maxBytes });
+  const secondHash = await dockyard.communityTreeSha256(q2, { maxFiles: pkg.maxFiles, maxBytes: pkg.maxBytes });
 
-  const assessment = {
-    packageId: pkg.id,
-    decision: "automatic",
-    reasons: ["fixture"],
-    signature: { required: false, present: false, verified: false },
-    declaredPermissions: ["filesystem-read"],
-    inferredPermissions: ["filesystem-read"],
-    permissionExpansion: [],
-    scan: scan(pkg),
-  };
-  const first = await dockyard.installResolvedCommunityPackage(pkg, resolution(pkg, q1, "a".repeat(40), "1".repeat(64)), assessment);
-  const second = await dockyard.installResolvedCommunityPackage(pkg, resolution(pkg, q2, "b".repeat(40), "2".repeat(64)), { ...assessment, scan: scan(pkg, "b".repeat(40)) });
+  const first = await dockyard.installResolvedCommunityPackage(
+    pkg,
+    resolution(pkg, q1, "a".repeat(40), firstHash),
+    automaticAssessment(pkg, "a".repeat(40)),
+  );
+  const second = await dockyard.installResolvedCommunityPackage(
+    pkg,
+    resolution(pkg, q2, "b".repeat(40), secondHash),
+    automaticAssessment(pkg, "b".repeat(40)),
+  );
   assert.notEqual(first.destination, second.destination);
 
   const rolledBack = await dockyard.rollbackCommunityPackage(pkg.id);
   assert.equal(rolledBack.revision, first.revision);
   const status = await dockyard.communityStatus(pkg.id);
   assert.equal(status.activeRevision, first.revision);
+});
+
+test("activation refuses quarantine content modified after assessment", async () => {
+  const pkg = manifest({ id: "tamper-fixture" });
+  const q = await quarantineDirectory(pkg, "tamper");
+  await writeFile(join(q, "SKILL.md"), "---\nname: fixture\ndescription: assessed\n---\n", "utf8");
+  const assessedHash = await dockyard.communityTreeSha256(q, { maxFiles: pkg.maxFiles, maxBytes: pkg.maxBytes });
+  const revision = "c".repeat(40);
+  const assessed = automaticAssessment(pkg, revision);
+  await writeFile(join(q, "SKILL.md"), "---\nname: fixture\ndescription: changed-after-assessment\n---\n", "utf8");
+  await assert.rejects(
+    () => dockyard.installResolvedCommunityPackage(pkg, resolution(pkg, q, revision, assessedHash), assessed),
+    /changed after assessment/,
+  );
+});
+
+test("rollback refuses a locally modified immutable revision", async () => {
+  const pkg = manifest({ id: "rollback-tamper-fixture" });
+  const q1 = await quarantineDirectory(pkg, "r1");
+  const q2 = await quarantineDirectory(pkg, "r2");
+  await writeFile(join(q1, "SKILL.md"), "---\nname: fixture\ndescription: one\n---\n", "utf8");
+  await writeFile(join(q2, "SKILL.md"), "---\nname: fixture\ndescription: two\n---\n", "utf8");
+  const h1 = await dockyard.communityTreeSha256(q1, { maxFiles: pkg.maxFiles, maxBytes: pkg.maxBytes });
+  const h2 = await dockyard.communityTreeSha256(q2, { maxFiles: pkg.maxFiles, maxBytes: pkg.maxBytes });
+  const first = await dockyard.installResolvedCommunityPackage(pkg, resolution(pkg, q1, "d".repeat(40), h1), automaticAssessment(pkg, "d".repeat(40)));
+  await dockyard.installResolvedCommunityPackage(pkg, resolution(pkg, q2, "e".repeat(40), h2), automaticAssessment(pkg, "e".repeat(40)));
+  await writeFile(join(first.destination, "SKILL.md"), "tampered\n", "utf8");
+  await assert.rejects(() => dockyard.rollbackCommunityPackage(pkg.id, first.revision), /modified; rollback refused/);
 });
 
 test("community transparency log remains hash-chain verifiable", async () => {
