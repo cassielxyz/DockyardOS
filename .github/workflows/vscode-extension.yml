@@ -59,10 +59,12 @@ jobs:
         working-directory: integrations/vscode
         run: |
           npm install --ignore-scripts
+          npm run check
           npm run package -- --out dockyardos-vscode.vsix
           test -s dockyardos-vscode.vsix
           unzip -p dockyardos-vscode.vsix extension/package.json > /tmp/vsix-package.json
           node -e "const p=require('/tmp/vsix-package.json'); if(p.name!=='dockyardos-vscode'||p.publisher!=='cassielxyz'||p.version!==process.env.extension_version) process.exit(1)"
+          unzip -l dockyardos-vscode.vsix | grep -q 'extension/community-update-scheduler.js'
       - uses: actions/upload-artifact@v4
         with:
           name: dockyardos-vscode-${{ env.extension_version }}
