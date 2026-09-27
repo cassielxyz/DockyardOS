@@ -144,3 +144,13 @@ test("publisher proposals reject private PEM material even when a public key cou
   assert.equal(report.status, "invalid");
   assert.ok(report.errors.some((error) => /private key/i.test(error)));
 });
+
+test("publisher proposals reject unexpected fields so secret material cannot hitchhike beside a public key", () => {
+  const pair = keyPair();
+  const report = dockyard.validatePublisherKeyProposal({
+    ...proposal("fixture-key-1", "fixture-publisher", pair.publicKeyPem),
+    privateKeyPem: pair.privateKeyPem,
+  }, "extra-secret.json");
+  assert.equal(report.status, "invalid");
+  assert.ok(report.errors.some((error) => /unsupported field privateKeyPem/i.test(error)));
+});
