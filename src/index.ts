@@ -45,6 +45,7 @@ export * from "./community-manifest-store.js";
 export * from "./community-effective-install.js";
 export * from "./community-updates.js";
 export * from "./community-contribution.js";
+export * from "./community-maintainer.js";
 export {
   communityTreeSha256,
   assessCommunityPackage,
