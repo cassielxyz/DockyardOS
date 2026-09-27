@@ -7,7 +7,7 @@
           {
             "name": "dockyard-context",
             "type": "command",
-            "command": "node \"${extensionPath}${/}hooks${/}before-agent.mjs\"",
+            "command": "node \"${extensionPath}${/}hooks${/}bridge.mjs\" context",
             "timeout": 10000,
             "description": "Inject the latest DockyardOS checkpoint and active team phase."
           }
@@ -21,7 +21,7 @@
           {
             "name": "dockyard-autosave",
             "type": "command",
-            "command": "node \"${extensionPath}${/}hooks${/}after-tool.mjs\"",
+            "command": "node \"${extensionPath}${/}hooks${/}bridge.mjs\" after-tool",
             "timeout": 10000,
             "description": "Trigger DockyardOS throttled autosave after mutating tools."
           }
@@ -35,7 +35,7 @@
           {
             "name": "dockyard-pre-compress",
             "type": "command",
-            "command": "node \"${extensionPath}${/}hooks${/}pre-compress.mjs\"",
+            "command": "node \"${extensionPath}${/}hooks${/}bridge.mjs\" pre-compress",
             "timeout": 15000,
             "description": "Persist DockyardOS state before Gemini compresses context."
           }
@@ -49,7 +49,7 @@
           {
             "name": "dockyard-stop",
             "type": "command",
-            "command": "node \"${extensionPath}${/}hooks${/}session-end.mjs\"",
+            "command": "node \"${extensionPath}${/}hooks${/}bridge.mjs\" stop",
             "timeout": 15000,
             "description": "Create a final DockyardOS checkpoint when the Gemini session ends."
           }
