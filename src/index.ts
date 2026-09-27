@@ -34,5 +34,6 @@ export * from "./community-signature.js";
 export * from "./community-transparency.js";
 export * from "./community-manager.js";
 export * from "./community-install.js";
+export * from "./community-runtime.js";
 export * from "./workflow.js";
 export * from "./doctor.js";
