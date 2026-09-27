@@ -12,6 +12,7 @@ export interface RunOptions {
   cwd?: string;
   timeoutMs?: number;
   maxOutputBytes?: number;
+  env?: Record<string, string | undefined>;
 }
 
 const SECRET_PATTERNS = [
@@ -40,6 +41,7 @@ export function run(command: string, args: string[], cwdOrOptions?: string | Run
     windowsHide: true,
     timeout: options.timeoutMs ?? 15_000,
     maxBuffer: Math.max(maxOutputBytes * 2, 65_536),
+    env: options.env ? { ...process.env, ...options.env } : process.env,
   });
   const errorCode = (result.error as NodeJS.ErrnoException | undefined)?.code;
   return {

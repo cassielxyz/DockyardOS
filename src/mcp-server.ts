@@ -3,6 +3,7 @@ import { McpServer } from "@modelcontextprotocol/server";
 import { serveStdio } from "@modelcontextprotocol/server/stdio";
 import * as z from "zod/v4";
 import { createCheckpoint } from "./checkpoints.js";
+import { activeCommunityPackages, readActiveCommunityEntrypoint } from "./community-runtime.js";
 import { buildDockyardContext } from "./dockyard-context.js";
 import { evaluateCommand } from "./policy.js";
 import { findWorkspaceRoot, requireProject } from "./project.js";
@@ -41,7 +42,7 @@ serveStdio(() => {
   server.registerTool(
     "dockyard_recommend",
     {
-      description: "Choose a bounded best-fit set of skills, agents, tools, MCPs, providers, security gates, and workflow recipe for a task.",
+      description: "Choose a bounded best-fit set of curated skills, agents, tools, MCPs, providers, security gates, and workflow recipe for a task.",
       inputSchema: z.object({
         task: z.string().min(1),
         stack: z.array(z.string()).default([]),
@@ -159,6 +160,27 @@ serveStdio(() => {
       const project = await requireProject(workspaceRoot(value));
       return result(evaluateCommand(command, project.mode));
     },
+  );
+
+  server.registerTool(
+    "dockyard_community_active",
+    {
+      description: "List installed active community packages only after verifying their stored immutable content hash. Returns declared capabilities, permissions, hosts, and entrypoints; it does not expose arbitrary files.",
+      inputSchema: z.object({}),
+    },
+    async () => result(await activeCommunityPackages()),
+  );
+
+  server.registerTool(
+    "dockyard_community_entrypoint",
+    {
+      description: "Read one manifest-declared text entrypoint from an installed active community package after re-verifying package integrity. Arbitrary package/filesystem paths are rejected.",
+      inputSchema: z.object({
+        packageId: z.string().min(1),
+        entrypoint: z.string().min(1),
+      }),
+    },
+    async ({ packageId, entrypoint }) => result(await readActiveCommunityEntrypoint(packageId, entrypoint)),
   );
 
   return server;

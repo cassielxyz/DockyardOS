@@ -27,5 +27,19 @@ export * from "./host-types.js";
 export * from "./host-adapters.js";
 export * from "./host-manager.js";
 export * from "./dockyard-context.js";
+export * from "./community-types.js";
+export * from "./community-registry.js";
+export * from "./community-fetch.js";
+export * from "./community-signature.js";
+export * from "./community-transparency.js";
+export {
+  communityTreeSha256,
+  assessCommunityPackage,
+  resolveAssessCommunityPackage,
+  communityStatus,
+  rollbackCommunityPackage,
+} from "./community-manager.js";
+export * from "./community-install.js";
+export * from "./community-runtime.js";
 export * from "./workflow.js";
 export * from "./doctor.js";

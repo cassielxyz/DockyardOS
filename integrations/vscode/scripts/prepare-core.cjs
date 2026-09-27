@@ -17,6 +17,7 @@ if (!fs.existsSync(path.join(distSource, "mcp-server.js"))) {
 fs.rmSync(coreRoot, { recursive: true, force: true });
 fs.mkdirSync(coreRoot, { recursive: true });
 fs.cpSync(distSource, path.join(coreRoot, "dist"), { recursive: true });
+fs.cpSync(path.join(repoRoot, "registry"), path.join(coreRoot, "registry"), { recursive: true });
 fs.mkdirSync(path.join(coreRoot, "integrations"), { recursive: true });
 fs.cpSync(path.join(repoRoot, "integrations", "portable"), path.join(coreRoot, "integrations", "portable"), { recursive: true });
 fs.cpSync(path.join(repoRoot, "integrations", "antigravity", "plugin"), path.join(coreRoot, "integrations", "antigravity", "plugin"), { recursive: true });
@@ -42,4 +43,4 @@ if (Object.keys(corePackage.dependencies).length) {
   });
 }
 
-console.log(`Prepared bundled DockyardOS Core with local MCP runtime at ${coreRoot}`);
+console.log(`Prepared bundled DockyardOS Core with local MCP runtime and community registry at ${coreRoot}`);

@@ -17,7 +17,9 @@
     "onCommand:dockyardOS.teamStart",
     "onCommand:dockyardOS.teamStatus",
     "onCommand:dockyardOS.hostDoctor",
-    "onCommand:dockyardOS.hostInstall"
+    "onCommand:dockyardOS.hostInstall",
+    "onCommand:dockyardOS.communityBrowse",
+    "onCommand:dockyardOS.communityStatus"
   ],
   "main": "./extension.js",
   "contributes": {
@@ -29,7 +31,9 @@
       { "command": "dockyardOS.teamStart", "title": "DockyardOS: Start Project Team", "category": "DockyardOS" },
       { "command": "dockyardOS.teamStatus", "title": "DockyardOS: Team Status", "category": "DockyardOS" },
       { "command": "dockyardOS.hostDoctor", "title": "DockyardOS: Check Agent Host", "category": "DockyardOS" },
-      { "command": "dockyardOS.hostInstall", "title": "DockyardOS: Install/Update Agent Host Integration", "category": "DockyardOS" }
+      { "command": "dockyardOS.hostInstall", "title": "DockyardOS: Install/Update Agent Host Integration", "category": "DockyardOS" },
+      { "command": "dockyardOS.communityBrowse", "title": "DockyardOS: Browse Community Packages", "category": "DockyardOS" },
+      { "command": "dockyardOS.communityStatus", "title": "DockyardOS: Community Package Status", "category": "DockyardOS" }
     ],
     "configuration": {
       "title": "DockyardOS",

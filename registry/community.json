@@ -1,0 +1,163 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-09-27T00:00:00.000Z",
+  "packages": [
+    {
+      "schemaVersion": 1,
+      "id": "superpowers-core-skills",
+      "displayName": "Superpowers Core Skills",
+      "version": "rolling-main",
+      "kind": "skill",
+      "description": "Curated Superpowers planning, debugging, TDD, worktree, review, and verification skills.",
+      "source": {
+        "type": "github",
+        "repository": "obra/superpowers",
+        "ref": "main",
+        "subdirectory": "skills"
+      },
+      "publisher": {
+        "id": "obra",
+        "name": "Jesse Vincent / Superpowers",
+        "signatureRequired": false
+      },
+      "license": "MIT",
+      "trust": "maintainer",
+      "risk": "medium",
+      "permissions": ["filesystem-read", "shell"],
+      "capabilities": ["requirements", "planning", "tdd", "debugging", "worktrees", "review", "verification"],
+      "tags": ["planning", "tdd", "debugging", "multi-agent", "review"],
+      "hosts": ["antigravity", "gemini-cli", "codex", "claude-code", "cursor", "opencode", "universal"],
+      "channel": "recommended",
+      "entrypoints": [
+        { "type": "skill", "path": "brainstorming/SKILL.md" },
+        { "type": "skill", "path": "systematic-debugging/SKILL.md" },
+        { "type": "skill", "path": "test-driven-development/SKILL.md" },
+        { "type": "skill", "path": "using-git-worktrees/SKILL.md" },
+        { "type": "skill", "path": "verification-before-completion/SKILL.md" },
+        { "type": "skill", "path": "subagent-driven-development/SKILL.md" },
+        { "type": "skill", "path": "writing-plans/SKILL.md" }
+      ],
+      "maxFiles": 600,
+      "maxBytes": 8388608
+    }
+  ],
+  "discoverySources": [
+    {
+      "id": "voltagent-awesome-agent-skills",
+      "displayName": "Awesome Agent Skills",
+      "type": "awesome-list",
+      "locator": "VoltAgent/awesome-agent-skills",
+      "trust": "community",
+      "enabledByDefault": true,
+      "notes": ["Broad discovery source. Entries are metadata-only until DockyardOS has an explicit install manifest and safe resolution."]
+    },
+    {
+      "id": "official-mcp-registry",
+      "displayName": "Official MCP Registry",
+      "type": "mcp-registry",
+      "locator": "registry.modelcontextprotocol.io",
+      "trust": "official",
+      "enabledByDefault": true,
+      "notes": ["Used for MCP discovery; server activation still follows DockyardOS permission and approval policy."]
+    },
+    {
+      "id": "vercel-agent-skills",
+      "displayName": "Vercel Agent Skills",
+      "type": "official-catalog",
+      "locator": "vercel-labs/agent-skills",
+      "trust": "official",
+      "enabledByDefault": true,
+      "notes": ["Official Vercel-maintained skill source for web/frontend/deployment capabilities."]
+    },
+    {
+      "id": "cloudflare-skills",
+      "displayName": "Cloudflare Skills",
+      "type": "official-catalog",
+      "locator": "cloudflare/skills",
+      "trust": "official",
+      "enabledByDefault": true,
+      "notes": ["Official Cloudflare skill source for Workers, edge, state, deployment, and platform capabilities."]
+    },
+    {
+      "id": "supabase-agent-skills",
+      "displayName": "Supabase Agent Skills",
+      "type": "official-catalog",
+      "locator": "supabase/agent-skills",
+      "trust": "official",
+      "enabledByDefault": true,
+      "notes": ["Official Supabase skill source for Postgres, auth, storage, migrations, and platform workflows."]
+    },
+    {
+      "id": "anthropic-skills",
+      "displayName": "Anthropic Skills",
+      "type": "official-catalog",
+      "locator": "anthropics/skills",
+      "trust": "official",
+      "enabledByDefault": true,
+      "notes": ["Official Anthropic skill source, especially useful for artifact/document workflows."]
+    },
+    {
+      "id": "superpowers",
+      "displayName": "Superpowers",
+      "type": "official-catalog",
+      "locator": "obra/superpowers",
+      "trust": "maintainer",
+      "enabledByDefault": true,
+      "notes": ["Workflow-oriented skills for planning, debugging, TDD, parallel agents, worktrees, review, and verification."]
+    },
+    {
+      "id": "gstack",
+      "displayName": "gstack",
+      "type": "official-catalog",
+      "locator": "garrytan/gstack",
+      "trust": "maintainer",
+      "enabledByDefault": true,
+      "notes": ["Specialist engineering/product/design/QA/release workflow source."]
+    },
+    {
+      "id": "ruflo",
+      "displayName": "Ruflo",
+      "type": "official-catalog",
+      "locator": "ruvnet/ruflo",
+      "trust": "maintainer",
+      "enabledByDefault": true,
+      "notes": ["Multi-agent orchestration and swarm-pattern discovery source."]
+    },
+    {
+      "id": "ui-ux-pro-max",
+      "displayName": "UI UX Pro Max",
+      "type": "official-catalog",
+      "locator": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "trust": "maintainer",
+      "enabledByDefault": true,
+      "notes": ["UI/UX design-system and frontend guidance source."]
+    },
+    {
+      "id": "agent-reach",
+      "displayName": "Agent Reach",
+      "type": "official-catalog",
+      "locator": "Panniantong/Agent-Reach",
+      "trust": "maintainer",
+      "enabledByDefault": true,
+      "notes": ["Research capability source. It contains executable Python/runtime components, so installation requires stricter scanning than a Markdown-only skill."]
+    },
+    {
+      "id": "strix",
+      "displayName": "Strix",
+      "type": "official-catalog",
+      "locator": "usestrix/strix",
+      "trust": "maintainer",
+      "enabledByDefault": true,
+      "notes": ["Security testing/remediation source. High-risk permissions and explicit authorization/budget rules always apply."]
+    },
+    {
+      "id": "shadcn-ui",
+      "displayName": "shadcn/ui",
+      "type": "official-catalog",
+      "locator": "shadcn-ui/ui",
+      "trust": "official",
+      "enabledByDefault": true,
+      "notes": ["Component and design-system capability source."]
+    }
+  ]
+}

@@ -2,7 +2,7 @@
 
 **Build. Orchestrate. Ship.**
 
-DockyardOS is a persistent autonomous-development layer for coding agents. It adds project memory, resumable checkpoints, approval policy, adaptive specialist teams, a curated capability/provider registry, security gates, testing, and deployment orchestration around hosts such as Google Antigravity, Gemini CLI, Codex, Claude Code, Cursor, OpenCode, and VS Code.
+DockyardOS is a persistent autonomous-development layer for coding agents. It adds project memory, resumable checkpoints, approval policy, adaptive specialist teams, a curated capability/provider registry, security gates, testing, cross-host continuity, and safe community capability distribution around hosts such as Google Antigravity, Gemini CLI, Codex, Claude Code, Cursor, OpenCode, and VS Code.
 
 ## What works now
 
@@ -23,7 +23,9 @@ DockyardOS is a persistent autonomous-development layer for coding agents. It ad
 - Gitleaks, OSV-Scanner, Semgrep, and opt-in budget-bounded Strix execution
 - proof → fix → same-scope rerun security regression gates
 - portable Agent Skill and verified host adapters for Antigravity, Gemini CLI, Codex/Agents, Claude Code, Cursor, and OpenCode
+- local stdio `dockyard-mcp` bridge for structured continuity across supported hosts
 - one-time VS Code extension with a bundled DockyardOS Core fallback
+- safe community package registry with quarantine, signatures, permission assessment, immutable versions, rollback, and local transparency metadata
 - one external DockyardOS state shared by every supported host
 
 ## Install once, use across projects
@@ -42,6 +44,12 @@ Project/team state lives under:
 
 ```text
 ~/.dockyardos/projects/<project-id>/
+```
+
+Community capability state lives under:
+
+```text
+~/.dockyardos/community/
 ```
 
 It is not duplicated into `.claude`, `.cursor`, `.opencode`, or another host directory. Switching agent hosts therefore does not fork the project's memory.
@@ -126,6 +134,50 @@ dockyard team worktree create \
 
 Worktrees are stored in DockyardOS external project state. DockyardOS enforces the phase's parallel-writer budget and refuses writer worktrees for reviewer-only roles.
 
+## Safe community capabilities
+
+DockyardOS separates **discovery** from **execution**. A repository can appear in a discovery catalogue without becoming installable. Installation requires an explicit DockyardOS package manifest with a declared source, ref, entrypoints, permissions, trust/risk metadata, host compatibility, license, size limits, and signature policy.
+
+Browse from VS Code with:
+
+```text
+DockyardOS: Browse Community Packages
+```
+
+Or use the CLI:
+
+```bash
+dockyard community list
+dockyard community search --query debugging
+dockyard community inspect --id superpowers-core-skills
+dockyard community resolve --id superpowers-core-skills
+```
+
+Resolution happens in an external quarantine directory. DockyardOS resolves the moving upstream ref to an immutable Git commit, checks package size/file limits, rejects symlinks/special files, verifies declared entrypoints, inspects scripts/binaries/install lifecycle hooks, infers permissions, applies signature policy, and produces one of:
+
+```text
+automatic | approval-required | quarantine
+```
+
+A package requiring approval can be installed only after review:
+
+```bash
+dockyard community install --id <package> --approve
+```
+
+`--approve` never bypasses quarantine.
+
+Installed revisions are immutable and stored separately, so rollback does not need to re-fetch upstream:
+
+```bash
+dockyard community status --id <package>
+dockyard community rollback --id <package>
+```
+
+Community-trust packages require a valid Ed25519 manifest signature from a trusted Dockyard publisher key. Updates are re-approved if permissions expand, trust decreases, or risk increases.
+
+See [`docs/COMMUNITY.md`](docs/COMMUNITY.md) for the full distribution and trust model.
+
 ## Let DockyardOS choose providers
 
 Inspect existing readiness without remote account calls:
@@ -187,10 +239,11 @@ Balanced mode is the default:
 - production deploys, destructive database actions, force pushes, infrastructure deletion, DNS changes, secret rotation, and sensitive operations require approval
 - obviously machine-destructive commands are denied
 - community capability updates do not silently gain new sensitive permissions
+- community discovery never implies package execution
 - remote dynamic security testing requires explicit authorization and never infers permission from public accessibility
 
 ## Provider philosophy
 
 DockyardOS selects by **capability and fit**, not by brand. A project may prefer Supabase + Vercel + Cloudflare, while another may use Neon/Firebase/Appwrite/PocketBase plus Cloudflare/Render or another compatible combination. Availability, pricing/free-tier claims, and provider limits are live facts and must not be permanently hard-coded.
 
-See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), [`docs/CAPABILITY-REGISTRY.md`](docs/CAPABILITY-REGISTRY.md), [`docs/PROVIDERS.md`](docs/PROVIDERS.md), [`docs/SECURITY.md`](docs/SECURITY.md), [`docs/HOSTS.md`](docs/HOSTS.md), and [`docs/ROADMAP.md`](docs/ROADMAP.md).
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), [`docs/CAPABILITY-REGISTRY.md`](docs/CAPABILITY-REGISTRY.md), [`docs/PROVIDERS.md`](docs/PROVIDERS.md), [`docs/SECURITY.md`](docs/SECURITY.md), [`docs/HOSTS.md`](docs/HOSTS.md), [`docs/COMMUNITY.md`](docs/COMMUNITY.md), and [`docs/ROADMAP.md`](docs/ROADMAP.md).
