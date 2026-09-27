@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "dockyardos": {
+      "command": "dockyard-mcp",
+      "args": []
+    }
+  }
+}
