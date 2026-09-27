@@ -30,8 +30,10 @@
 - [x] Permission/trust/risk update assessment
 - [x] Quarantine / approval-required update decisions
 - [x] Persisted team/agent success-failure metrics with conservative routing adjustment
-- [ ] Cryptographic publisher signatures / transparency metadata
-- [ ] Canary execution for newly approved capability versions
+- [x] Ed25519 community package signature verification + trusted/revoked key registry
+- [x] Local tamper-evident package transparency metadata
+- [ ] External/public transparency anchoring
+- [ ] Sandboxed dynamic canary execution for executable capability versions
 
 ## P2 — Provider connector layer
 
@@ -114,9 +116,24 @@
 
 ## P6 — Community distribution
 
-- [ ] Registry service
-- [ ] Contribution validation CI
-- [ ] Safe fetch/install/update engine for selected community capabilities
-- [ ] Cryptographic update signatures and rollback
-- [ ] Canary/sandbox evaluation before activation
-- [ ] Package discovery UI
+- [x] Bundled registry with installable manifests separated from broad discovery sources
+- [x] GitHub-only safe fetcher that resolves moving refs to immutable commits
+- [x] Quarantine directories outside project repositories
+- [x] File/byte limits, symlink/special-file rejection, deterministic content hashes
+- [x] Explicit entrypoint validation and Agent Skill structural canary
+- [x] Script/binary/install-lifecycle detection and conservative permission inference
+- [x] Automatic / approval-required / quarantine assessment
+- [x] Community-trust Ed25519 signature requirement with trusted/revoked key registry
+- [x] Immutable installed version directories and active revision pointer
+- [x] Update re-approval on permission expansion, trust downgrade, or risk increase
+- [x] Offline rollback to a previously installed immutable revision
+- [x] Local tamper-evident hash-chained transparency log
+- [x] Community list/search/inspect/resolve/install/update/status/rollback/transparency CLI
+- [x] Community runtime data bundled into VSIX Core with package-level CI assertions
+- [x] Deterministic non-network unit tests for registry/signature/approval/update/rollback/transparency logic
+- [ ] Remote registry synchronization / contribution validation service
+- [ ] Sandboxed dynamic canary execution for executable community capabilities
+- [ ] External/public transparency anchoring
+- [ ] Publisher onboarding/signing workflow and key rotation UX
+- [ ] Safe automatic install/merge for host-native project config bundles
+- [ ] Rich package discovery UI in VS Code
