@@ -1,4 +1,5 @@
 import type { CommunityRegistryIndex } from "./community-types.js";
+import type { TrustLevel } from "./types.js";
 
 export interface RemoteRegistrySource {
   id: string;
@@ -6,6 +7,7 @@ export interface RemoteRegistrySource {
   url: string;
   keyId: string;
   enabled: boolean;
+  trustCeiling: TrustLevel;
   maxBytes: number;
   maxAgeSeconds: number;
   allowedHostname: string;
