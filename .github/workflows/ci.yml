@@ -20,22 +20,27 @@ jobs:
       - run: npm test
       - name: CLI smoke test
         run: |
-          node dist/cli.js --help
-          node dist/cli.js policy --command "git status" --json
-          node dist/cli.js plan --profile full --stack nextjs,supabase --security high --json
-          node dist/cli.js registry verify
-          node dist/cli.js catalog --category security --json
-          node dist/cli.js recipes --id saas-web --json
-          node dist/cli.js recommend --task "Build a production SaaS dashboard" --stack web,nextjs,react,supabase,postgres --security standard --json
-          node dist/cli.js providers inspect --id vercel,supabase --json
-          node dist/cli.js providers chain --capability postgres --json
-          node dist/cli.js providers plan --capability web-hosting,postgres,auth --stack web,nextjs,postgres --environment preview --free-first --json
-          node dist/cli.js security profiles --json
-      - name: Security CLI planning smoke test
+          node dist/main.js --help
+          node dist/main.js policy --command "git status" --json
+          node dist/main.js plan --profile full --stack nextjs,supabase --security high --json
+          node dist/main.js registry verify
+          node dist/main.js catalog --category security --json
+          node dist/main.js recipes --id saas-web --json
+          node dist/main.js recommend --task "Build a production SaaS dashboard" --stack web,nextjs,react,supabase,postgres --security standard --json
+          node dist/main.js providers inspect --id vercel,supabase --json
+          node dist/main.js providers chain --capability postgres --json
+          node dist/main.js providers plan --capability web-hosting,postgres,auth --stack web,nextjs,postgres --environment preview --free-first --json
+          node dist/main.js security profiles --json
+          node dist/main.js team compose --task "Build a production SaaS dashboard" --stack web,nextjs,react,supabase,postgres --json
+      - name: Security and team state CLI smoke test
         run: |
           root="$PWD"
           tmp=$(mktemp -d)
           cd "$tmp"
-          node "$root/dist/cli.js" init --name security-smoke --mode balanced
-          node "$root/dist/cli.js" security plan --profile web --target . --target-type source --mode quick --json
-          node "$root/dist/cli.js" security threat-model --profile api --json
+          node "$root/dist/main.js" init --name orchestration-smoke --mode balanced
+          node "$root/dist/main.js" security plan --profile web --target . --target-type source --mode quick --json
+          node "$root/dist/main.js" security threat-model --profile api --json
+          node "$root/dist/main.js" team start --task "Fix the login crash" --stack typescript --json
+          node "$root/dist/main.js" team status --json
+          node "$root/dist/main.js" team advance --artifact discovery.json --decision "Reproduce before changing code" --json
+          node "$root/dist/main.js" team status --json

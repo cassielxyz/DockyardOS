@@ -5,7 +5,7 @@
   "description": "Autonomous development orchestration, memory, safety, and provider routing layer for coding agents.",
   "type": "module",
   "bin": {
-    "dockyard": "./dist/cli.js"
+    "dockyard": "./dist/main.js"
   },
   "files": ["dist", "integrations", "registry", "README.md"],
   "scripts": {
@@ -13,7 +13,7 @@
     "build": "tsc -p tsconfig.json",
     "test": "npm run build && node --test test/**/*.test.mjs",
     "check": "npm test",
-    "dockyard": "node dist/cli.js"
+    "dockyard": "node dist/main.js"
   },
   "engines": { "node": ">=20" },
   "devDependencies": { "typescript": "^5.8.3" }

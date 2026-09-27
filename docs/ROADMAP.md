@@ -29,9 +29,9 @@
 - [x] Stable / recommended / edge / dev update channels
 - [x] Permission/trust/risk update assessment
 - [x] Quarantine / approval-required update decisions
+- [x] Persisted team/agent success-failure metrics with conservative routing adjustment
 - [ ] Cryptographic publisher signatures / transparency metadata
 - [ ] Canary execution for newly approved capability versions
-- [ ] Persisted success/failure metrics that tune future combination scores
 
 ## P2 — Provider connector layer
 
@@ -71,12 +71,18 @@
 
 ## P4 — Agent team composer
 
-- [x] Initial adaptive role selection
-- [ ] Phase-aware activation/deactivation
-- [ ] Worktree isolation for parallel implementers
-- [x] Independent security/QA role selection
-- [x] Initial context budgets and progressive capability selection
-- [ ] Failure learning and combination scoring
+- [x] Adaptive role selection from curated recipes/capability scoring
+- [x] Phase-aware activation/deactivation
+- [x] Persistent resumable team-run state linked to checkpoints
+- [x] Compact context handoffs instead of full-transcript replay
+- [x] Worktree isolation for parallel implementers
+- [x] Parallel writer budgets and writer-role enforcement
+- [x] Independent security/QA/release review roles
+- [x] Context budgets and progressive phase capability loading
+- [x] Reusable Antigravity scoped phase-worker
+- [x] Failure/blocker persistence and explicit unblock/fail flow
+- [x] Team/agent outcome learning with conservative history weighting
+- [x] Antigravity pre-invocation team/phase restoration for `continue`
 
 ## P5 — Cross-host support
 
