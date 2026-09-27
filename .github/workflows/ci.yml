@@ -53,6 +53,14 @@ jobs:
           node -e "const p=JSON.parse(require('fs').readFileSync('/tmp/registry-key.json','utf8')); if(!p.publicKeyPem || !p.trustStoreEntry || p.privateKeyPem) process.exit(1)"
           test "$(stat -c '%a' "$DOCKYARD_HOME/signing-keys/publisher/ci-publisher/ci-publisher-key-1.private.pem")" = "600"
           test "$(stat -c '%a' "$DOCKYARD_HOME/signing-keys/registry/ci-registry/ci-registry-key-1.private.pem")" = "600"
+      - name: P8 effective registry and safe update CLI smoke
+        run: |
+          export DOCKYARD_HOME="$(mktemp -d)"
+          node dist/main.js community list --json > /tmp/effective-registry.json
+          node dist/main.js community sources --json > /tmp/effective-sources.json
+          node dist/main.js community updates check --json > /tmp/community-updates.json
+          node -e "const r=JSON.parse(require('fs').readFileSync('/tmp/effective-registry.json','utf8')); if(!Array.isArray(r.packages) || !Array.isArray(r.conflicts) || !Array.isArray(r.remoteRegistries)) process.exit(1)"
+          node -e "const u=JSON.parse(require('fs').readFileSync('/tmp/community-updates.json','utf8')); if(!Array.isArray(u) || u.length) process.exit(1)"
       - name: VS Code bridge and bundled Core check
         run: |
           node --check integrations/vscode/extension.js
@@ -73,6 +81,7 @@ jobs:
           node integrations/vscode/core/dist/main.js community list --json
           node integrations/vscode/core/dist/main.js community active --json
           node integrations/vscode/core/dist/main.js community remote sources --json
+          node integrations/vscode/core/dist/main.js community updates check --json
       - name: Package VS Code extension
         working-directory: integrations/vscode
         run: |
