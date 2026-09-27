@@ -1,0 +1,318 @@
+import { createHash, randomUUID } from "node:crypto";
+import { readFile, rm, writeFile } from "node:fs/promises";
+import { dirname, relative, resolve } from "node:path";
+import { gzipSync } from "node:zlib";
+import { writeJsonAtomic } from "./fs-utils.js";
+import { commandExists, run } from "./process.js";
+import { projectDirectory, projectIdForRoot } from "./project.js";
+
+const GITHUB_REPOSITORY = /^[A-Za-z0-9_.-]{1,100}\/[A-Za-z0-9_.-]{1,100}$/;
+const COMMIT_SHA = /^[a-f0-9]{40}$/i;
+const CONTENT_SHA256 = /^[a-f0-9]{64}$/i;
+const SAFE_REF_BODY = /^[A-Za-z0-9][A-Za-z0-9._\/-]{0,299}$/;
+const MAX_RAW_SARIF_BYTES = 50 * 1024 * 1024;
+const MAX_GZIP_SARIF_BYTES = 10 * 1024 * 1024;
+const GITHUB_API_VERSION = "2026-03-10";
+
+export interface SecuritySarifUploadPlan {
+  schemaVersion: 1;
+  provider: "github";
+  projectId: string;
+  runId: string;
+  createdAt: string;
+  repository: string;
+  commitSha: string;
+  ref: string;
+  sarifPath: string;
+  sarifSha256: string;
+  rawBytes: number;
+  gzipBytes: number;
+  endpoint: string;
+  mutating: true;
+  approvalRequired: true;
+  expectedSha256Required: true;
+  notes: string[];
+}
+
+export interface SecuritySarifUploadResult {
+  schemaVersion: 1;
+  provider: "github";
+  projectId: string;
+  runId: string;
+  status: "complete" | "accepted" | "accepted-unverified" | "processing-failed";
+  repository: string;
+  commitSha: string;
+  ref: string;
+  sarifSha256: string;
+  sarifId?: string;
+  processingStatus?: string;
+  analysisUrl?: string;
+  uploadUrl?: string;
+  artifactPath: string;
+  summary: string;
+}
+
+export interface SecuritySarifUploadTarget {
+  sarifPath: string;
+  repository: string;
+  commitSha: string;
+  ref: string;
+}
+
+interface LoadedSarif {
+  runId: string;
+  target: string;
+  bytes: Buffer;
+  sha256: string;
+  gzip: Buffer;
+}
+
+function runsRoot(root: string): string {
+  return resolve(projectDirectory(projectIdForRoot(root)), "security", "runs");
+}
+
+function isInside(root: string, candidate: string): boolean {
+  const rel = relative(resolve(root), resolve(candidate));
+  return rel === "" || (!rel.startsWith("..") && !rel.startsWith("/") && !rel.startsWith("\\"));
+}
+
+function validateRepository(value: string): string {
+  const repository = value.trim();
+  if (!GITHUB_REPOSITORY.test(repository) || repository.includes("..") || repository.endsWith(".git")) {
+    throw new Error("GitHub repository must be an explicit OWNER/REPO identifier without .git.");
+  }
+  return repository;
+}
+
+function validateCommitSha(value: string): string {
+  const commit = value.trim().toLowerCase();
+  if (!COMMIT_SHA.test(commit)) throw new Error("GitHub SARIF upload commit must be a full 40-character Git SHA.");
+  return commit;
+}
+
+function validateRefBody(body: string, label: string): string {
+  if (!SAFE_REF_BODY.test(body)
+    || body.startsWith("-")
+    || body.includes("..")
+    || body.includes("//")
+    || body.includes("@{")
+    || body.endsWith("/")
+    || body.endsWith(".")
+    || body.endsWith(".lock")) {
+    throw new Error(`${label} is not a safe Git reference.`);
+  }
+  return body;
+}
+
+function validateGitHubRef(value: string): string {
+  const ref = value.trim();
+  if (ref.startsWith("refs/heads/")) {
+    validateRefBody(ref.slice("refs/heads/".length), "Branch ref");
+    return ref;
+  }
+  if (ref.startsWith("refs/tags/")) {
+    validateRefBody(ref.slice("refs/tags/".length), "Tag ref");
+    return ref;
+  }
+  if (/^refs\/pull\/[1-9][0-9]*\/(?:head|merge)$/.test(ref)) return ref;
+  throw new Error("GitHub SARIF upload ref must be refs/heads/..., refs/tags/..., refs/pull/<n>/head, or refs/pull/<n>/merge.");
+}
+
+function sarifRunId(root: string, target: string): string {
+  const base = runsRoot(root);
+  if (!isInside(base, target)) throw new Error("Security SARIF path must be inside this project's DockyardOS security run directory.");
+  const rel = relative(base, target).replace(/\\/g, "/");
+  const parts = rel.split("/");
+  if (parts.length !== 2 || !parts[0] || parts[0] === "." || parts[1] !== "dockyard.sarif") {
+    throw new Error("Only the generated <run-id>/dockyard.sarif artifact can be uploaded.");
+  }
+  return parts[0];
+}
+
+function validateDockyardSarif(parsed: unknown, runId: string): void {
+  if (!parsed || typeof parsed !== "object") throw new Error("Security SARIF artifact is not a JSON object.");
+  const document = parsed as {
+    version?: unknown;
+    runs?: Array<{
+      tool?: { driver?: { name?: unknown } };
+      invocations?: Array<{ properties?: { dockyardRunId?: unknown } }>;
+    }>;
+  };
+  if (document.version !== "2.1.0" || !Array.isArray(document.runs) || document.runs.length !== 1) {
+    throw new Error("Security SARIF artifact must be a single-run SARIF 2.1.0 document.");
+  }
+  const sarifRun = document.runs[0];
+  if (sarifRun?.tool?.driver?.name !== "DockyardOS") throw new Error("Security SARIF artifact was not generated by DockyardOS.");
+  const embeddedRunId = sarifRun.invocations?.[0]?.properties?.dockyardRunId;
+  if (embeddedRunId !== runId) throw new Error("Security SARIF run identity does not match its immutable run artifact directory.");
+}
+
+async function loadSarif(root: string, sarifPath: string): Promise<LoadedSarif> {
+  const target = resolve(sarifPath);
+  const runId = sarifRunId(root, target);
+  const bytes = await readFile(target);
+  if (!bytes.length) throw new Error("Security SARIF artifact is empty.");
+  if (bytes.length > MAX_RAW_SARIF_BYTES) throw new Error("Security SARIF artifact exceeds DockyardOS's 50 MiB read bound.");
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(bytes.toString("utf8"));
+  } catch (error) {
+    throw new Error(`Security SARIF artifact is not valid JSON: ${error instanceof Error ? error.message : String(error)}`);
+  }
+  validateDockyardSarif(parsed, runId);
+  const gzip = gzipSync(bytes);
+  if (gzip.length > MAX_GZIP_SARIF_BYTES) {
+    throw new Error("Gzip-compressed SARIF exceeds GitHub code scanning's 10 MiB upload limit.");
+  }
+  const sha256 = createHash("sha256").update(bytes).digest("hex");
+  return { runId, target, bytes, sha256, gzip };
+}
+
+function endpointFor(repository: string): string {
+  return `/repos/${repository}/code-scanning/sarifs`;
+}
+
+export async function planSecuritySarifUpload(root: string, input: SecuritySarifUploadTarget): Promise<SecuritySarifUploadPlan> {
+  const repository = validateRepository(input.repository);
+  const commitSha = validateCommitSha(input.commitSha);
+  const ref = validateGitHubRef(input.ref);
+  const loaded = await loadSarif(root, input.sarifPath);
+  return {
+    schemaVersion: 1,
+    provider: "github",
+    projectId: projectIdForRoot(root),
+    runId: loaded.runId,
+    createdAt: new Date().toISOString(),
+    repository,
+    commitSha,
+    ref,
+    sarifPath: loaded.target,
+    sarifSha256: loaded.sha256,
+    rawBytes: loaded.bytes.length,
+    gzipBytes: loaded.gzip.length,
+    endpoint: endpointFor(repository),
+    mutating: true,
+    approvalRequired: true,
+    expectedSha256Required: true,
+    notes: [
+      "Plan is read-only; upload requires a second command with --approve and the exact planned SARIF SHA-256.",
+      "DockyardOS never stores or accepts a GitHub token in command arguments; gh CLI authentication is used at execution time.",
+      "The caller must ensure the explicit commit/ref identify the code that produced this SARIF artifact.",
+      "GitHub code scanning availability and token permissions are verified by GitHub during upload.",
+    ],
+  };
+}
+
+function safeExpectedSha256(value: string): string {
+  const digest = value.trim().toLowerCase();
+  if (!CONTENT_SHA256.test(digest)) throw new Error("--expected-sha256 must be a 64-character SHA-256 digest from the reviewed upload plan.");
+  return digest;
+}
+
+function parseJsonObject(value: string): Record<string, unknown> | undefined {
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, unknown> : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export async function uploadSecuritySarif(
+  root: string,
+  input: SecuritySarifUploadTarget,
+  options: { approve?: boolean; expectedSha256: string },
+): Promise<SecuritySarifUploadResult> {
+  if (options.approve !== true) throw new Error("GitHub SARIF upload is mutating and requires explicit --approve.");
+  const expectedSha256 = safeExpectedSha256(options.expectedSha256);
+  const plan = await planSecuritySarifUpload(root, input);
+  if (plan.sarifSha256 !== expectedSha256) {
+    throw new Error("Security SARIF changed after review; generate a fresh upload plan and approve its new SHA-256.");
+  }
+  if (!commandExists("gh")) throw new Error("GitHub SARIF upload requires the authenticated GitHub CLI (`gh`).");
+
+  const loaded = await loadSarif(root, plan.sarifPath);
+  if (loaded.sha256 !== plan.sarifSha256) throw new Error("Security SARIF changed immediately before upload; aborting.");
+
+  const requestPath = resolve(dirname(plan.sarifPath), `.sarif-upload-request-${randomUUID()}.json`);
+  const request = {
+    commit_sha: plan.commitSha,
+    ref: plan.ref,
+    sarif: loaded.gzip.toString("base64"),
+    tool_name: "DockyardOS",
+    validate: true,
+  };
+  await writeFile(requestPath, `${JSON.stringify(request)}\n`, { encoding: "utf8", mode: 0o600, flag: "wx" });
+
+  let upload;
+  try {
+    upload = run("gh", [
+      "api",
+      "--method", "POST",
+      "-H", "Accept: application/vnd.github+json",
+      "-H", `X-GitHub-Api-Version: ${GITHUB_API_VERSION}`,
+      plan.endpoint,
+      "--input", requestPath,
+    ], { cwd: root, timeoutMs: 60_000, maxOutputBytes: 32_768 });
+  } finally {
+    await rm(requestPath, { force: true });
+  }
+  if (!upload.ok) {
+    throw new Error(`GitHub rejected the SARIF upload: ${upload.stderr || upload.stdout || `gh exited with ${upload.status}`}`);
+  }
+
+  const uploadResponse = parseJsonObject(upload.stdout);
+  const sarifId = typeof uploadResponse?.id === "string" ? uploadResponse.id : undefined;
+  const uploadUrl = typeof uploadResponse?.url === "string" ? uploadResponse.url : undefined;
+  let processingStatus: string | undefined;
+  let analysisUrl: string | undefined;
+  let verificationOk = false;
+
+  if (sarifId) {
+    const verify = run("gh", [
+      "api",
+      "--method", "GET",
+      "-H", "Accept: application/vnd.github+json",
+      "-H", `X-GitHub-Api-Version: ${GITHUB_API_VERSION}`,
+      `${plan.endpoint}/${sarifId}`,
+    ], { cwd: root, timeoutMs: 30_000, maxOutputBytes: 16_384 });
+    if (verify.ok) {
+      verificationOk = true;
+      const verified = parseJsonObject(verify.stdout);
+      if (typeof verified?.processing_status === "string") processingStatus = verified.processing_status;
+      if (typeof verified?.analyses_url === "string") analysisUrl = verified.analyses_url;
+    }
+  }
+
+  let status: SecuritySarifUploadResult["status"] = "accepted-unverified";
+  if (verificationOk && processingStatus === "complete") status = "complete";
+  else if (verificationOk && processingStatus === "failed") status = "processing-failed";
+  else if (verificationOk) status = "accepted";
+
+  const artifactPath = resolve(dirname(plan.sarifPath), `sarif-upload-${randomUUID()}.json`);
+  const result: SecuritySarifUploadResult = {
+    schemaVersion: 1,
+    provider: "github",
+    projectId: plan.projectId,
+    runId: plan.runId,
+    status,
+    repository: plan.repository,
+    commitSha: plan.commitSha,
+    ref: plan.ref,
+    sarifSha256: plan.sarifSha256,
+    ...(sarifId ? { sarifId } : {}),
+    ...(processingStatus ? { processingStatus } : {}),
+    ...(analysisUrl ? { analysisUrl } : {}),
+    ...(uploadUrl ? { uploadUrl } : {}),
+    artifactPath,
+    summary: status === "complete"
+      ? "GitHub accepted and completed processing the DockyardOS SARIF upload."
+      : status === "processing-failed"
+        ? "GitHub accepted the SARIF upload but reported processing failure."
+        : status === "accepted"
+          ? "GitHub accepted the SARIF upload; processing is not complete yet."
+          : "GitHub accepted the SARIF upload, but DockyardOS could not verify processing status immediately.",
+  };
+  await writeJsonAtomic(artifactPath, result);
+  return result;
+}
