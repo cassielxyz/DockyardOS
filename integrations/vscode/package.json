@@ -49,7 +49,7 @@
       { "command": "dockyardOS.teamStatus", "title": "DockyardOS: Team Status", "category": "DockyardOS" },
       { "command": "dockyardOS.hostDoctor", "title": "DockyardOS: Check Agent Host", "category": "DockyardOS" },
       { "command": "dockyardOS.hostInstall", "title": "DockyardOS: Install/Update Agent Host Integration", "category": "DockyardOS" },
-      { "command": "dockyardOS.communityBrowse", "title": "DockyardOS: Browse Community Packages", "category": "DockyardOS" },
+      { "command": "dockyardOS.communityBrowse", "title": "DockyardOS: Open Community Hub", "category": "DockyardOS" },
       { "command": "dockyardOS.communityStatus", "title": "DockyardOS: Community Package Status", "category": "DockyardOS" }
     ],
     "configuration": {
@@ -70,7 +70,7 @@
     }
   },
   "scripts": {
-    "check": "node --check extension.js && node --check scripts/prepare-core.cjs",
+    "check": "node --check extension.js && node --check community-hub-model.js && node --check community-hub-view.js && node --check scripts/prepare-core.cjs",
     "prepare-core": "node scripts/prepare-core.cjs",
     "package": "npm run prepare-core && npx @vscode/vsce package"
   },

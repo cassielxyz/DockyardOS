@@ -28,16 +28,27 @@ Open the Command Palette and use:
 - `DockyardOS: Team Status`
 - `DockyardOS: Check Agent Host`
 - `DockyardOS: Install/Update Agent Host Integration`
-- `DockyardOS: Browse Community Packages`
+- `DockyardOS: Open Community Hub`
 - `DockyardOS: Community Package Status`
 
 The status bar shows whether the project is uninitialized, ready, or currently in a DockyardOS team phase.
 
-## Community package browser
+## Community Hub
 
-`Browse Community Packages` intentionally shows only packages with an explicit DockyardOS install manifest. Broad discovery-source entries are not install buttons.
+`Open Community Hub` is a local VS Code webview over the existing DockyardOS community registry and installed-package state. It does not create a second registry, does not fetch package code directly from the webview, and does not bypass the CLI trust boundary.
 
-The browser flow is:
+The Hub provides:
+
+- full-text package search across package ID, source, capabilities, permissions, trust, risk, origin, channel, and update state,
+- trust, risk, bundled/remote origin, and update-state filters,
+- installed revision/version visibility,
+- discovery-source browsing without turning discovery metadata into install buttons,
+- explicit remote-registry verification/expiry metadata,
+- registry conflict visibility instead of silently selecting a colliding package,
+- manifest inspection and quarantine assessment inside the Hub,
+- install/update actions that still require the immutable assessed Git revision and content SHA-256.
+
+The activation flow remains:
 
 ```text
 select explicit package manifest
@@ -50,12 +61,14 @@ static scan / entrypoint / permissions / signature policy
         ↓
 automatic | approval-required | quarantine
         ↓
-install only when policy allows
+install only with the assessed revision + content digest
 ```
 
-For `approval-required`, VS Code shows the policy reasons in a modal before it passes `--approve`. `quarantine` cannot be overridden from the extension.
+For `approval-required`, VS Code shows the policy reasons in a modal before it passes `--approve`. `quarantine` cannot be overridden from the Hub. Webview messages are limited to `refresh` plus the explicit `inspect`, `assess`, and `install` package actions, and package IDs are revalidated by the extension before any CLI call.
 
-Installed package versions remain under DockyardOS external state and can be inspected through `Community Package Status`. Rollback is currently exposed by the CLI so the exact target revision stays explicit.
+The Hub uses a restrictive Content Security Policy with nonce-bound local scripts/styles. Registry strings are serialized with script-breaking characters escaped and rendered through DOM text nodes instead of HTML injection.
+
+Installed package versions remain under DockyardOS external state and can also be inspected through `Community Package Status`. Rollback stays exposed by the CLI so the exact target revision remains explicit.
 
 ## Project separation
 
@@ -136,8 +149,9 @@ Normal CI verifies:
 7. required Core/community/MCP files inside the produced VSIX,
 8. cross-host install/doctor smoke tests using DockyardOS fixtures,
 9. Marketplace workflow guardrails and listing metadata,
-10. the opt-in real-host matrix definition and supported install surfaces.
+10. the opt-in real-host matrix definition and supported install surfaces,
+11. Community Hub CSP/serialization/state normalization and pinned-install guardrails.
 
 The separate manual real-host workflow supplies evidence that the current external CLIs are still discoverable by DockyardOS.
 
-After installing the VSIX, open a project and run `DockyardOS: Initialize Project`, then `DockyardOS: Run Doctor`. Close/reopen VS Code and use `DockyardOS: Project Status` or `Resume Context` to confirm persistent state recovery. Use `Browse Community Packages` to verify the manifest-first community workflow.
+After installing the VSIX, open a project and run `DockyardOS: Initialize Project`, then `DockyardOS: Run Doctor`. Close/reopen VS Code and use `DockyardOS: Project Status` or `Resume Context` to confirm persistent state recovery. Use `DockyardOS: Open Community Hub` to verify the searchable manifest-first community workflow.
