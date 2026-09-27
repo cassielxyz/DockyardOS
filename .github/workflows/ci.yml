@@ -61,6 +61,18 @@ jobs:
           node dist/main.js community updates check --json > /tmp/community-updates.json
           node -e "const r=JSON.parse(require('fs').readFileSync('/tmp/effective-registry.json','utf8')); if(!Array.isArray(r.packages) || !Array.isArray(r.conflicts) || !Array.isArray(r.remoteRegistries)) process.exit(1)"
           node -e "const u=JSON.parse(require('fs').readFileSync('/tmp/community-updates.json','utf8')); if(!Array.isArray(u) || u.length) process.exit(1)"
+      - name: P9 provider action and preview CLI smoke
+        run: |
+          node dist/main.js providers actions --provider vercel > /tmp/provider-actions.json
+          node dist/main.js providers action plan --provider vercel --action preview-deploy --environment preview --param prebuilt=true > /tmp/vercel-preview-plan.json
+          node dist/main.js providers action plan --provider supabase --action preview-branch-create --environment preview --param project-ref=abcdefghijklmnopqrst --param branch=ci-preview > /tmp/supabase-preview-plan.json
+          node dist/main.js providers preview plan --database supabase --web vercel --param supabase.project-ref=abcdefghijklmnopqrst --param supabase.branch=ci-preview --param vercel.prebuilt=true > /tmp/preview-environment-plan.json
+          node -e "const a=JSON.parse(require('fs').readFileSync('/tmp/provider-actions.json','utf8')); if(!Array.isArray(a) || !a.some(x=>x.actionId==='preview-deploy')) process.exit(1)"
+          node -e "const p=JSON.parse(require('fs').readFileSync('/tmp/preview-environment-plan.json','utf8')); if(p.environment!=='preview' || p.steps.length!==2 || p.steps.some(s=>s.productionApprovalRequired)) process.exit(1)"
+          if node dist/main.js providers action run --provider vercel --action production-deploy --environment production --approve >/tmp/should-fail.log 2>&1; then
+            echo "production provider action unexpectedly ran without --approve-production"
+            exit 1
+          fi
       - name: VS Code bridge and bundled Core check
         run: |
           node --check integrations/vscode/extension.js
@@ -82,6 +94,8 @@ jobs:
           node integrations/vscode/core/dist/main.js community active --json
           node integrations/vscode/core/dist/main.js community remote sources --json
           node integrations/vscode/core/dist/main.js community updates check --json
+          node integrations/vscode/core/dist/main.js providers actions --provider vercel
+          node integrations/vscode/core/dist/main.js providers preview plan --web vercel
       - name: Package VS Code extension
         working-directory: integrations/vscode
         run: |
