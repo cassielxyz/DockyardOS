@@ -26,6 +26,7 @@ interface CommunityState {
 const HIGH_IMPACT = new Set<PermissionId>(["shell", "network", "browser", "git-write", "secrets", "database-write", "deployment", "dns"]);
 const SEVERITY_RANK = { info: 0, low: 1, medium: 2, high: 3, critical: 4 } as const;
 const TRUST_RANK = { community: 0, maintainer: 1, dockyard: 2, official: 3 } as const;
+const RISK_RANK = { low: 0, medium: 1, high: 2 } as const;
 
 function statePath(): string {
   return resolve(dockyardHome(), "community", "state.json");
@@ -60,6 +61,7 @@ export async function assessCommunityPackage(
   pkg: CommunityPackageManifest,
   resolution: CommunityResolution,
   scan: CommunityScanReport,
+  previous?: InstalledCommunityPackage,
 ): Promise<CommunityAssessment> {
   const signature = await verifyCommunitySignature(pkg);
   const declared = uniquePermissions(pkg.permissions);
@@ -115,6 +117,27 @@ export async function assessCommunityPackage(
     decision = "approval-required";
     reasons.push("static canary produced warnings");
   }
+
+  if (previous) {
+    const previousPermissions = new Set(previous.permissions);
+    const newlyDeclared = declared.filter((permission) => !previousPermissions.has(permission));
+    if (newlyDeclared.length && decision !== "quarantine") {
+      decision = "approval-required";
+      reasons.push(`update adds declared permissions: ${newlyDeclared.join(", ")}`);
+    }
+    const newlyHighImpact = newlyDeclared.filter((permission) => HIGH_IMPACT.has(permission));
+    if (newlyHighImpact.length) reasons.push(`update adds high-impact permissions: ${newlyHighImpact.join(", ")}`);
+    if (TRUST_RANK[pkg.trust] < TRUST_RANK[previous.trust] && decision !== "quarantine") {
+      decision = "approval-required";
+      reasons.push(`update trust decreased: ${previous.trust} -> ${pkg.trust}`);
+    }
+    if (RISK_RANK[pkg.risk] > RISK_RANK[previous.risk] && decision !== "quarantine") {
+      decision = "approval-required";
+      reasons.push(`update risk increased: ${previous.risk} -> ${pkg.risk}`);
+    }
+    if (previous.contentSha256 === resolution.contentSha256 && !reasons.length) reasons.push("resolved content is unchanged from the active installation");
+  }
+
   if (!reasons.length) reasons.push("manifest, signature policy, permission boundary, entrypoints, and static canary permit automatic installation");
 
   await appendTransparencyRecord({
@@ -151,7 +174,10 @@ export async function resolveAssessCommunityPackage(id: string): Promise<{
   const manifest = findCommunityPackage(registry, id);
   if (!manifest) throw new Error(`Community package is not installable in the bundled registry: ${id}`);
   const { resolution, scan } = await resolveAndQuarantine(manifest);
-  const assessment = await assessCommunityPackage(manifest, resolution, scan);
+  const state = await loadState();
+  const activeRevision = state.packages[id]?.activeRevision;
+  const previous = activeRevision ? state.packages[id]?.versions.find((version) => version.revision === activeRevision) : undefined;
+  const assessment = await assessCommunityPackage(manifest, resolution, scan, previous);
   return { manifest, resolution, assessment };
 }
 
@@ -168,6 +194,7 @@ export async function installResolvedCommunityPackage(
   await mkdir(resolve(packagesRoot(), manifest.id), { recursive: true });
   await rm(destination, { recursive: true, force: true });
   await cp(packageRoot(manifest, resolution), destination, { recursive: true, force: false, errorOnExist: true, verbatimSymlinks: false });
+  await rm(resolve(destination, ".git"), { recursive: true, force: true });
 
   const installed: InstalledCommunityPackage = {
     schemaVersion: 1,
