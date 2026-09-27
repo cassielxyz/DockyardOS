@@ -7,15 +7,19 @@ DockyardOS is a persistent autonomous-development layer for coding agents. It ad
 ## What works now
 
 - project identity and memory stored outside the repository
-- manual, timed, and session-stop checkpoints
+- manual, timed, session-stop, and team-phase checkpoints
 - Git status plus bounded patch capture for uncommitted tracked changes
 - `dockyard resume` context recovery
-- `dockyard doctor`
 - Safe / Balanced / Autonomous approval modes
 - Antigravity `PreInvocation`, `PreToolUse`, `PostToolUse`, and `Stop` hook integration
 - broad skill/agent/tool/MCP catalogue with provenance, permissions, risk, host compatibility, context cost, and update channels
 - practical project recipes and bounded adaptive specialist selection
-- natural-language task classification through `dockyard recommend`
+- phase-aware teams: discovery → architecture → planning → implementation → verification → security → release
+- persistent team runs restored across sessions/accounts/models through external DockyardOS state
+- compact phase handoffs instead of replaying full chat transcripts
+- isolated Git worktrees for parallel implementation writers
+- independent QA/security/release reviewers separated from implementation write roles
+- conservative team/agent outcome learning for future routing
 - provider detection and capability-based fallback planning across Vercel, Cloudflare, Supabase and alternatives
 - local-only provider inspection plus optional safe live account/status probes
 - `free-first` provider plans that require live pricing/free-tier validation before activation
@@ -34,24 +38,82 @@ npm link
 
 dockyard init
 dockyard doctor
-dockyard checkpoint --reason milestone --phase P3 --task "security execution" --next "agent team composer"
 dockyard resume
 ```
 
 DockyardOS project state is stored under `~/.dockyardos/projects/` rather than adding private runtime state to your application repository.
 
-## Let DockyardOS choose the team
+## Start a real project team
+
+You can still inspect recommendations directly:
 
 ```bash
-dockyard categories
-dockyard catalog --query react --host antigravity
-
 dockyard recommend \
   --task "Build a production SaaS dashboard" \
   --stack web,nextjs,react,supabase,postgres
 ```
 
-DockyardOS matches the task against practical recipes, then scores compatible skills, agents, tools, MCPs, and providers. A large registry stays available for discovery, while only a bounded best-fit set is selected for the active workflow.
+For substantial work, start a resumable DockyardOS team instead:
+
+```bash
+dockyard team start \
+  --task "Build a production SaaS dashboard" \
+  --stack web,nextjs,react,supabase,postgres
+```
+
+DockyardOS selects the bounded best-fit capabilities, creates the project/team checkpoint, and activates only the first relevant phase. Inspect it with:
+
+```bash
+dockyard team status
+```
+
+The normal lifecycle is:
+
+```text
+Discovery → Architecture → Planning → Implementation → Verification → Security → Release
+```
+
+When a phase is complete, save durable evidence/decisions and advance:
+
+```bash
+dockyard team advance \
+  --artifact requirements.md \
+  --decision "Use Postgres with row-level authorization"
+```
+
+The returned handoff is intentionally compact. It carries the task, decisions, unresolved blockers, required gates, phase outputs and relevant context—not the full previous transcript.
+
+If work is blocked:
+
+```bash
+dockyard team block --reason "Preview database is unavailable" --agent database-agent
+dockyard team unblock
+```
+
+A stopped Antigravity session still saves the active team run/phase in the project checkpoint, so a later **continue** can recover the correct phase instead of reconstructing the project from chat history.
+
+## Parallel implementation without agents overwriting each other
+
+During the implementation phase, logical writer roles can receive isolated Git worktrees:
+
+```bash
+dockyard team worktree create \
+  --run <team-run-id> \
+  --task-id auth-api \
+  --agent backend-agent
+```
+
+Worktrees are stored in DockyardOS external project state rather than inside the application repository. DockyardOS enforces the phase's parallel-writer budget and refuses worktrees for reviewer-only roles.
+
+The Antigravity plugin includes a reusable `dockyard-phase-worker` that receives one logical role, one scoped task, acceptance criteria, relevant context, and the isolated worktree path. Independent QA/security/release reviewers remain separate and do not self-approve implementation work.
+
+## Team learning
+
+DockyardOS stores recipe/agent outcomes outside the repository. Repeated successful or blocked runs produce a small historical routing adjustment for the same task class. The adjustment is deliberately conservative and cannot override required security gates, trust rules, explicit preferences, or provider requirements.
+
+```bash
+dockyard team metrics
+```
 
 ## Let DockyardOS choose providers
 
@@ -107,13 +169,15 @@ After building/linking the CLI, install the plugin directory:
 agy plugin install ./integrations/antigravity/plugin
 ```
 
-The plugin restores DockyardOS context before model invocations, gates risky tool actions, creates throttled checkpoints after successful mutating operations, and saves a final checkpoint when the Antigravity execution loop stops. For substantial work it routes through DockyardOS capability recommendations; infrastructure work uses provider inspection/planning; high-risk work can use the independent Dockyard security reviewer and runnable evidence gates.
+The plugin restores DockyardOS project and team context before model invocations, gates risky tool actions, checkpoints mutating work, and saves a final checkpoint when the Antigravity execution loop stops. Substantial requests can be routed through `dockyard team start`, infrastructure work uses provider inspection/planning, isolated implementation can use `dockyard-phase-worker`, and high-risk work uses independent security verification.
 
 ## Approval philosophy
 
 Balanced mode is the default:
 
 - reversible project work can proceed automatically
+- parallel writers are isolated and bounded rather than unrestricted
+- independent reviewers do not share implementation write roles
 - production deploys, destructive database actions, force pushes, infrastructure deletion, and sensitive operations force an approval prompt
 - obviously machine-destructive commands are denied
 - community capability updates do not silently gain new sensitive permissions
