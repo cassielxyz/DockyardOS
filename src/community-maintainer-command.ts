@@ -67,6 +67,13 @@ function repositoryFile(root: string, pathArg: string | undefined, expectedRelat
   return target;
 }
 
+async function assertRegularRepositoryFile(target: string, label: string): Promise<void> {
+  const stat = await lstat(target);
+  if (!stat.isFile() || stat.isSymbolicLink()) {
+    throw new Error(`${label} must be a real regular non-symlink file in the DockyardOS repository.`);
+  }
+}
+
 async function stagedReviewFile(root: string, pathArg: string, expectedDirectory: string, label: string): Promise<string> {
   const base = resolve(root, expectedDirectory);
   const target = resolve(root, pathArg);
@@ -94,6 +101,7 @@ async function maybeApply<T>(
   if (!/^[0-9a-f]{64}$/.test(expectedAfterSha256) || expectedAfterSha256 !== plan.afterSha256) {
     throw new Error(`Expected after-state SHA-256 does not match the exact reviewed next state. Expected ${plan.afterSha256}.`);
   }
+  await assertRegularRepositoryFile(target, "Maintainer mutation target");
   await writeJsonAtomic(target, plan.next);
   return { applied: true, target, plan };
 }
@@ -102,6 +110,7 @@ async function handlePublisher(root: string, args: string[]): Promise<void> {
   const action = args[0];
   const rest = args.slice(1);
   const target = repositoryFile(root, value(rest, "--publishers-file"), "registry/publishers.json");
+  await assertRegularRepositoryFile(target, "Publisher trust registry");
   const current = await loadPublisherKeys(target);
   const reviewTime = reviewedAt(rest);
   let plan;
@@ -126,6 +135,10 @@ async function handlePublisher(root: string, args: string[]): Promise<void> {
 async function handlePromotion(root: string, args: string[]): Promise<void> {
   const target = repositoryFile(root, value(args, "--registry-file"), "registry/community.json");
   const publisherKeysPath = repositoryFile(root, value(args, "--publisher-keys"), "registry/publishers.json");
+  await Promise.all([
+    assertRegularRepositoryFile(target, "Bundled community registry"),
+    assertRegularRepositoryFile(publisherKeysPath, "Publisher trust registry"),
+  ]);
   const manifestPath = await stagedReviewFile(root, required(args, "--file"), "registry/contributions", "Contribution manifest");
   const [manifest, registry, keys] = await Promise.all([
     readJson(manifestPath),
