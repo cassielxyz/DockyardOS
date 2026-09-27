@@ -119,21 +119,27 @@
 - [x] Bundled registry with installable manifests separated from broad discovery sources
 - [x] GitHub-only safe fetcher that resolves moving refs to immutable commits
 - [x] Quarantine directories outside project repositories
-- [x] File/byte limits, symlink/special-file rejection, deterministic content hashes
+- [x] Isolated Git configuration/hooks/credentials/LFS behavior during quarantine fetch
+- [x] Fetched Git object-size cap plus filesystem entry/depth/file/byte limits
+- [x] Symlink/special-file rejection and executable-mode-sensitive deterministic hashes
 - [x] Explicit entrypoint validation and Agent Skill structural canary
 - [x] Script/binary/install-lifecycle detection and conservative permission inference
 - [x] Automatic / approval-required / quarantine assessment
 - [x] Community-trust Ed25519 signature requirement with trusted/revoked key registry
+- [x] Approval pinning to exact assessed revision + content digest
+- [x] Pre-copy and post-copy integrity verification before activation
 - [x] Immutable installed version directories and active revision pointer
 - [x] Update re-approval on permission expansion, trust downgrade, or risk increase
-- [x] Offline rollback to a previously installed immutable revision
+- [x] Offline rollback with target integrity verification
 - [x] Local tamper-evident hash-chained transparency log
-- [x] Community list/search/inspect/resolve/install/update/status/rollback/transparency CLI
+- [x] Community list/search/inspect/resolve/install/update/status/active/read/rollback/transparency CLI
+- [x] Integrity-verified active package/declared-entrypoint MCP tools for cross-host use
+- [x] Basic manifest-first VS Code community package browser with quarantine/approval flow
 - [x] Community runtime data bundled into VSIX Core with package-level CI assertions
-- [x] Deterministic non-network unit tests for registry/signature/approval/update/rollback/transparency logic
+- [x] Deterministic non-network tests for registry/signature/approval/update/activation/rollback/transparency logic
 - [ ] Remote registry synchronization / contribution validation service
 - [ ] Sandboxed dynamic canary execution for executable community capabilities
 - [ ] External/public transparency anchoring
 - [ ] Publisher onboarding/signing workflow and key rotation UX
 - [ ] Safe automatic install/merge for host-native project config bundles
-- [ ] Rich package discovery UI in VS Code
+- [ ] Rich searchable package marketplace/discovery UI in VS Code
