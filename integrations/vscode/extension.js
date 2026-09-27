@@ -4,11 +4,21 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { normalizeCommunityHubData } = require("./community-hub-model.js");
 const { renderCommunityHubHtml } = require("./community-hub-view.js");
+const {
+  normalizeScheduledUpdateConfig,
+  nextScheduledDelay,
+  summarizeUpdateChecks,
+  summarizeApplyResults,
+} = require("./community-update-scheduler.js");
 
 const MAX_OUTPUT_BYTES = 256 * 1024;
 const COMMUNITY_ID = /^[a-z0-9][a-z0-9._-]{1,79}$/;
+const LAST_UPDATE_ATTEMPT_KEY = "dockyardOS.communityUpdates.lastAttemptAt";
+const LAST_UPDATE_SUCCESS_KEY = "dockyardOS.communityUpdates.lastSuccessAt";
 let activeContext;
 let communityHubPanel;
+let scheduledUpdateTimer;
+let scheduledUpdateRunning = false;
 
 function workspaceRoot() {
   const folder = vscode.workspace.workspaceFolders?.[0];
@@ -209,6 +219,120 @@ async function openCommunityHub(context) {
   }), null, context.subscriptions);
 }
 
+function scheduledUpdateConfig() {
+  const configuration = vscode.workspace.getConfiguration("dockyardOS");
+  return normalizeScheduledUpdateConfig({
+    enabled: configuration.get("communityUpdates.enabled", false),
+    intervalMinutes: configuration.get("communityUpdates.intervalMinutes", 360),
+    applySafeAutomatically: configuration.get("communityUpdates.applySafeAutomatically", false),
+    notifyWhenNoUpdates: configuration.get("communityUpdates.notifyWhenNoUpdates", false),
+  });
+}
+
+function clearScheduledUpdateTimer() {
+  if (scheduledUpdateTimer) clearTimeout(scheduledUpdateTimer);
+  scheduledUpdateTimer = undefined;
+}
+
+async function openCommunityHubFromNotification(choice) {
+  if (choice === "Open Community Hub") await vscode.commands.executeCommand("dockyardOS.communityBrowse");
+}
+
+async function notifyScheduledCheck(summary, manual, config) {
+  if (summary.total === 0) {
+    if (manual || config.notifyWhenNoUpdates) vscode.window.showInformationMessage("DockyardOS: no active community packages need update checks.");
+    return;
+  }
+  if (!summary.automatic && !summary.attention) {
+    if (manual || config.notifyWhenNoUpdates) vscode.window.showInformationMessage(`DockyardOS: ${summary.upToDate} community package${summary.upToDate === 1 ? " is" : "s are"} up to date.`);
+    return;
+  }
+  const parts = [];
+  if (summary.automatic) parts.push(`${summary.automatic} automatic-safe update${summary.automatic === 1 ? "" : "s"} available`);
+  if (summary.approvalRequired) parts.push(`${summary.approvalRequired} require approval`);
+  if (summary.quarantined) parts.push(`${summary.quarantined} quarantined`);
+  if (summary.unavailable) parts.push(`${summary.unavailable} unavailable`);
+  if (summary.errors) parts.push(`${summary.errors} errors`);
+  const message = `DockyardOS community updates: ${parts.join(" · ")}.`;
+  const choice = summary.attention
+    ? await vscode.window.showWarningMessage(message, "Open Community Hub")
+    : await vscode.window.showInformationMessage(message, "Open Community Hub");
+  await openCommunityHubFromNotification(choice);
+}
+
+async function notifyScheduledApply(summary, config) {
+  if (!summary.updated && !summary.attention) {
+    if (config.notifyWhenNoUpdates) vscode.window.showInformationMessage("DockyardOS: scheduled safe-update apply found nothing new to activate.");
+    return;
+  }
+  const parts = [];
+  if (summary.updated) parts.push(`${summary.updated} safe update${summary.updated === 1 ? "" : "s"} activated`);
+  if (summary.skipped) parts.push(`${summary.skipped} left for review`);
+  if (summary.errors) parts.push(`${summary.errors} errors`);
+  const message = `DockyardOS scheduled community updates: ${parts.join(" · ")}.`;
+  const choice = summary.attention
+    ? await vscode.window.showWarningMessage(message, "Open Community Hub")
+    : await vscode.window.showInformationMessage(message, "Open Community Hub");
+  await openCommunityHubFromNotification(choice);
+}
+
+async function runCommunityUpdateCycle(context, options = {}) {
+  const manual = options.manual === true;
+  const config = scheduledUpdateConfig();
+  if (!manual && !config.enabled) return { skipped: "disabled" };
+  if (!vscode.workspace.workspaceFolders?.length) return { skipped: "no-workspace" };
+  if (!vscode.workspace.isTrusted) {
+    if (manual) vscode.window.showWarningMessage("DockyardOS: community update checks are disabled in an untrusted workspace.");
+    return { skipped: "untrusted-workspace" };
+  }
+  if (scheduledUpdateRunning) {
+    if (manual) vscode.window.showInformationMessage("DockyardOS: a community update check is already running.");
+    return { skipped: "already-running" };
+  }
+
+  scheduledUpdateRunning = true;
+  const root = workspaceRoot();
+  await context.workspaceState.update(LAST_UPDATE_ATTEMPT_KEY, new Date().toISOString());
+  try {
+    const result = await runDockyard(["community", "updates", "check", "--json"], root, { acceptExitCodes: [1] });
+    const checks = parseJson(result.stdout);
+    if (!Array.isArray(checks)) throw new Error("Scheduled community update check did not return a JSON array.");
+    const summary = summarizeUpdateChecks(checks);
+    await context.workspaceState.update(LAST_UPDATE_SUCCESS_KEY, new Date().toISOString());
+
+    if (!manual && config.applySafeAutomatically && summary.automatic > 0) {
+      const appliedResult = await runDockyard(["community", "updates", "apply-safe", "--json"], root, { acceptExitCodes: [1] });
+      const applied = parseJson(appliedResult.stdout);
+      if (!Array.isArray(applied)) throw new Error("Scheduled safe-update apply did not return a JSON array.");
+      const applySummary = summarizeApplyResults(applied);
+      await notifyScheduledApply(applySummary, config);
+      if (communityHubPanel) await refreshCommunityHub(communityHubPanel, `${applySummary.updated} scheduled safe update${applySummary.updated === 1 ? "" : "s"} activated.`);
+      return { checks: summary, applied: applySummary };
+    }
+
+    await notifyScheduledCheck(summary, manual, config);
+    if (communityHubPanel) await refreshCommunityHub(communityHubPanel, "Scheduled community update state refreshed.");
+    return { checks: summary };
+  } finally {
+    scheduledUpdateRunning = false;
+  }
+}
+
+function scheduleCommunityUpdateChecks(context) {
+  clearScheduledUpdateTimer();
+  const config = scheduledUpdateConfig();
+  if (!config.enabled || !vscode.workspace.workspaceFolders?.length || !vscode.workspace.isTrusted) return;
+  const lastAttemptAt = context.workspaceState.get(LAST_UPDATE_ATTEMPT_KEY, "");
+  const delay = nextScheduledDelay(lastAttemptAt, config.intervalMs);
+  scheduledUpdateTimer = setTimeout(() => {
+    scheduledUpdateTimer = undefined;
+    void guarded(async () => {
+      await runCommunityUpdateCycle(context);
+      scheduleCommunityUpdateChecks(context);
+    });
+  }, delay);
+}
+
 async function refreshStatus(statusBar) {
   if (!vscode.workspace.workspaceFolders?.length) {
     statusBar.text = "$(tools) DockyardOS";
@@ -336,12 +460,27 @@ function activate(context) {
     showResult(context, "Community Package Status", result);
   })));
 
-  const workspaceWatcher = vscode.workspace.onDidChangeWorkspaceFolders(() => refreshStatus(statusBar));
-  context.subscriptions.push(workspaceWatcher);
+  context.subscriptions.push(vscode.commands.registerCommand("dockyardOS.communityUpdatesCheck", () => guarded(async () => {
+    await runCommunityUpdateCycle(context, { manual: true });
+  })));
+
+  const workspaceWatcher = vscode.workspace.onDidChangeWorkspaceFolders(() => {
+    void refreshStatus(statusBar);
+    scheduleCommunityUpdateChecks(context);
+  });
+  const configurationWatcher = vscode.workspace.onDidChangeConfiguration((event) => {
+    if (event.affectsConfiguration("dockyardOS.communityUpdates") || event.affectsConfiguration("dockyardOS.cliPath")) scheduleCommunityUpdateChecks(context);
+  });
+  context.subscriptions.push(workspaceWatcher, configurationWatcher);
+  if (typeof vscode.workspace.onDidGrantWorkspaceTrust === "function") {
+    context.subscriptions.push(vscode.workspace.onDidGrantWorkspaceTrust(() => scheduleCommunityUpdateChecks(context)));
+  }
   refreshStatus(statusBar);
+  scheduleCommunityUpdateChecks(context);
 }
 
 function deactivate() {
+  clearScheduledUpdateTimer();
   activeContext = undefined;
   communityHubPanel = undefined;
 }
