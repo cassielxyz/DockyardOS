@@ -18,8 +18,21 @@ jobs:
           node-version: 22
       - run: npm install --ignore-scripts
       - run: npm test
-      - name: VS Code bridge syntax check
-        run: node --check integrations/vscode/extension.js
+      - name: VS Code bridge and bundled Core check
+        run: |
+          node --check integrations/vscode/extension.js
+          node --check integrations/vscode/scripts/prepare-core.cjs
+          node integrations/vscode/scripts/prepare-core.cjs
+          test -f integrations/vscode/core/dist/main.js
+          test -f integrations/vscode/core/integrations/portable/skills/dockyardos/SKILL.md
+          node integrations/vscode/core/dist/main.js --help
+          node integrations/vscode/core/dist/main.js host list --json
+      - name: Package VS Code extension
+        working-directory: integrations/vscode
+        run: |
+          npm install --ignore-scripts
+          npx @vscode/vsce package --out /tmp/dockyardos-vscode.vsix
+          test -s /tmp/dockyardos-vscode.vsix
       - name: CLI smoke test
         run: |
           node dist/main.js --help
