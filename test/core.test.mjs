@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir } from "node:fs/promises";
+import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -91,4 +91,72 @@ test("permission-expanding upstream updates require approval", () => {
   const assessment = dockyard.assessUpdate(previous, expanded, { revision: "1123456789abcdef0123456789abcdef01234567", contentSha256: "b".repeat(64) });
   assert.equal(assessment.decision, "approval-required");
   assert.ok(assessment.reasons.some((reason) => reason.includes("high-impact permissions")));
+});
+
+test("provider detection recognizes config and link markers without live account access", async () => {
+  const root = await mkdtemp(join(tmpdir(), "dockyard-providers-"));
+  await mkdir(join(root, ".vercel"), { recursive: true });
+  await writeFile(join(root, ".vercel", "project.json"), "{}\n");
+  await mkdir(join(root, "supabase"), { recursive: true });
+  await writeFile(join(root, "supabase", "config.toml"), "project_id = \"local\"\n");
+
+  const probes = await dockyard.probeProviders(root, { live: false, ids: ["vercel", "supabase"] });
+  const vercel = probes.find((probe) => probe.providerId === "vercel");
+  const supabase = probes.find((probe) => probe.providerId === "supabase");
+  assert.equal(vercel.readiness, "linked");
+  assert.equal(vercel.liveChecked, false);
+  assert.equal(supabase.readiness, "configured");
+  assert.equal(supabase.liveChecked, false);
+});
+
+test("provider planner prefers a linked compatible host and preserves fallbacks", async () => {
+  const root = await mkdtemp(join(tmpdir(), "dockyard-provider-plan-"));
+  await mkdir(join(root, ".vercel"), { recursive: true });
+  await writeFile(join(root, ".vercel", "project.json"), "{}\n");
+
+  const plan = await dockyard.planProviders(root, {
+    stack: ["web", "nextjs"],
+    requirements: [{ capability: "web-hosting", required: true }],
+    environment: "preview",
+    costPreference: "free-first",
+    live: false,
+  });
+  const host = plan.capabilities[0];
+  assert.equal(host.selected.provider.id, "vercel");
+  assert.ok(host.fallbacks.some((candidate) => candidate.provider.id === "cloudflare"));
+  assert.equal(host.selected.livePricingCheckRequired, true);
+});
+
+test("provider planner falls back when a preferred provider is excluded", async () => {
+  const root = await mkdtemp(join(tmpdir(), "dockyard-provider-fallback-"));
+  const plan = await dockyard.planProviders(root, {
+    stack: ["web", "nextjs"],
+    requirements: [{ capability: "web-hosting", required: true, preferredProviders: ["vercel"] }],
+    environment: "preview",
+    costPreference: "free-first",
+    live: false,
+    excludedProviders: ["vercel"],
+  });
+  assert.notEqual(plan.capabilities[0].selected.provider.id, "vercel");
+  assert.ok(["cloudflare", "firebase", "render", "flyio", "railway"].includes(plan.capabilities[0].selected.provider.id));
+});
+
+test("production provider plans require approval before mutation", async () => {
+  const root = await mkdtemp(join(tmpdir(), "dockyard-prod-plan-"));
+  const plan = await dockyard.planProviders(root, {
+    stack: ["postgres"],
+    requirements: [{ capability: "postgres", required: true }],
+    environment: "production",
+    costPreference: "balanced",
+    live: false,
+  });
+  assert.equal(plan.requiresApprovalBeforeProductionMutation, true);
+  assert.ok(plan.capabilities[0].fallbacks.length >= 1);
+});
+
+test("process output redaction hides obvious credential assignments", () => {
+  const redacted = dockyard.redactSensitiveOutput("token=abc1234567890 password=supersecret");
+  assert.equal(redacted.includes("abc1234567890"), false);
+  assert.equal(redacted.includes("supersecret"), false);
+  assert.ok(redacted.includes("[REDACTED]"));
 });
