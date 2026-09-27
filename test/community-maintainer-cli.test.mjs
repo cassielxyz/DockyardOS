@@ -15,6 +15,7 @@ function run(cwd, args) {
 async function setupRepository() {
   const root = await mkdtemp(join(tmpdir(), "dockyard-maintainer-cli-"));
   await mkdir(join(root, "registry", "publisher-proposals"), { recursive: true });
+  await mkdir(join(root, "registry", "contributions"), { recursive: true });
   await writeFile(join(root, "package.json"), `${JSON.stringify({ name: "dockyardos", version: "test" }, null, 2)}\n`);
   await writeFile(join(root, "registry", "publishers.json"), `${JSON.stringify({ schemaVersion: 1, updatedAt: "2026-09-27T00:00:00.000Z", keys: [] }, null, 2)}\n`);
   await writeFile(join(root, "registry", "community.json"), `${JSON.stringify({ schemaVersion: 1, updatedAt: "2026-09-27T00:00:00.000Z", packages: [], discoverySources: [] }, null, 2)}\n`);
@@ -28,6 +29,7 @@ async function setupRepository() {
     createdAt: "2026-09-27T12:00:00.000Z",
   };
   await writeFile(join(root, "registry", "publisher-proposals", "cli-key.json"), `${JSON.stringify(proposal, null, 2)}\n`);
+  await writeFile(join(root, "outside-proposal.json"), `${JSON.stringify(proposal, null, 2)}\n`);
   return root;
 }
 
@@ -52,21 +54,62 @@ test("maintainer publisher plan is non-mutating and exact approved apply changes
   const untouched = JSON.parse(await readFile(join(root, "registry", "publishers.json"), "utf8"));
   assert.equal(untouched.keys.length, 0);
 
-  const missingApproval = run(root, [...command, "--apply", "--expected-sha256", planOutput.plan.beforeSha256]);
-  assert.notEqual(missingApproval.status, 0);
-  assert.match(missingApproval.stderr, /approval flag/i);
-  const stillUntouched = JSON.parse(await readFile(join(root, "registry", "publishers.json"), "utf8"));
-  assert.equal(stillUntouched.keys.length, 0);
-
-  const applied = run(root, [
+  const missingReviewedAt = run(root, [
     ...command,
     "--apply",
     "--expected-sha256", planOutput.plan.beforeSha256,
+    "--expected-after-sha256", planOutput.plan.afterSha256,
+    "--approve-trust-change",
+  ]);
+  assert.notEqual(missingReviewedAt.status, 0);
+  assert.match(missingReviewedAt.stderr, /reviewed-at is required/i);
+
+  const exactReview = ["--reviewed-at", planOutput.plan.review.reviewedAt];
+  const missingApproval = run(root, [
+    ...command,
+    ...exactReview,
+    "--apply",
+    "--expected-sha256", planOutput.plan.beforeSha256,
+    "--expected-after-sha256", planOutput.plan.afterSha256,
+  ]);
+  assert.notEqual(missingApproval.status, 0);
+  assert.match(missingApproval.stderr, /approval flag/i);
+
+  const wrongAfter = run(root, [
+    ...command,
+    ...exactReview,
+    "--apply",
+    "--expected-sha256", planOutput.plan.beforeSha256,
+    "--expected-after-sha256", "0".repeat(64),
+    "--approve-trust-change",
+  ]);
+  assert.notEqual(wrongAfter.status, 0);
+  assert.match(wrongAfter.stderr, /after-state sha-256/i);
+
+  const changedReviewTime = run(root, [
+    ...command,
+    "--reviewed-at", "2026-09-29T00:00:00.000Z",
+    "--apply",
+    "--expected-sha256", planOutput.plan.beforeSha256,
+    "--expected-after-sha256", planOutput.plan.afterSha256,
+    "--approve-trust-change",
+  ]);
+  assert.notEqual(changedReviewTime.status, 0);
+  assert.match(changedReviewTime.stderr, /after-state sha-256/i);
+
+  const applied = run(root, [
+    ...command,
+    ...exactReview,
+    "--apply",
+    "--expected-sha256", planOutput.plan.beforeSha256,
+    "--expected-after-sha256", planOutput.plan.afterSha256,
     "--approve-trust-change",
   ]);
   assert.equal(applied.status, 0, applied.stderr);
   const appliedOutput = JSON.parse(applied.stdout);
   assert.equal(appliedOutput.applied, true);
+  assert.equal(appliedOutput.plan.afterSha256, planOutput.plan.afterSha256);
+  assert.equal(appliedOutput.plan.review.reviewedAt, planOutput.plan.review.reviewedAt);
   const trusted = JSON.parse(await readFile(join(root, "registry", "publishers.json"), "utf8"));
   assert.deepEqual(trusted.keys.map((key) => key.id), ["cli-key-1"]);
 });
@@ -81,4 +124,15 @@ test("maintainer command refuses alternate trust file targets", async () => {
   ]);
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /must be exactly registry\/publishers\.json/i);
+});
+
+test("maintainer publisher onboarding refuses proposal files outside the inert staging queue", async () => {
+  const root = await setupRepository();
+  const result = run(root, [
+    "community", "maintainer", "publisher", "onboard",
+    "--proposal", "outside-proposal.json",
+    ...reviewArgs,
+  ]);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /inside registry\/publisher-proposals/i);
 });
