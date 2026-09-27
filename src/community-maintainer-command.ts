@@ -88,12 +88,12 @@ async function maybeApply<T>(
   approvalFlag: "--approve-trust-change" | "--approve-registry-change",
 ): Promise<{ applied: boolean; target: string; plan: MaintainerPlan<T> }> {
   if (!has(args, "--apply")) return { applied: false, target, plan };
-  assertMaintainerApplyApproval(
-    plan,
-    required(args, "--expected-sha256"),
-    required(args, "--expected-after-sha256"),
-    has(args, approvalFlag),
-  );
+  const expectedBeforeSha256 = required(args, "--expected-sha256");
+  const expectedAfterSha256 = required(args, "--expected-after-sha256");
+  assertMaintainerApplyApproval(plan, expectedBeforeSha256, has(args, approvalFlag));
+  if (!/^[0-9a-f]{64}$/.test(expectedAfterSha256) || expectedAfterSha256 !== plan.afterSha256) {
+    throw new Error(`Expected after-state SHA-256 does not match the exact reviewed next state. Expected ${plan.afterSha256}.`);
+  }
   await writeJsonAtomic(target, plan.next);
   return { applied: true, target, plan };
 }
