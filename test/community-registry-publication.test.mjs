@@ -6,6 +6,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 const dockyard = await import("../dist/index.js");
+const { handleCommunityMaintainerCommand } = await import("../dist/community-maintainer-command.js");
 
 function processResult(ok, stdout = "", stderr = "", status = ok ? 0 : 1) {
   return { ok, stdout, stderr, status, timedOut: false };
@@ -106,9 +107,9 @@ function historicalEnvelope(input, sequence = 6) {
 }
 
 test("P19 plan is read-only and binds target, remote state, review, key, sequence, and index", async () => {
-  const { root, trustStorePath, input } = await fixture();
+  const { root, input } = await fixture();
   const gh = ghMock();
-  const plan = await dockyard.planRegistryPublication(root, input, { ghExec: gh.exec, trustStorePath });
+  const plan = await dockyard.planRegistryPublication(root, input, { ghExec: gh.exec });
   assert.equal(plan.operation, "registry-envelope-publish");
   assert.equal(plan.remote.exists, false);
   assert.equal(plan.indexPath, "registry/remote-publications/reviewed-index.json");
@@ -117,6 +118,28 @@ test("P19 plan is read-only and binds target, remote state, review, key, sequenc
   assert.equal(plan.target.branch, input.branch);
   assert.match(plan.approvalSha256, /^[0-9a-f]{64}$/);
   assert.equal(gh.puts, 0);
+});
+
+test("P19 maintainer CLI routes publication run into the explicit approval guard before network mutation", async () => {
+  const { root, input } = await fixture();
+  await assert.rejects(
+    () => handleCommunityMaintainerCommand(root, [
+      "registry-publication", "run",
+      "--file", input.indexPath,
+      "--registry-id", input.registryId,
+      "--key-id", input.keyId,
+      "--sequence", String(input.sequence),
+      "--expires-at", input.expiresAt,
+      "--repository", input.repository,
+      "--path", input.targetPath,
+      "--branch", input.branch,
+      "--reviewed-by", input.reviewedBy,
+      "--rationale", input.rationale,
+      "--reviewed-at", input.reviewedAt,
+      "--expected-plan-sha256", "a".repeat(64),
+    ]),
+    /approve-publication/i,
+  );
 });
 
 test("P19 publication requires explicit approval and exact reviewed plan binding", async () => {
@@ -245,7 +268,7 @@ test("P19 rejects symlinked review indexes", async (t) => {
   assert.equal(gh.puts, 0);
 });
 
-test("P19 rejects a symlinked registry trust store", async (t) => {
+test("P19 rejects a symlinked canonical registry trust store", async (t) => {
   if (process.platform === "win32") {
     t.skip("symlink creation may require elevated privileges on Windows");
     return;
@@ -257,7 +280,7 @@ test("P19 rejects a symlinked registry trust store", async (t) => {
   await symlink(backing, trustStorePath);
   const gh = ghMock();
   await assert.rejects(
-    () => dockyard.planRegistryPublication(root, input, { ghExec: gh.exec, trustStorePath }),
+    () => dockyard.planRegistryPublication(root, input, { ghExec: gh.exec }),
     /trust store must be a real regular non-symlink file/i,
   );
   assert.equal(gh.puts, 0);
