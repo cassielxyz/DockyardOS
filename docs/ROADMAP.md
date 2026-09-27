@@ -140,6 +140,9 @@
 - [x] Signed/size-bounded remote registry synchronization and verified cache history
 - [x] Sandboxed fail-closed dynamic canary execution for quarantined community capabilities
 - [x] Publisher + remote-registry Ed25519 key generation/signing workflow
+- [x] Collision-safe effective registry across bundled + verified remote manifests
+- [x] Automatic-only safe update check/apply flow with no approval bypass
+- [x] Offline installed-manifest snapshots for remote package runtime continuity
 - [ ] Registry contribution-validation service/CI for third-party submissions
 - [ ] Publisher key rotation/revocation UX and migration guidance
 - [ ] External/public transparency anchoring
@@ -162,15 +165,35 @@
 - [x] No host-execution fallback and no automatic canary-image pulls
 - [x] Quarantine-only read-only package mount
 - [x] Unit/integration coverage plus VSIX/Core packaging assertions for P7 registry trust data
-- [ ] Merge verified remote registry packages into a collision-safe effective discovery view
+- [x] Merge verified remote registry packages into a collision-safe effective discovery view
 - [ ] Contribution-validation workflow that signs only reviewed registry envelopes
 - [ ] Key rotation/revocation assistant without silently rewriting trust policy
 - [ ] External transparency anchoring
+
+## P8 — Effective registry and safe capability updates
+
+- [x] Collision-safe effective registry with bundled package precedence
+- [x] Remote/remote package-ID collisions excluded instead of first-wins
+- [x] Discovery-source collisions excluded with visible conflict metadata
+- [x] Provenance returned for bundled and remote effective entries
+- [x] `community list/search/sources/inspect/verify` use the effective registry
+- [x] `resolve/install/update/canary` accept only unique effective packages
+- [x] Existing P6 quarantine/signature/permission/integrity/approval installer reused unchanged as the activation boundary
+- [x] Exact assessed manifest/provenance snapshot persisted per installed immutable revision
+- [x] Active remote capabilities and declared entrypoints remain available offline after remote cache expiry
+- [x] `dockyard community updates check [--id ID]`
+- [x] `dockyard community updates apply-safe [--id ID]`
+- [x] Safe update application performs a fresh pinned assessment and never supplies approval automatically
+- [x] Permission expansion/trust downgrade/risk increase/quarantine/ambiguity/missing-manifest states cannot be unattended updates
+- [x] Deterministic collision, provenance, snapshot, offline-runtime, and fail-closed update tests
+- [ ] Background/scheduled update checks exposed through host automation integrations
+- [ ] Rich VS Code remote marketplace view with provenance/conflict/update-state filters
+- [ ] Contribution-validation/signing workflow for third-party registry submissions
 
 ## Next production milestones
 
 - Authenticated provider action adapters and preview provisioning/verification
 - Secret/dependency exception policy + SARIF aggregation
 - Published VS Code Marketplace release channel and opt-in real-host matrix CI
-- Collision-safe remote marketplace discovery with contribution validation
+- Community contribution validation, richer marketplace UI, and optional scheduled safe-update checks
 - External transparency anchoring and publisher key-rotation workflow
