@@ -8,6 +8,9 @@ export type RiskLevel = "low" | "medium" | "high";
 export type ContextCost = "tiny" | "small" | "medium" | "large";
 export type HostId = "antigravity" | "gemini-cli" | "codex" | "claude-code" | "cursor" | "opencode" | "universal";
 export type PermissionId = "filesystem-read" | "filesystem-write" | "shell" | "network" | "browser" | "git-write" | "secrets" | "database-read" | "database-write" | "deployment" | "dns";
+export type ProviderReadiness = "unavailable" | "installed" | "configured" | "authenticated" | "linked" | "degraded" | "unknown";
+export type ProviderEnvironment = "local" | "preview" | "production";
+export type CostPreference = "free-first" | "balanced" | "performance";
 
 export interface ProjectConfig {
   schemaVersion: 1;
@@ -112,6 +115,88 @@ export interface ProviderDefinition {
   connectionKinds: Array<"mcp" | "api" | "cli" | "sdk">;
   tags: string[];
   requiresLiveAvailabilityCheck: boolean;
+}
+
+export interface ProviderCommandProbe {
+  command: string;
+  args: string[];
+  successReadiness: ProviderReadiness;
+  timeoutMs?: number;
+}
+
+export interface ProviderAdapterDefinition {
+  id: string;
+  displayName: string;
+  cliCommands: string[];
+  configMarkers: string[];
+  linkedMarkers?: string[];
+  authProbe?: ProviderCommandProbe;
+  statusProbe?: ProviderCommandProbe;
+  capabilities: string[];
+  environments: ProviderEnvironment[];
+  freeTierCheck: "live-required" | "not-applicable";
+  notes?: string[];
+}
+
+export interface ProviderProbeSignal {
+  type: "cli" | "config" | "linked" | "auth" | "status";
+  ok: boolean;
+  detail: string;
+}
+
+export interface ProviderProbeResult {
+  providerId: string;
+  displayName: string;
+  readiness: ProviderReadiness;
+  installed: boolean;
+  configured: boolean;
+  authenticated?: boolean;
+  linked?: boolean;
+  liveChecked: boolean;
+  signals: ProviderProbeSignal[];
+  safeSummary?: string;
+}
+
+export interface ProviderRequirement {
+  capability: string;
+  required: boolean;
+  preferredProviders?: string[];
+}
+
+export interface ProviderPlanRequest {
+  stack: string[];
+  requirements: ProviderRequirement[];
+  environment: ProviderEnvironment;
+  costPreference: CostPreference;
+  live: boolean;
+  preferredProviders?: string[];
+  excludedProviders?: string[];
+}
+
+export interface ProviderPlanCandidate {
+  provider: ProviderDefinition;
+  readiness: ProviderReadiness;
+  score: number;
+  reasons: string[];
+  capabilities: string[];
+  liveAvailabilityCheckRequired: boolean;
+  livePricingCheckRequired: boolean;
+}
+
+export interface ProviderCapabilityPlan {
+  capability: string;
+  required: boolean;
+  selected?: ProviderPlanCandidate;
+  fallbacks: ProviderPlanCandidate[];
+  compatibilityNotes: string[];
+}
+
+export interface ProviderPlan {
+  request: ProviderPlanRequest;
+  probes: ProviderProbeResult[];
+  capabilities: ProviderCapabilityPlan[];
+  unresolved: string[];
+  requiresApprovalBeforeProductionMutation: boolean;
 }
 
 export interface SelectionRequest {
