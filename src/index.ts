@@ -23,5 +23,8 @@ export * from "./team-state.js";
 export * from "./team-routing.js";
 export * from "./team-metrics.js";
 export * from "./worktrees.js";
+export * from "./host-types.js";
+export * from "./host-adapters.js";
+export * from "./host-runtime.js";
 export * from "./workflow.js";
 export * from "./doctor.js";
