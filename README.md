@@ -19,6 +19,8 @@ DockyardOS is a persistent autonomous-development layer for coding agents. It ad
 - independent QA/security/release reviewers separated from implementation write roles
 - conservative team/agent outcome learning for future routing
 - provider detection and capability-based fallback planning across Vercel, Cloudflare, Supabase and alternatives
+- approval-gated authenticated provider actions for GitHub, Vercel, Cloudflare, and Supabase
+- sequential verified preview provisioning across supported web/database/workflow providers
 - runnable OWASP-aligned web/API/mobile/LLM security profiles
 - Gitleaks, OSV-Scanner, Semgrep, and opt-in budget-bounded Strix execution
 - proof → fix → same-scope rerun security regression gates
@@ -271,6 +273,68 @@ dockyard providers plan \
 
 The planner prefers compatible existing setup where useful, keeps ranked fallbacks, surfaces migration caveats, and does not pretend DNS/WAF/DDoS or different auth/realtime/storage models are interchangeable. `free-first` requires current pricing/free-tier validation before activation.
 
+### Authenticated provider actions
+
+Provider selection and provider mutation are separate decisions. Inspect the bounded write actions DockyardOS exposes:
+
+```bash
+dockyard providers actions
+dockyard providers actions --provider vercel
+```
+
+Plan an action without changing anything:
+
+```bash
+dockyard providers action plan \
+  --provider vercel \
+  --action preview-deploy \
+  --environment preview \
+  --param prebuilt=true
+```
+
+Run only after explicit mutation approval:
+
+```bash
+dockyard providers action run \
+  --provider vercel \
+  --action preview-deploy \
+  --environment preview \
+  --approve
+```
+
+P9 supports bounded actions for GitHub, Vercel, Cloudflare, and Supabase. It verifies live authentication immediately before mutation, requires verified project linkage where the action depends on it, validates provider-specific inputs, executes with argv rather than shell interpolation, bounds/redacts output, and stores action evidence under DockyardOS external project state.
+
+Production actions require an additional `--approve-production`; a normal `--approve` alone is insufficient.
+
+### Verified preview provisioning
+
+Compose a preview database branch and web deployment into one plan:
+
+```bash
+dockyard providers preview plan \
+  --database supabase \
+  --web vercel \
+  --param supabase.project-ref=<project-ref> \
+  --param supabase.branch=feature-login \
+  --param vercel.prebuilt=true
+```
+
+Execute the reviewed plan with:
+
+```bash
+dockyard providers preview run \
+  --database supabase \
+  --web vercel \
+  --param supabase.project-ref=<project-ref> \
+  --param supabase.branch=feature-login \
+  --param vercel.prebuilt=true \
+  --approve
+```
+
+Supported web targets are `vercel`, `cloudflare-pages`, and `cloudflare-worker`; optional `--database supabase` and `--workflow github` steps can be composed. Steps run sequentially and each provider mutation must pass post-action verification before the next one starts. The sequence stops on the first failure or unverifiable result instead of claiming a partially provisioned preview is healthy. Preview orchestration contains no production actions.
+
+See [`docs/PROVIDERS.md`](docs/PROVIDERS.md) for the action matrix, parameter boundaries, verification model, and production approval rules.
+
 ## Security verification
 
 ```bash
@@ -309,6 +373,8 @@ Balanced mode is the default:
 - reversible project work can proceed automatically
 - parallel writers are isolated and bounded
 - independent reviewers do not share implementation write roles
+- every authenticated provider mutation requires explicit approval
+- production provider mutations require an additional production-specific approval
 - production deploys, destructive database actions, force pushes, infrastructure deletion, DNS changes, secret rotation, and sensitive operations require approval
 - obviously machine-destructive commands are denied
 - community capability updates do not silently gain new sensitive permissions
