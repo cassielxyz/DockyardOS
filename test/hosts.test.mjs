@@ -15,6 +15,14 @@ test("host registry covers every requested coding host with durable shared state
   }
 });
 
+test("Cursor adapter tracks the current agent CLI and native resume surface", () => {
+  const cursor = dockyard.hostAdapter("cursor");
+  assert.equal(cursor.executable, "agent");
+  assert.equal(cursor.supportsNativeResume, true);
+  assert.ok(cursor.features.includes("resume"));
+  assert.ok(cursor.verifiedAgainst.some((item) => item.source.includes("cursor.com/docs/cli/installation")));
+});
+
 test("project-scope Cursor install writes only the portable skill and keeps runtime state external", async () => {
   const root = await mkdtemp(join(tmpdir(), "dockyard-host-cursor-"));
   await dockyard.initProject(root, { name: "host-cursor", mode: "balanced" });
