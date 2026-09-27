@@ -1,5 +1,6 @@
-import { cp, mkdir, rm } from "node:fs/promises";
-import { resolve } from "node:path";
+import { createHash } from "node:crypto";
+import { cp, lstat, mkdir, readFile, readdir, rm } from "node:fs/promises";
+import { relative, resolve } from "node:path";
 import type {
   CommunityAssessment,
   CommunityPackageManifest,
@@ -23,10 +24,18 @@ interface CommunityState {
   }>;
 }
 
+interface IntegrityFile {
+  absolute: string;
+  relative: string;
+  bytes: number;
+  executable: boolean;
+}
+
 const HIGH_IMPACT = new Set<PermissionId>(["shell", "network", "browser", "git-write", "secrets", "database-write", "deployment", "dns"]);
 const SEVERITY_RANK = { info: 0, low: 1, medium: 2, high: 3, critical: 4 } as const;
 const TRUST_RANK = { community: 0, maintainer: 1, dockyard: 2, official: 3 } as const;
 const RISK_RANK = { low: 0, medium: 1, high: 2 } as const;
+const MAX_INTEGRITY_DEPTH = 64;
 
 function statePath(): string {
   return resolve(dockyardHome(), "community", "state.json");
@@ -34,6 +43,10 @@ function statePath(): string {
 
 function packagesRoot(): string {
   return resolve(dockyardHome(), "community", "packages");
+}
+
+function quarantineRoot(): string {
+  return resolve(dockyardHome(), "community", "quarantine");
 }
 
 async function loadState(): Promise<CommunityState> {
@@ -48,13 +61,93 @@ function uniquePermissions(values: PermissionId[]): PermissionId[] {
   return [...new Set(values)].sort();
 }
 
+function isInside(root: string, candidate: string): boolean {
+  const rel = relative(resolve(root), resolve(candidate));
+  if (rel === "") return true;
+  if (rel === ".." || rel.startsWith(`..${process.platform === "win32" ? "\\" : "/"}`)) return false;
+  return !rel.startsWith("/");
+}
+
+function requireInside(root: string, candidate: string, label: string): string {
+  const resolved = resolve(candidate);
+  if (!isInside(root, resolved)) throw new Error(`${label} is outside the allowed DockyardOS directory.`);
+  return resolved;
+}
+
 function packageRoot(pkg: CommunityPackageManifest, resolution: CommunityResolution): string {
-  return resolve(resolution.quarantinePath, pkg.source.subdirectory ?? ".");
+  return requireInside(resolution.quarantinePath, resolve(resolution.quarantinePath, pkg.source.subdirectory ?? "."), "Community package source");
+}
+
+async function integrityFiles(root: string, maxFiles: number, maxBytes: number): Promise<IntegrityFile[]> {
+  const files: IntegrityFile[] = [];
+  let bytes = 0;
+  let entriesSeen = 0;
+  const maxEntries = Math.max(maxFiles * 4, maxFiles + 256);
+
+  async function visit(directory: string, depth: number): Promise<void> {
+    if (depth > MAX_INTEGRITY_DEPTH) throw new Error(`Community package exceeds integrity depth limit (${MAX_INTEGRITY_DEPTH}).`);
+    const entries = await readdir(directory, { withFileTypes: true });
+    entriesSeen += entries.length;
+    if (entriesSeen > maxEntries) throw new Error(`Community package exceeds integrity filesystem entry limit (${maxEntries}).`);
+
+    for (const entry of entries) {
+      if (entry.name === ".git") continue;
+      const absolute = requireInside(root, resolve(directory, entry.name), "Community package file");
+      const rel = relative(root, absolute).replace(/\\/g, "/");
+      const metadata = await lstat(absolute);
+      if (metadata.isSymbolicLink()) throw new Error(`Community package integrity check rejects symlink: ${rel}`);
+      if (metadata.isDirectory()) {
+        await visit(absolute, depth + 1);
+        continue;
+      }
+      if (!metadata.isFile()) throw new Error(`Community package integrity check rejects special file: ${rel}`);
+      const size = Number(metadata.size ?? 0);
+      bytes += size;
+      files.push({ absolute, relative: rel, bytes: size, executable: (Number(metadata.mode ?? 0) & 0o111) !== 0 });
+      if (files.length > maxFiles) throw new Error(`Community package exceeds integrity file limit (${maxFiles}).`);
+      if (bytes > maxBytes) throw new Error(`Community package exceeds integrity byte limit (${maxBytes}).`);
+    }
+  }
+
+  await visit(root, 0);
+  return files;
+}
+
+export async function communityTreeSha256(
+  root: string,
+  options: { maxFiles?: number; maxBytes?: number } = {},
+): Promise<string> {
+  const resolvedRoot = resolve(root);
+  const metadata = await lstat(resolvedRoot).catch(() => undefined);
+  if (!metadata?.isDirectory()) throw new Error(`Community package integrity root is missing or not a directory: ${resolvedRoot}`);
+  const files = await integrityFiles(resolvedRoot, options.maxFiles ?? 5000, options.maxBytes ?? 100 * 1024 * 1024);
+  const hash = createHash("sha256");
+  for (const file of [...files].sort((a, b) => a.relative.localeCompare(b.relative))) {
+    hash.update(file.relative);
+    hash.update("\0");
+    hash.update(file.executable ? "100755" : "100644");
+    hash.update("\0");
+    hash.update(await readFile(file.absolute));
+    hash.update("\0");
+  }
+  return hash.digest("hex");
 }
 
 function maxFindingSeverity(scan: CommunityScanReport): keyof typeof SEVERITY_RANK {
   return scan.findings.reduce<keyof typeof SEVERITY_RANK>((max, finding) =>
     SEVERITY_RANK[finding.severity] > SEVERITY_RANK[max] ? finding.severity : max, "info");
+}
+
+function validateResolutionRelationship(
+  manifest: CommunityPackageManifest,
+  resolution: CommunityResolution,
+  assessment: CommunityAssessment,
+): void {
+  if (resolution.packageId !== manifest.id || assessment.packageId !== manifest.id) throw new Error("Community assessment/resolution package id mismatch.");
+  if (!/^[a-f0-9]{40}$/i.test(resolution.revision)) throw new Error("Community resolution revision must be an immutable 40-character Git commit SHA.");
+  if (assessment.scan.revision !== resolution.revision) throw new Error("Community scan revision does not match the resolved Git commit.");
+  const expectedQuarantineRoot = resolve(quarantineRoot(), manifest.id);
+  requireInside(expectedQuarantineRoot, resolution.quarantinePath, "Community quarantine path");
 }
 
 export async function assessCommunityPackage(
@@ -189,12 +282,40 @@ export async function installResolvedCommunityPackage(
 ): Promise<InstalledCommunityPackage> {
   if (assessment.decision === "quarantine") throw new Error(`Package ${manifest.id} remains quarantined: ${assessment.reasons.join("; ")}`);
   if (assessment.decision === "approval-required" && !options.approve) throw new Error(`Package ${manifest.id} requires explicit approval before installation: ${assessment.reasons.join("; ")}`);
+  validateResolutionRelationship(manifest, resolution, assessment);
 
-  const destination = resolve(packagesRoot(), manifest.id, resolution.revision);
+  const source = packageRoot(manifest, resolution);
+  const hashOptions = { maxFiles: manifest.maxFiles ?? 1000, maxBytes: manifest.maxBytes ?? 20 * 1024 * 1024 };
+  const beforeHash = await communityTreeSha256(source, hashOptions);
+  if (beforeHash !== resolution.contentSha256) {
+    await appendTransparencyRecord({
+      action: "reject",
+      packageId: manifest.id,
+      revision: resolution.revision,
+      contentSha256: resolution.contentSha256,
+      detail: `Activation rejected because quarantine content changed after assessment: expected ${resolution.contentSha256}, got ${beforeHash}`,
+    });
+    throw new Error(`Community package ${manifest.id} changed after assessment; re-resolve and assess before installation.`);
+  }
+
+  const destination = requireInside(resolve(packagesRoot(), manifest.id), resolve(packagesRoot(), manifest.id, resolution.revision), "Community install destination");
   await mkdir(resolve(packagesRoot(), manifest.id), { recursive: true });
   await rm(destination, { recursive: true, force: true });
-  await cp(packageRoot(manifest, resolution), destination, { recursive: true, force: false, errorOnExist: true, verbatimSymlinks: false });
+  await cp(source, destination, { recursive: true, force: false, errorOnExist: true, verbatimSymlinks: false });
   await rm(resolve(destination, ".git"), { recursive: true, force: true });
+
+  const installedHash = await communityTreeSha256(destination, hashOptions);
+  if (installedHash !== resolution.contentSha256) {
+    await rm(destination, { recursive: true, force: true });
+    await appendTransparencyRecord({
+      action: "reject",
+      packageId: manifest.id,
+      revision: resolution.revision,
+      contentSha256: resolution.contentSha256,
+      detail: `Activation rejected because copied package hash mismatched: expected ${resolution.contentSha256}, got ${installedHash}`,
+    });
+    throw new Error(`Community package ${manifest.id} failed post-copy integrity verification.`);
+  }
 
   const installed: InstalledCommunityPackage = {
     schemaVersion: 1,
@@ -254,6 +375,22 @@ export async function rollbackCommunityPackage(id: string, revision?: string): P
   const candidates = entry.versions.filter((version) => version.revision !== entry.activeRevision);
   const target = revision ? entry.versions.find((version) => version.revision === revision) : candidates.at(-1);
   if (!target) throw new Error(revision ? `Installed revision not found for ${id}: ${revision}` : `No previous revision exists for ${id}`);
+
+  const expectedRoot = resolve(packagesRoot(), id, target.revision);
+  const destination = requireInside(resolve(packagesRoot(), id), target.destination, "Rollback target");
+  if (resolve(destination) !== resolve(expectedRoot)) throw new Error(`Rollback target path does not match immutable package revision directory for ${id}.`);
+  const actualHash = await communityTreeSha256(destination);
+  if (actualHash !== target.contentSha256) {
+    await appendTransparencyRecord({
+      action: "reject",
+      packageId: id,
+      revision: target.revision,
+      contentSha256: target.contentSha256,
+      detail: `Rollback rejected because installed revision integrity failed: expected ${target.contentSha256}, got ${actualHash}`,
+    });
+    throw new Error(`Installed community revision ${target.revision} is missing or modified; rollback refused.`);
+  }
+
   entry.activeRevision = target.revision;
   await saveState(state);
   await appendTransparencyRecord({
