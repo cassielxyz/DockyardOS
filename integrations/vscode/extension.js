@@ -77,6 +77,78 @@ function showResult(context, title, result) {
   channel.show(true);
 }
 
+function communityQuickPickItems(data) {
+  const packages = Array.isArray(data?.packages) ? data.packages : [];
+  return packages.map((pkg) => ({
+    label: pkg.name || pkg.id,
+    description: pkg.id,
+    detail: `${pkg.trust || "unknown"} trust · ${pkg.risk || "unknown"} risk · ${(pkg.permissions || []).join(", ") || "no declared permissions"} · ${pkg.source || "unknown source"}`,
+    packageId: pkg.id,
+  }));
+}
+
+async function browseCommunityPackages(context) {
+  const listResult = await runDockyard(["community", "list", "--json"]);
+  const list = parseJson(listResult.stdout);
+  const items = communityQuickPickItems(list);
+  if (!items.length) {
+    vscode.window.showInformationMessage("DockyardOS has no explicitly installable community package manifests in this build.");
+    return;
+  }
+
+  const selected = await vscode.window.showQuickPick(items, {
+    title: "DockyardOS Community Packages",
+    placeHolder: "Only explicit installable manifests are shown; discovery-source entries are metadata-only.",
+    matchOnDescription: true,
+    matchOnDetail: true,
+  });
+  if (!selected) return;
+
+  const manifestResult = await runDockyard(["community", "inspect", "--id", selected.packageId, "--json"]);
+  const action = await vscode.window.showQuickPick([
+    { label: "$(shield) Resolve & assess", description: "Fetch into quarantine, pin immutable commit, scan without execution", action: "assess" },
+    { label: "$(eye) Show manifest", description: "Review declared source, permissions, trust, risk, entrypoints, and limits", action: "manifest" },
+    { label: "$(package) Install / update", description: "Assess first; approval is requested when policy requires it", action: "install" },
+  ], { title: selected.label, placeHolder: "Choose a safe package action" });
+  if (!action) return;
+
+  if (action.action === "manifest") {
+    showResult(context, `Community Manifest: ${selected.packageId}`, manifestResult);
+    return;
+  }
+
+  const assessmentResult = await runDockyard(["community", "resolve", "--id", selected.packageId, "--json"]);
+  showResult(context, `Community Assessment: ${selected.packageId}`, assessmentResult);
+  if (action.action !== "install") return;
+
+  const assessed = parseJson(assessmentResult.stdout);
+  const decision = assessed?.assessment?.decision;
+  const reasons = Array.isArray(assessed?.assessment?.reasons) ? assessed.assessment.reasons : [];
+  if (decision === "quarantine") {
+    vscode.window.showWarningMessage(`DockyardOS kept ${selected.packageId} in quarantine. ${reasons.join("; ")}`);
+    return;
+  }
+
+  let approve = false;
+  if (decision === "approval-required") {
+    const confirmation = await vscode.window.showWarningMessage(
+      `DockyardOS requires explicit approval for ${selected.packageId}.\n\n${reasons.join("\n")}`,
+      { modal: true },
+      "Approve and install",
+    );
+    if (confirmation !== "Approve and install") return;
+    approve = true;
+  } else if (decision !== "automatic") {
+    throw new Error(`Unexpected community assessment decision: ${decision || "missing"}`);
+  }
+
+  const args = ["community", "install", "--id", selected.packageId, "--json"];
+  if (approve) args.push("--approve");
+  const installed = await runDockyard(args);
+  showResult(context, `Community Package Installed: ${selected.packageId}`, installed);
+  vscode.window.showInformationMessage(`DockyardOS activated ${selected.packageId} after quarantine assessment.`);
+}
+
 async function refreshStatus(statusBar) {
   if (!vscode.workspace.workspaceFolders?.length) {
     statusBar.text = "$(tools) DockyardOS";
@@ -191,6 +263,15 @@ function activate(context) {
     const result = await runDockyard(["host", "install", "--host", host, "--scope", scope, "--json"]);
     showResult(context, `Host Integration Installed: ${host}`, result);
     vscode.window.showInformationMessage(`DockyardOS ${host} integration completed for ${scope} scope.`);
+  })));
+
+  context.subscriptions.push(vscode.commands.registerCommand("dockyardOS.communityBrowse", () => guarded(async () => {
+    await browseCommunityPackages(context);
+  })));
+
+  context.subscriptions.push(vscode.commands.registerCommand("dockyardOS.communityStatus", () => guarded(async () => {
+    const result = await runDockyard(["community", "status", "--json"]);
+    showResult(context, "Community Package Status", result);
   })));
 
   const workspaceWatcher = vscode.workspace.onDidChangeWorkspaceFolders(() => refreshStatus(statusBar));
