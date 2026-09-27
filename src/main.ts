@@ -18,7 +18,7 @@ try {
   } else if (command === "community" && args[0] === "contribution") {
     await handleCommunityContributionCommand(args.slice(1));
   } else if (command === "community" && args[0] === "maintainer") {
-    await handleCommunityMaintainerCommand(args.slice(1));
+    await handleCommunityMaintainerCommand(findWorkspaceRoot(), args.slice(1));
   } else if (command === "community") {
     await handleCommunityCommand(args, args.includes("--json"));
   } else if (command === "providers" && (args[0] === "actions" || args[0] === "action" || args[0] === "preview")) {
