@@ -1,5 +1,6 @@
 import type { ProviderEnvironment } from "./types.js";
 import { executeProviderAction, listProviderActions, planProviderAction } from "./provider-actions.js";
+import { executePreviewEnvironment, planPreviewEnvironment, type PreviewDatabaseTarget, type PreviewWebTarget, type PreviewWorkflowTarget } from "./provider-preview.js";
 
 function value(args: string[], name: string): string | undefined {
   const index = args.indexOf(name);
@@ -31,6 +32,21 @@ function environment(args: string[]): ProviderEnvironment {
   const raw = value(args, "--environment") ?? "preview";
   if (!["preview", "production"].includes(raw)) throw new Error("Provider actions support only preview or production environments.");
   return raw as ProviderEnvironment;
+}
+
+function previewRequest(args: string[]) {
+  const web = value(args, "--web");
+  const database = value(args, "--database");
+  const workflow = value(args, "--workflow");
+  if (web && !["vercel", "cloudflare-pages", "cloudflare-worker"].includes(web)) throw new Error("--web must be vercel, cloudflare-pages, or cloudflare-worker");
+  if (database && database !== "supabase") throw new Error("--database currently supports only supabase");
+  if (workflow && workflow !== "github") throw new Error("--workflow currently supports only github");
+  return {
+    ...(web ? { web: web as PreviewWebTarget } : {}),
+    ...(database ? { database: database as PreviewDatabaseTarget } : {}),
+    ...(workflow ? { workflow: workflow as PreviewWorkflowTarget } : {}),
+    params: params(args),
+  };
 }
 
 export async function handleProviderActionCommand(root: string, args: string[]): Promise<void> {
@@ -80,5 +96,20 @@ export async function handleProviderActionCommand(root: string, args: string[]):
     return;
   }
 
-  throw new Error("Usage: dockyard providers actions [--provider ID] | action plan|run --provider ID --action ID --environment preview|production [--param key=value] [--approve] [--approve-production]");
+  if (subcommand === "preview") {
+    const operation = rest[0] ?? "plan";
+    const previewArgs = rest.slice(1);
+    if (!["plan", "run"].includes(operation)) throw new Error("Usage: dockyard providers preview plan|run [--web vercel|cloudflare-pages|cloudflare-worker] [--database supabase] [--workflow github] [--param provider.key=value] [--approve]");
+    const plan = planPreviewEnvironment(root, previewRequest(previewArgs));
+    if (operation === "plan") {
+      console.log(JSON.stringify(plan, null, 2));
+      return;
+    }
+    const result = await executePreviewEnvironment(root, plan, { approve: has(previewArgs, "--approve") });
+    console.log(JSON.stringify(result, null, 2));
+    if (result.status !== "success") process.exitCode = 1;
+    return;
+  }
+
+  throw new Error("Usage: dockyard providers actions [--provider ID] | action plan|run --provider ID --action ID --environment preview|production [--param key=value] [--approve] [--approve-production] | preview plan|run [--web vercel|cloudflare-pages|cloudflare-worker] [--database supabase] [--workflow github] [--param provider.key=value] [--approve]");
 }
