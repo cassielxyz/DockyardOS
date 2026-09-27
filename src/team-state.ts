@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
+import { createCheckpoint } from "./checkpoints.js";
 import { readJson, writeJsonAtomic } from "./fs-utils.js";
 import { projectDirectory, requireProject } from "./project.js";
+import { recordTeamOutcome } from "./team-metrics.js";
 import type { TeamComposition, TeamHandoff, TeamPhaseId, TeamRunState } from "./team-types.js";
 
 function runPath(projectId: string, runId: string): string {
@@ -87,6 +89,14 @@ export async function completeTeamPhase(
   if (!upcoming) {
     state.status = "completed";
     await saveTeamRun(state);
+    await recordTeamOutcome(root, state, "success");
+    await createCheckpoint(root, "team-complete", {
+      phase: "completed",
+      activeTask: state.task,
+      teamRunId: state.id,
+      teamPhase: state.currentPhase,
+      next: [],
+    });
     return { state };
   }
 
@@ -100,6 +110,15 @@ export async function completeTeamPhase(
   await saveTeamRun(state);
 
   const nextPlan = state.composition.phases.find((phase) => phase.id === upcoming)!;
+  await createCheckpoint(root, "team-phase-transition", {
+    phase: upcoming,
+    activeTask: state.task,
+    teamRunId: state.id,
+    teamPhase: upcoming,
+    blocked: options.unresolved ?? [],
+    next: nextPlan.outputs,
+  });
+
   const handoff: TeamHandoff = {
     runId: state.id,
     fromPhase: previous,
@@ -120,6 +139,7 @@ export async function unblockTeamRun(root: string, runId?: string): Promise<Team
   if (!state) throw new Error("No active DockyardOS team run.");
   if (state.status === "blocked") state.status = "active";
   await saveTeamRun(state);
+  await createCheckpoint(root, "team-unblocked", { phase: state.currentPhase, activeTask: state.task, teamRunId: state.id, teamPhase: state.currentPhase, blocked: [] });
   return state;
 }
 
@@ -128,7 +148,39 @@ export async function recordTeamFailure(root: string, input: { runId?: string; a
   if (!state) throw new Error("No active DockyardOS team run.");
   state.failures.push({ phase: state.currentPhase, ...(input.agentId ? { agentId: input.agentId } : {}), summary: input.summary, at: new Date().toISOString() });
   state.status = "blocked";
+  const runtime = state.phases.find((phase) => phase.id === state.currentPhase);
+  if (runtime) runtime.status = "blocked";
   await saveTeamRun(state);
+  await createCheckpoint(root, "team-blocked", {
+    phase: state.currentPhase,
+    activeTask: state.task,
+    teamRunId: state.id,
+    teamPhase: state.currentPhase,
+    blocked: [input.summary],
+  });
+  return state;
+}
+
+export async function failTeamRun(root: string, input: { runId?: string; summary: string }): Promise<TeamRunState> {
+  const state = await loadTeamRun(root, input.runId);
+  if (!state) throw new Error("No active DockyardOS team run.");
+  if (state.status === "completed") throw new Error("Cannot fail a completed team run.");
+  state.failures.push({ phase: state.currentPhase, summary: input.summary, at: new Date().toISOString() });
+  state.status = "cancelled";
+  const runtime = state.phases.find((phase) => phase.id === state.currentPhase);
+  if (runtime) {
+    runtime.status = "blocked";
+    runtime.activeAgents = [];
+  }
+  await saveTeamRun(state);
+  await recordTeamOutcome(root, state, "failure");
+  await createCheckpoint(root, "team-failed", {
+    phase: state.currentPhase,
+    activeTask: state.task,
+    teamRunId: state.id,
+    teamPhase: state.currentPhase,
+    blocked: [input.summary],
+  });
   return state;
 }
 
