@@ -73,6 +73,54 @@ jobs:
             echo "production provider action unexpectedly ran without --approve-production"
             exit 1
           fi
+      - name: P10 security policy and SARIF CLI smoke
+        run: |
+          root="$PWD"
+          export DOCKYARD_HOME="$(mktemp -d)"
+          tmp=$(mktemp -d)
+          cd "$tmp"
+          node "$root/dist/main.js" init --name security-policy-smoke --mode balanced
+          node "$root/dist/main.js" security policy add-secret --id ci-fixture --fingerprint 'fixture.env:1:CI_TOKEN:1' --owner ci-security --rationale 'Known inert CI fixture credential for policy smoke coverage.' --expires 2027-01-15T00:00:00Z > /tmp/p10-policy.json
+          export REPO_ROOT="$root"
+          RESULT_PATH=$(node --input-type=module <<'NODE'
+          import { mkdir, writeFile } from 'node:fs/promises';
+          import { resolve } from 'node:path';
+          import { pathToFileURL } from 'node:url';
+          const dockyard = await import(pathToFileURL(`${process.env.REPO_ROOT}/dist/index.js`).href);
+          const projectDir = dockyard.projectDirectory(dockyard.projectIdForRoot(process.cwd()));
+          const runId = 'ci-policy-run';
+          const artifactDirectory = resolve(projectDir, 'security', 'runs', runId);
+          await mkdir(artifactDirectory, { recursive: true });
+          const result = {
+            runId,
+            profile: 'general',
+            target: { type: 'source', value: '.' },
+            status: 'findings',
+            steps: [{
+              scanner: 'gitleaks',
+              status: 'findings',
+              exitCode: 1,
+              findings: [{ scanner: 'gitleaks', ruleId: 'generic-api-key', title: 'Potential secret detected', severity: 'high', file: 'fixture.env', line: 1, fingerprint: 'fixture.env:1:CI_TOKEN:1' }],
+              summary: 'synthetic CI finding',
+              startedAt: '2026-09-27T12:00:00.000Z',
+              finishedAt: '2026-09-27T12:00:01.000Z'
+            }],
+            gates: [],
+            artifactDirectory,
+            startedAt: '2026-09-27T12:00:00.000Z',
+            finishedAt: '2026-09-27T12:00:01.000Z'
+          };
+          const resultPath = resolve(artifactDirectory, 'result.json');
+          await writeFile(resultPath, `${JSON.stringify(result, null, 2)}\n`, { mode: 0o600 });
+          console.log(resultPath);
+          NODE
+          )
+          node "$root/dist/main.js" security policy evaluate --result "$RESULT_PATH" > /tmp/p10-evaluation.json
+          node -e "const e=JSON.parse(require('fs').readFileSync('/tmp/p10-evaluation.json','utf8')); if(e.gate!=='accepted-risk' || e.rawFindingCount!==1 || e.acceptedFindingCount!==1 || e.blockingFindingCount!==0) process.exit(1)"
+          node "$root/dist/main.js" security sarif --result "$RESULT_PATH" > /tmp/p10-sarif-export.json
+          SARIF_PATH=$(node -e "const e=JSON.parse(require('fs').readFileSync('/tmp/p10-sarif-export.json','utf8')); process.stdout.write(e.path)")
+          test -s "$SARIF_PATH"
+          node -e "const s=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8')); const r=s.runs?.[0]?.results?.[0]; if(s.version!=='2.1.0' || !r?.suppressions?.length || r.properties?.dockyardPolicyDisposition!=='accepted-risk') process.exit(1)" "$SARIF_PATH"
       - name: VS Code bridge and bundled Core check
         run: |
           node --check integrations/vscode/extension.js
@@ -96,6 +144,7 @@ jobs:
           node integrations/vscode/core/dist/main.js community updates check --json
           node integrations/vscode/core/dist/main.js providers actions --provider vercel
           node integrations/vscode/core/dist/main.js providers preview plan --web vercel
+          node integrations/vscode/core/dist/main.js security policy show
       - name: Package VS Code extension
         working-directory: integrations/vscode
         run: |
