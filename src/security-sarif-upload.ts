@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { readFile, rm, writeFile } from "node:fs/promises";
+import { lstat, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, relative, resolve } from "node:path";
 import { gzipSync } from "node:zlib";
 import { writeJsonAtomic } from "./fs-utils.js";
@@ -10,6 +10,7 @@ const GITHUB_REPOSITORY = /^[A-Za-z0-9_.-]{1,100}\/[A-Za-z0-9_.-]{1,100}$/;
 const COMMIT_SHA = /^[a-f0-9]{40}$/i;
 const CONTENT_SHA256 = /^[a-f0-9]{64}$/i;
 const SAFE_REF_BODY = /^[A-Za-z0-9][A-Za-z0-9._\/-]{0,299}$/;
+const SAFE_SARIF_UPLOAD_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 const MAX_RAW_SARIF_BYTES = 50 * 1024 * 1024;
 const MAX_GZIP_SARIF_BYTES = 10 * 1024 * 1024;
 const GITHUB_API_VERSION = "2026-03-10";
@@ -150,6 +151,15 @@ function validateDockyardSarif(parsed: unknown, runId: string): void {
 async function loadSarif(root: string, sarifPath: string): Promise<LoadedSarif> {
   const target = resolve(sarifPath);
   const runId = sarifRunId(root, target);
+  const runDirectory = dirname(target);
+  const runDirectoryStat = await lstat(runDirectory);
+  if (!runDirectoryStat.isDirectory() || runDirectoryStat.isSymbolicLink()) {
+    throw new Error("Security SARIF run directory must be a real non-symlink directory.");
+  }
+  const artifactStat = await lstat(target);
+  if (!artifactStat.isFile() || artifactStat.isSymbolicLink()) {
+    throw new Error("Security SARIF artifact must be a regular non-symlink file.");
+  }
   const bytes = await readFile(target);
   if (!bytes.length) throw new Error("Security SARIF artifact is empty.");
   if (bytes.length > MAX_RAW_SARIF_BYTES) throw new Error("Security SARIF artifact exceeds DockyardOS's 50 MiB read bound.");
@@ -218,6 +228,17 @@ function parseJsonObject(value: string): Record<string, unknown> | undefined {
   }
 }
 
+export function validateGitHubSarifUploadId(value: unknown): string | undefined {
+  if (typeof value !== "string"
+    || value.length === 0
+    || value.length > 128
+    || value !== value.trim()
+    || !SAFE_SARIF_UPLOAD_ID.test(value)) {
+    return undefined;
+  }
+  return value;
+}
+
 export async function uploadSecuritySarif(
   root: string,
   input: SecuritySarifUploadTarget,
@@ -262,7 +283,7 @@ export async function uploadSecuritySarif(
   }
 
   const uploadResponse = parseJsonObject(upload.stdout);
-  const sarifId = typeof uploadResponse?.id === "string" ? uploadResponse.id : undefined;
+  const sarifId = validateGitHubSarifUploadId(uploadResponse?.id);
   const uploadUrl = typeof uploadResponse?.url === "string" ? uploadResponse.url : undefined;
   let processingStatus: string | undefined;
   let analysisUrl: string | undefined;
@@ -274,7 +295,7 @@ export async function uploadSecuritySarif(
       "--method", "GET",
       "-H", "Accept: application/vnd.github+json",
       "-H", `X-GitHub-Api-Version: ${GITHUB_API_VERSION}`,
-      `${plan.endpoint}/${sarifId}`,
+      `${plan.endpoint}/${encodeURIComponent(sarifId)}`,
     ], { cwd: root, timeoutMs: 30_000, maxOutputBytes: 16_384 });
     if (verify.ok) {
       verificationOk = true;
