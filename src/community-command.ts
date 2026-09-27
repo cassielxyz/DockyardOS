@@ -1,13 +1,13 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { findCommunityPackage, loadCommunityRegistry, searchCommunityRegistry } from "./community-registry.js";
-import { communityStatus, resolveAssessCommunityPackage, rollbackCommunityPackage } from "./community-manager.js";
-import { resolveAssessInstallPinnedCommunityPackage } from "./community-install.js";
+import { communityStatus, rollbackCommunityPackage } from "./community-manager.js";
 import { activeCommunityPackages, readActiveCommunityEntrypoint } from "./community-runtime.js";
 import { readTransparencyLog, verifyTransparencyLog } from "./community-transparency.js";
 import { cachedRemoteRegistryIndexes, loadRemoteRegistrySources, syncRemoteRegistry } from "./community-remote.js";
 import { createSigningKey, publisherRegistryKeySnippet, remoteRegistryTrustKeySnippet, signCommunityManifestWithLocalKey, signRegistryEnvelopeWithLocalKey } from "./community-publisher.js";
 import { executeCommunityCanary, planCommunityCanary, type CommunityCanaryBackend } from "./community-canary.js";
+import { findEffectiveCommunityPackage, loadEffectiveCommunityRegistry, searchEffectiveCommunityRegistry } from "./community-effective-registry.js";
+import { resolveAssessEffectiveCommunityPackage, resolveAssessInstallPinnedEffectiveCommunityPackage } from "./community-effective-install.js";
 import type { CommunityPackageManifest } from "./community-types.js";
 import type { SignedRegistryEnvelope } from "./community-remote-types.js";
 
@@ -161,7 +161,7 @@ async function handleCanary(rest: string[]): Promise<void> {
   const timeoutRaw = value(args, "--timeout");
   const timeoutSeconds = timeoutRaw ? Number(timeoutRaw) : undefined;
   if (timeoutRaw && (!Number.isInteger(timeoutSeconds) || (timeoutSeconds ?? 0) < 1 || (timeoutSeconds ?? 0) > 300)) throw new Error("--timeout must be an integer from 1 to 300 seconds");
-  const resolved = await resolveAssessCommunityPackage(id);
+  const resolved = await resolveAssessEffectiveCommunityPackage(id);
   const packagePath = resolve(resolved.resolution.quarantinePath, resolved.manifest.source.subdirectory ?? ".");
   const plan = planCommunityCanary({
     packageId: id,
@@ -173,11 +173,11 @@ async function handleCanary(rest: string[]): Promise<void> {
     ...(timeoutSeconds ? { timeoutSeconds } : {}),
   });
   if (action === "plan") {
-    console.log(JSON.stringify({ assessment: resolved.assessment.decision, assessmentReasons: resolved.assessment.reasons, plan }, null, 2));
+    console.log(JSON.stringify({ origin: resolved.origin, assessment: resolved.assessment.decision, assessmentReasons: resolved.assessment.reasons, plan }, null, 2));
     return;
   }
   const result = await executeCommunityCanary(plan);
-  console.log(JSON.stringify({ assessment: resolved.assessment.decision, assessmentReasons: resolved.assessment.reasons, result }, null, 2));
+  console.log(JSON.stringify({ origin: resolved.origin, assessment: resolved.assessment.decision, assessmentReasons: resolved.assessment.reasons, result }, null, 2));
   if (result.status !== "pass") process.exitCode = 1;
 }
 
@@ -190,22 +190,25 @@ export async function handleCommunityCommand(args: string[], json: boolean): Pro
   if (subcommand === "registry-key") return handleRegistrySigning(rest);
   if (subcommand === "canary") return handleCanary(rest);
 
-  const registry = await loadCommunityRegistry();
+  const registry = await loadEffectiveCommunityRegistry();
 
   if (subcommand === "list") {
     console.log(JSON.stringify({
-      packages: registry.packages.map((pkg) => ({
-        id: pkg.id,
-        name: pkg.displayName,
-        kind: pkg.kind,
-        source: `${pkg.source.repository}@${pkg.source.ref}`,
-        trust: pkg.trust,
-        risk: pkg.risk,
-        permissions: pkg.permissions,
-        capabilities: pkg.capabilities,
-        channel: pkg.channel,
+      packages: registry.packages.map(({ manifest, origin }) => ({
+        id: manifest.id,
+        name: manifest.displayName,
+        kind: manifest.kind,
+        source: `${manifest.source.repository}@${manifest.source.ref}`,
+        trust: manifest.trust,
+        risk: manifest.risk,
+        permissions: manifest.permissions,
+        capabilities: manifest.capabilities,
+        channel: manifest.channel,
+        origin,
       })),
       discoverySources: registry.discoverySources,
+      remoteRegistries: registry.remoteRegistries,
+      conflicts: registry.conflicts,
     }, null, 2));
     return;
   }
@@ -213,31 +216,39 @@ export async function handleCommunityCommand(args: string[], json: boolean): Pro
   if (subcommand === "search") {
     const query = value(rest, "--query") ?? rest.filter((arg) => !arg.startsWith("--"))[0] ?? "";
     if (!query.trim()) throw new Error("community search requires --query TEXT");
-    console.log(JSON.stringify(searchCommunityRegistry(registry, query), null, 2));
+    console.log(JSON.stringify(searchEffectiveCommunityRegistry(registry, query), null, 2));
     return;
   }
 
   if (subcommand === "sources") {
-    console.log(JSON.stringify(registry.discoverySources, null, 2));
+    console.log(JSON.stringify({
+      discoverySources: registry.discoverySources,
+      remoteRegistries: registry.remoteRegistries,
+      conflicts: registry.conflicts.filter((item) => item.kind === "discovery-source"),
+    }, null, 2));
     return;
   }
 
   if (subcommand === "inspect") {
     const id = requiredId(rest);
-    const manifest = findCommunityPackage(registry, id);
-    if (!manifest) throw new Error(`Community package is not installable in the bundled registry: ${id}`);
-    console.log(JSON.stringify(manifest, null, 2));
+    const effective = await findEffectiveCommunityPackage(id);
+    if (!effective) {
+      const conflict = registry.conflicts.find((item) => item.kind === "package" && item.id === id);
+      if (conflict) throw new Error(`Community package id is ambiguous and excluded from the effective registry: ${id}. ${conflict.reason}`);
+      throw new Error(`Community package is not available in the effective registry: ${id}`);
+    }
+    console.log(JSON.stringify(effective, null, 2));
     return;
   }
 
   if (subcommand === "resolve" || subcommand === "assess") {
-    const result = await resolveAssessCommunityPackage(requiredId(rest));
+    const result = await resolveAssessEffectiveCommunityPackage(requiredId(rest));
     console.log(JSON.stringify(result, null, 2));
     return;
   }
 
   if (subcommand === "install" || subcommand === "update") {
-    const result = await resolveAssessInstallPinnedCommunityPackage(requiredId(rest), {
+    const result = await resolveAssessInstallPinnedEffectiveCommunityPackage(requiredId(rest), {
       approve: has(rest, "--approve"),
       ...(value(rest, "--expected-revision") ? { expectedRevision: value(rest, "--expected-revision") } : {}),
       ...(value(rest, "--expected-sha256") ? { expectedContentSha256: value(rest, "--expected-sha256") } : {}),
@@ -283,12 +294,23 @@ export async function handleCommunityCommand(args: string[], json: boolean): Pro
 
   if (subcommand === "verify") {
     const errors: string[] = [];
-    for (const pkg of registry.packages) if (!pkg.entrypoints.length) errors.push(`${pkg.id}: no entrypoints`);
+    for (const item of registry.packages) if (!item.manifest.entrypoints.length) errors.push(`${item.manifest.id}: no entrypoints`);
+    for (const conflict of registry.conflicts) errors.push(`${conflict.kind} ${conflict.id}: ${conflict.reason}`);
     const transparency = await verifyTransparencyLog();
+    const ok = errors.length === 0 && transparency.ok;
     console.log(JSON.stringify({
-      registry: { ok: errors.length === 0, errors, packages: registry.packages.length, discoverySources: registry.discoverySources.length },
+      registry: {
+        ok: errors.length === 0,
+        errors,
+        packages: registry.packages.length,
+        discoverySources: registry.discoverySources.length,
+        remoteRegistries: registry.remoteRegistries.length,
+        conflicts: registry.conflicts,
+      },
       transparency,
+      ok,
     }, null, 2));
+    if (!ok) process.exitCode = 1;
     return;
   }
 
