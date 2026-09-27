@@ -1,0 +1,7 @@
+{
+  "name": "dockyardos",
+  "version": "0.1.0",
+  "description": "DockyardOS project continuity, adaptive specialist teams, checkpoints, and approval-aware orchestration for Codex.",
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json"
+}
