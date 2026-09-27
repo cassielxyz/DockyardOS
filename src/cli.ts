@@ -1,11 +1,13 @@
 #!/usr/bin/env node
-import type { CheckpointState, OperatingMode, SecurityLevel, WorkflowProfile } from "./types.js";
+import type { Candidate, CheckpointState, HostId, OperatingMode, SecurityLevel, UpdateChannel, WorkflowProfile } from "./types.js";
 import { initProject, findWorkspaceRoot, loadProject } from "./project.js";
 import { createCheckpoint, loadLatestCheckpoint } from "./checkpoints.js";
 import { runDoctor } from "./doctor.js";
 import { composeWorkflow } from "./workflow.js";
 import { evaluateCommand } from "./policy.js";
-import { providersFor } from "./registry.js";
+import { catalogSearch, categoryNames, providersFor, validateCatalog } from "./registry.js";
+import { recipes, recipeById } from "./recipes.js";
+import { defaultSelectionRequest, selectCapabilities, selectionSummary } from "./selection.js";
 import { handlePostTool, handlePreInvocation, handlePreTool, handleStop } from "./hooks.js";
 
 function values(args: string[], name: string): string[] {
@@ -37,7 +39,7 @@ function print(data: unknown, json = false): void {
 }
 
 function usage(): void {
-  console.log(`DockyardOS CLI\n\nCommands:\n  init [--name NAME] [--mode safe|balanced|autonomous]\n  status [--json]\n  checkpoint [--reason TEXT] [--phase NAME] [--task TEXT] [--next TEXT] [--completed TEXT] [--blocked TEXT] [--capability ID]\n  resume [--json]\n  doctor [--json]\n  plan --profile fast|standard|full --stack nextjs,supabase --security standard|high [--json]\n  providers --capability CAPABILITY [--json]\n  policy --command \"...\" [--mode MODE] [--json]\n  hook pre-tool|post-tool|pre-invocation|stop\n`);
+  console.log(`DockyardOS CLI\n\nCommands:\n  init [--name NAME] [--mode safe|balanced|autonomous]\n  status [--json]\n  checkpoint [--reason TEXT] [--phase NAME] [--task TEXT] [--next TEXT] [--completed TEXT] [--blocked TEXT] [--capability ID]\n  resume [--json]\n  doctor [--json]\n  plan --profile fast|standard|full --stack nextjs,supabase --security standard|high [--json]\n  recommend --task \"build a SaaS dashboard\" --stack nextjs,supabase [--security high] [--host antigravity]\n  catalog [--query TEXT] [--category NAME] [--kind skill|agent|tool|mcp] [--stack NAME] [--host NAME]\n  categories\n  recipes [--id RECIPE]\n  registry verify\n  providers --capability CAPABILITY [--json]\n  policy --command \"...\" [--mode MODE] [--json]\n  hook pre-tool|post-tool|pre-invocation|stop\n`);
 }
 
 async function main(): Promise<void> {
@@ -114,6 +116,63 @@ async function main(): Promise<void> {
       const stack = values(args, "--stack");
       const plan = composeWorkflow({ profile, stack, security });
       print(plan, true);
+      break;
+    }
+    case "recommend": {
+      const request = defaultSelectionRequest({
+        task: value(args, "--task") ?? "feature",
+        ...(value(args, "--task-type") ? { taskType: value(args, "--task-type") } : {}),
+        stack: values(args, "--stack"),
+        capabilities: values(args, "--capability"),
+        security: (value(args, "--security") ?? "standard") as SecurityLevel,
+        host: (value(args, "--host") ?? "antigravity") as HostId,
+        channel: (value(args, "--channel") ?? "recommended") as UpdateChannel,
+        allowCommunity: !has(args, "--no-community"),
+        preferred: values(args, "--prefer"),
+        excluded: values(args, "--exclude"),
+      });
+      const maxSkills = Number(value(args, "--max-skills") ?? request.maxSkills);
+      const maxAgents = Number(value(args, "--max-agents") ?? request.maxAgents);
+      const result = selectCapabilities({ ...request, maxSkills, maxAgents });
+      print(json ? result : selectionSummary(result), true);
+      break;
+    }
+    case "catalog": {
+      const matches = catalogSearch({
+        ...(value(args, "--query") ? { query: value(args, "--query") } : {}),
+        ...(value(args, "--category") ? { category: value(args, "--category") } : {}),
+        ...(value(args, "--kind") ? { kind: value(args, "--kind") as Candidate["kind"] } : {}),
+        ...(value(args, "--channel") ? { channel: value(args, "--channel") as UpdateChannel } : {}),
+        ...(value(args, "--host") ? { host: value(args, "--host") } : {}),
+        ...(value(args, "--stack") ? { stack: value(args, "--stack") } : {}),
+      });
+      print(matches.map((candidate) => ({ id: candidate.id, name: candidate.displayName, category: candidate.category, kind: candidate.kind, trust: candidate.trust, risk: candidate.risk, source: candidate.source.locator })), true);
+      break;
+    }
+    case "categories": {
+      print(categoryNames, true);
+      break;
+    }
+    case "recipes": {
+      const id = value(args, "--id");
+      if (id) {
+        const recipe = recipeById(id);
+        if (!recipe) throw new Error(`Unknown recipe: ${id}`);
+        print(recipe, true);
+      } else {
+        print(recipes.map((recipe) => ({ id: recipe.id, name: recipe.displayName, taskTypes: recipe.taskTypes, stacks: recipe.stacks, security: recipe.securityLevel, profile: recipe.workflowProfile })), true);
+      }
+      break;
+    }
+    case "registry": {
+      if (args[0] !== "verify") throw new Error("Usage: dockyard registry verify");
+      const errors = validateCatalog();
+      if (errors.length) {
+        print({ ok: false, errors }, true);
+        process.exitCode = 1;
+      } else {
+        print({ ok: true, categories: categoryNames.length, message: "DockyardOS capability catalogue is structurally valid." }, true);
+      }
       break;
     }
     case "providers": {
