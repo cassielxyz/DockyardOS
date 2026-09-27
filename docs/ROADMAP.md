@@ -67,9 +67,9 @@
 - [x] Scan/evidence -> fix -> same-scope rerun -> regression gate workflow
 - [x] Missing required scanner cannot produce a clean result
 - [x] Antigravity security-reviewer workflow integration
-- [ ] Project-specific secret allowlists/baselines and expiry policy
-- [ ] Dependency exception policy with owner/expiry/rationale
-- [ ] SARIF aggregation/export for code-host security dashboards
+- [x] Project-specific secret allowlists/baselines and expiry policy
+- [x] Dependency exception policy with owner/expiry/rationale
+- [x] SARIF aggregation/export for code-host security dashboards
 
 ## P4 — Agent team composer
 
@@ -210,10 +210,32 @@
 - [ ] Provider outage/health verification
 - [ ] Migration executors with rollback artifacts
 
+## P10 — Expiring security exceptions and SARIF evidence
+
+- [x] External project-specific security policy state
+- [x] Gitleaks baseline entries keyed by scanner fingerprint without storing secret values
+- [x] OSV dependency exceptions bound to advisory + package
+- [x] Required owner/rationale/expiry metadata for every exception
+- [x] New exception expiry limited to a future date within 365 days
+- [x] Expired exceptions retained for visibility but automatically inactive
+- [x] Separate policy gate: `pass | accepted-risk | fail | incomplete`
+- [x] Raw `error`/`incomplete` scan status cannot be overridden by exceptions
+- [x] Raw normalized findings remain preserved even when policy accepts risk
+- [x] Per-run `policy-report.json` with active/expired/matched/unmatched/blocking evidence
+- [x] SARIF 2.1.0 aggregation for normalized DockyardOS findings
+- [x] Accepted exceptions represented as external SARIF suppressions instead of removed results
+- [x] Incomplete/error runs exported with unsuccessful SARIF invocation metadata
+- [x] Current-project run-path identity validation for policy/SARIF CLI operations
+- [x] `dockyard security policy show|add-secret|add-dependency|remove|evaluate`
+- [x] `dockyard security sarif --result PATH`
+- [x] Deterministic policy/expiry/incomplete/SARIF tests plus real CLI smoke evidence
+- [ ] Optional code-host upload adapter for generated SARIF with explicit approval
+- [ ] Policy-review reminders for exceptions nearing expiry
+
 ## Next production milestones
 
-- Secret/dependency exception policy + SARIF aggregation
 - Published VS Code Marketplace release channel and opt-in real-host matrix CI
 - Community contribution validation, richer marketplace UI, and optional scheduled safe-update checks
 - External transparency anchoring and publisher key-rotation workflow
 - Alternative-provider actions, live pricing/health signals, and migration rollback executors
+- Optional approved SARIF upload and expiring-policy reminder integrations

@@ -18,6 +18,8 @@ export * from "./security-profiles.js";
 export * from "./security-plan.js";
 export * from "./security-runner.js";
 export * from "./security-regression.js";
+export * from "./security-policy.js";
+export * from "./security-sarif.js";
 export * from "./threat-model.js";
 export * from "./team-types.js";
 export * from "./team-composer.js";
