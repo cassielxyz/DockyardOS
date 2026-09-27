@@ -9,6 +9,7 @@ import {
   removeSecurityException,
 } from "./security-policy.js";
 import { exportSecuritySarif } from "./security-sarif.js";
+import { planSecuritySarifUpload, uploadSecuritySarif } from "./security-sarif-upload.js";
 import { projectDirectory, projectIdForRoot } from "./project.js";
 
 function value(args: string[], name: string): string | undefined {
@@ -20,6 +21,10 @@ function required(args: string[], name: string): string {
   const found = value(args, name);
   if (!found) throw new Error(`${name} is required`);
   return found;
+}
+
+function hasFlag(args: string[], name: string): boolean {
+  return args.includes(name);
 }
 
 function runsRoot(root: string): string {
@@ -100,16 +105,43 @@ async function handlePolicy(root: string, args: string[]): Promise<void> {
   throw new Error("Usage: dockyard security policy show | add-secret --id ID --fingerprint FP --owner OWNER --rationale TEXT --expires ISO | add-dependency --id ID --advisory ID --package NAME --owner OWNER --rationale TEXT --expires ISO | remove --id ID | evaluate --result PATH");
 }
 
+async function handleSarif(root: string, args: string[]): Promise<void> {
+  if (args[0] === "upload") {
+    const action = args[1] ?? "plan";
+    const rest = args.slice(2);
+    const target = {
+      sarifPath: required(rest, "--sarif"),
+      repository: required(rest, "--repository"),
+      commitSha: required(rest, "--commit"),
+      ref: required(rest, "--ref"),
+    };
+    if (action === "plan") {
+      console.log(JSON.stringify(await planSecuritySarifUpload(root, target), null, 2));
+      return;
+    }
+    if (action === "run") {
+      const uploaded = await uploadSecuritySarif(root, target, {
+        approve: hasFlag(rest, "--approve"),
+        expectedSha256: required(rest, "--expected-sha256"),
+      });
+      console.log(JSON.stringify(uploaded, null, 2));
+      if (uploaded.status === "processing-failed") process.exitCode = 1;
+      else if (uploaded.status === "accepted-unverified") process.exitCode = 2;
+      return;
+    }
+    throw new Error("Usage: dockyard security sarif upload plan|run --sarif PATH --repository OWNER/REPO --commit SHA --ref FULL_REF [--expected-sha256 SHA256 --approve]");
+  }
+
+  const result = await loadRunResult(root, required(args, "--result"));
+  const policy = await evaluateSecurityPolicy(root, result);
+  const exported = await exportSecuritySarif(result, policy);
+  console.log(JSON.stringify({ path: exported.path, policyGate: policy.gate, runStatus: result.status }, null, 2));
+}
+
 export async function handleSecurityEvidenceCommand(root: string, args: string[]): Promise<void> {
   const subcommand = args[0];
   const rest = args.slice(1);
   if (subcommand === "policy") return handlePolicy(root, rest);
-  if (subcommand === "sarif") {
-    const result = await loadRunResult(root, required(rest, "--result"));
-    const policy = await evaluateSecurityPolicy(root, result);
-    const exported = await exportSecuritySarif(result, policy);
-    console.log(JSON.stringify({ path: exported.path, policyGate: policy.gate, runStatus: result.status }, null, 2));
-    return;
-  }
-  throw new Error("Usage: dockyard security policy ... | sarif --result PATH");
+  if (subcommand === "sarif") return handleSarif(root, rest);
+  throw new Error("Usage: dockyard security policy ... | sarif --result PATH | sarif upload plan|run ...");
 }
