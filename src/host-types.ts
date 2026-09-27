@@ -12,6 +12,13 @@ export interface HostSkillLocation {
   note?: string;
 }
 
+export interface HostNativeBundle {
+  path: string;
+  mode: "plugin" | "extension" | "project-files";
+  install: "cli" | "manual-review";
+  note: string;
+}
+
 export interface HostAdapterDefinition {
   id: HostId;
   displayName: string;
@@ -21,6 +28,7 @@ export interface HostAdapterDefinition {
   projectInstructionFiles: string[];
   supportsNativeResume: boolean;
   supportsDockyardHooks: boolean;
+  nativeBundle?: HostNativeBundle;
   notes: string[];
   verifiedAgainst: {
     date: string;
@@ -34,6 +42,7 @@ export interface HostInspection {
   executableAvailable: boolean;
   projectSignals: Array<{ path: string; exists: boolean }>;
   globalSignals: Array<{ path: string; exists: boolean }>;
+  nativeBundleAvailable?: boolean;
   nativeResumeAvailable: boolean;
   features: HostFeature[];
 }
