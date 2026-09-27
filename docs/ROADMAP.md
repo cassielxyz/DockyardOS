@@ -147,7 +147,7 @@
 - [ ] Publisher key rotation/revocation UX and migration guidance
 - [ ] External/public transparency anchoring
 - [ ] Safe automatic install/merge for host-native project config bundles
-- [ ] Rich searchable package marketplace/discovery UI in VS Code
+- [x] Rich searchable package marketplace/discovery UI in VS Code
 
 ## P7 — Signed registry sync and sandboxed community canaries
 
@@ -188,7 +188,7 @@
 - [x] Permission expansion/trust downgrade/risk increase/quarantine/ambiguity/missing-manifest states cannot be unattended updates
 - [x] Deterministic collision, provenance, snapshot, offline-runtime, and fail-closed update tests
 - [ ] Background/scheduled update checks exposed through host automation integrations
-- [ ] Rich VS Code remote marketplace view with provenance/conflict/update-state filters
+- [x] Rich VS Code remote marketplace view with provenance/conflict/update-state filters
 - [x] Contribution-validation workflow for third-party registry submissions
 - [ ] Maintainer-controlled signing/promotion automation for reviewed submissions
 
@@ -276,10 +276,24 @@
 - [ ] Maintainer-controlled publisher onboarding/promotion automation after independent identity review
 - [ ] Signed reviewed registry-envelope publication pipeline
 
+## P13 — VS Code Community Hub
+
+- [x] Local CSP-locked Community Hub replaces the basic community Quick Pick
+- [x] Full-text package search plus trust/risk/origin/update-state filters
+- [x] Bundled/remote provenance, installed revision/version, and update-state visibility
+- [x] Discovery sources remain metadata-only and never become install buttons
+- [x] Remote-registry verification/expiry and collision/conflict visibility
+- [x] Manifest inspection and quarantine assessment from the Hub
+- [x] Install/update preserves immutable assessed revision + SHA-256 pinning
+- [x] Approval-required remains explicit and quarantine remains non-overridable
+- [x] Webview messages/package IDs are validated before CLI invocation
+- [x] Nonce-bound CSP, script-safe serialization, and DOM text rendering guard against registry-content injection
+- [x] Deterministic Community Hub tests and actual VSIX packaging assertions
+
 ## Next production milestones
 
 - Complete a green real-host matrix run and first guarded VS Code Marketplace publication
-- Richer VS Code community marketplace/discovery UI and optional scheduled safe-update checks
+- Optional scheduled safe-update checks through host automation integrations
 - Maintainer-controlled contribution promotion, publisher key rotation/revocation, and external transparency anchoring
 - Alternative-provider actions, live pricing/health signals, and migration rollback executors
 - Optional approved SARIF upload and expiring-policy reminder integrations
