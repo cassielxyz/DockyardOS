@@ -47,11 +47,11 @@
 - [x] Free-first decisions marked for live pricing/availability validation
 - [x] Explicit migration/compatibility warnings instead of false drop-in equivalence
 - [x] Production provider plans marked approval-required before mutation
-- [ ] Authenticated action adapters for GitHub, Vercel, Cloudflare, and Supabase
+- [x] Authenticated action adapters for GitHub, Vercel, Cloudflare, and Supabase
 - [ ] Authenticated action adapters for alternative providers
 - [ ] Live pricing/free-tier metadata fetchers with freshness timestamps
 - [ ] Provider outage/health verification
-- [ ] Automated preview provisioning and verification
+- [x] Automated preview provisioning and verification
 - [ ] Migration executors with rollback artifacts
 
 ## P3 — Security and verification
@@ -190,10 +190,30 @@
 - [ ] Rich VS Code remote marketplace view with provenance/conflict/update-state filters
 - [ ] Contribution-validation/signing workflow for third-party registry submissions
 
+## P9 — Authenticated provider actions and verified previews
+
+- [x] Bounded provider action registry separated from read-only provider selection/planning
+- [x] Authenticated GitHub workflow dispatch adapter
+- [x] Vercel preview and production deployment adapters with linked-project requirement
+- [x] Cloudflare Worker version-preview and Pages preview-deployment adapters
+- [x] Supabase preview-branch and Edge Function deployment adapters with explicit project refs
+- [x] Every provider mutation requires explicit approval
+- [x] Production mutation requires an additional production-specific approval
+- [x] Provider-specific parameter validation and project-root path confinement
+- [x] No arbitrary workflow secret inputs, destructive Supabase controls, DNS mutation, or provider resource deletion exposed through P9
+- [x] Provider-native post-action verification and external audit artifacts
+- [x] Multi-provider preview environment plan/run with sequential fail-closed verification
+- [x] Preview orchestrator refuses production actions and stops after the first failed/unverified step
+- [x] Deterministic action/approval/injection/preview orchestration tests and CI smoke plans
+- [ ] Authenticated action adapters for alternative providers
+- [ ] Live pricing/free-tier metadata fetchers with freshness timestamps
+- [ ] Provider outage/health verification
+- [ ] Migration executors with rollback artifacts
+
 ## Next production milestones
 
-- Authenticated provider action adapters and preview provisioning/verification
 - Secret/dependency exception policy + SARIF aggregation
 - Published VS Code Marketplace release channel and opt-in real-host matrix CI
 - Community contribution validation, richer marketplace UI, and optional scheduled safe-update checks
 - External transparency anchoring and publisher key-rotation workflow
+- Alternative-provider actions, live pricing/health signals, and migration rollback executors
