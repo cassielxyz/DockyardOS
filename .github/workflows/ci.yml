@@ -30,3 +30,12 @@ jobs:
           node dist/cli.js providers inspect --id vercel,supabase --json
           node dist/cli.js providers chain --capability postgres --json
           node dist/cli.js providers plan --capability web-hosting,postgres,auth --stack web,nextjs,postgres --environment preview --free-first --json
+          node dist/cli.js security profiles --json
+      - name: Security CLI planning smoke test
+        run: |
+          root="$PWD"
+          tmp=$(mktemp -d)
+          cd "$tmp"
+          node "$root/dist/cli.js" init --name security-smoke --mode balanced
+          node "$root/dist/cli.js" security plan --profile web --target . --target-type source --mode quick --json
+          node "$root/dist/cli.js" security threat-model --profile api --json
