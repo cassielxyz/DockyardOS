@@ -16,14 +16,22 @@
 
 ## P1 — Registry and selection engine
 
-- [ ] Signed/hashed registry manifests
-- [ ] Large category catalogue of official and community skills, agents, MCPs, and tools
-- [ ] Source provenance + revision pinning
-- [ ] Compatibility and permission metadata
-- [ ] Task-to-capability scoring
-- [ ] Tested capability combinations and success metrics
-- [ ] Stable / recommended / edge / dev update channels
-- [ ] Quarantine and canary updates
+- [x] Broad category catalogue of official, maintainer, community, and Dockyard capabilities
+- [x] Source provenance metadata
+- [x] Exact revision + SHA-256 capability lock format
+- [x] Reject floating executable revisions
+- [x] Host compatibility and permission metadata
+- [x] Risk, context-cost, maturity, and maintenance metadata
+- [x] Natural-language task classification
+- [x] Task/stack/capability scoring
+- [x] Practical project/task team recipes
+- [x] Active skill/agent/tool/MCP budgets
+- [x] Stable / recommended / edge / dev update channels
+- [x] Permission/trust/risk update assessment
+- [x] Quarantine / approval-required update decisions
+- [ ] Cryptographic publisher signatures / transparency metadata
+- [ ] Canary execution for newly approved capability versions
+- [ ] Persisted success/failure metrics that tune future combination scores
 
 ## P2 — Provider connector layer
 
@@ -47,10 +55,11 @@
 
 ## P4 — Agent team composer
 
-- [ ] Adaptive role selection
+- [x] Initial adaptive role selection
+- [ ] Phase-aware activation/deactivation
 - [ ] Worktree isolation for parallel implementers
-- [ ] Independent spec/code/security/QA review
-- [ ] Context budgets and progressive skill loading
+- [x] Independent security/QA role selection
+- [x] Initial context budgets and progressive capability selection
 - [ ] Failure learning and combination scoring
 
 ## P5 — Cross-host support
