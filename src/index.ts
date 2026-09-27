@@ -39,6 +39,7 @@ export * from "./community-canary.js";
 export * from "./community-effective-registry.js";
 export * from "./community-manifest-store.js";
 export * from "./community-effective-install.js";
+export * from "./community-updates.js";
 export {
   communityTreeSha256,
   assessCommunityPackage,
