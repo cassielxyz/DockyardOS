@@ -2,9 +2,13 @@ const vscode = require("vscode");
 const { spawn } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
+const { normalizeCommunityHubData } = require("./community-hub-model.js");
+const { renderCommunityHubHtml } = require("./community-hub-view.js");
 
 const MAX_OUTPUT_BYTES = 256 * 1024;
+const COMMUNITY_ID = /^[a-z0-9][a-z0-9._-]{1,79}$/;
 let activeContext;
+let communityHubPanel;
 
 function workspaceRoot() {
   const folder = vscode.workspace.workspaceFolders?.[0];
@@ -20,7 +24,7 @@ function dockyardInvocation() {
   return { command: "dockyard", prefix: [], source: "PATH CLI" };
 }
 
-function runDockyard(args, cwd = workspaceRoot()) {
+function runDockyard(args, cwd = workspaceRoot(), options = {}) {
   return new Promise((resolve, reject) => {
     const invocation = dockyardInvocation();
     const child = spawn(invocation.command, [...invocation.prefix, ...args], {
@@ -47,7 +51,8 @@ function runDockyard(args, cwd = workspaceRoot()) {
     child.on("close", (code) => {
       if (settled) return;
       settled = true;
-      if (code === 0) resolve({ stdout: stdout.trim(), stderr: stderr.trim(), code, runtime: invocation.source });
+      const accepted = code === 0 || (Array.isArray(options.acceptExitCodes) && options.acceptExitCodes.includes(code));
+      if (accepted) resolve({ stdout: stdout.trim(), stderr: stderr.trim(), code, runtime: invocation.source });
       else reject(new Error((stderr || stdout || `DockyardOS exited with code ${code}`).trim()));
     });
   });
@@ -77,51 +82,59 @@ function showResult(context, title, result) {
   channel.show(true);
 }
 
-function communityQuickPickItems(data) {
-  const packages = Array.isArray(data?.packages) ? data.packages : [];
-  return packages.map((pkg) => ({
-    label: pkg.name || pkg.id,
-    description: pkg.id,
-    detail: `${pkg.trust || "unknown"} trust · ${pkg.risk || "unknown"} risk · ${(pkg.permissions || []).join(", ") || "no declared permissions"} · ${pkg.source || "unknown source"}`,
-    packageId: pkg.id,
-  }));
+function communityId(value) {
+  if (!COMMUNITY_ID.test(value || "")) throw new Error("Community Hub received an invalid package id.");
+  return value;
 }
 
-async function browseCommunityPackages(context) {
-  const listResult = await runDockyard(["community", "list", "--json"]);
+async function loadCommunityHubModel(root = workspaceRoot()) {
+  const warnings = [];
+  const [listResult, statusResult] = await Promise.all([
+    runDockyard(["community", "list", "--json"], root),
+    runDockyard(["community", "status", "--json"], root),
+  ]);
   const list = parseJson(listResult.stdout);
-  const items = communityQuickPickItems(list);
-  if (!items.length) {
-    vscode.window.showInformationMessage("DockyardOS has no explicitly installable community package manifests in this build.");
+  const status = parseJson(statusResult.stdout);
+  if (!list || !status) throw new Error("DockyardOS Community Hub could not parse registry/status data.");
+
+  let updates = [];
+  try {
+    const updateResult = await runDockyard(["community", "updates", "check", "--json"], root, { acceptExitCodes: [1] });
+    const parsed = parseJson(updateResult.stdout);
+    if (Array.isArray(parsed)) updates = parsed;
+    else warnings.push("Installed-package update state could not be parsed; install and trust state remain available.");
+  } catch (error) {
+    warnings.push(`Installed-package update check unavailable: ${error instanceof Error ? error.message : String(error)}`);
+  }
+  return normalizeCommunityHubData(list, status, updates, warnings);
+}
+
+async function refreshCommunityHub(panel, notice = "") {
+  const model = await loadCommunityHubModel();
+  await panel.webview.postMessage({ type: "model", model, notice });
+  return model;
+}
+
+async function communityPackageAction(context, panel, action, rawId) {
+  const id = communityId(rawId);
+  if (!new Set(["inspect", "assess", "install"]).has(action)) throw new Error("Unsupported Community Hub action.");
+
+  if (action === "inspect") {
+    const result = await runDockyard(["community", "inspect", "--id", id, "--json"]);
+    const data = parseJson(result.stdout);
+    if (!data) throw new Error("Community manifest output was not valid JSON.");
+    await panel.webview.postMessage({ type: "detail", title: `Manifest: ${id}`, data });
     return;
   }
 
-  const selected = await vscode.window.showQuickPick(items, {
-    title: "DockyardOS Community Packages",
-    placeHolder: "Only explicit installable manifests are shown; discovery-source entries are metadata-only.",
-    matchOnDescription: true,
-    matchOnDetail: true,
-  });
-  if (!selected) return;
-
-  const manifestResult = await runDockyard(["community", "inspect", "--id", selected.packageId, "--json"]);
-  const action = await vscode.window.showQuickPick([
-    { label: "$(shield) Resolve & assess", description: "Fetch into quarantine, pin immutable commit, scan without execution", action: "assess" },
-    { label: "$(eye) Show manifest", description: "Review declared source, permissions, trust, risk, entrypoints, and limits", action: "manifest" },
-    { label: "$(package) Install / update", description: "Assess first; approval is bound to that exact revision and content hash", action: "install" },
-  ], { title: selected.label, placeHolder: "Choose a safe package action" });
-  if (!action) return;
-
-  if (action.action === "manifest") {
-    showResult(context, `Community Manifest: ${selected.packageId}`, manifestResult);
-    return;
-  }
-
-  const assessmentResult = await runDockyard(["community", "resolve", "--id", selected.packageId, "--json"]);
-  showResult(context, `Community Assessment: ${selected.packageId}`, assessmentResult);
-  if (action.action !== "install") return;
-
+  const assessmentResult = await runDockyard(["community", "resolve", "--id", id, "--json"]);
   const assessed = parseJson(assessmentResult.stdout);
+  if (!assessed) throw new Error("Community assessment output was not valid JSON.");
+  if (action === "assess") {
+    await panel.webview.postMessage({ type: "detail", title: `Assessment: ${id}`, data: assessed });
+    return;
+  }
+
   const decision = assessed?.assessment?.decision;
   const reasons = Array.isArray(assessed?.assessment?.reasons) ? assessed.assessment.reasons : [];
   const expectedRevision = assessed?.resolution?.revision;
@@ -130,18 +143,22 @@ async function browseCommunityPackages(context) {
     throw new Error("Community assessment did not return a valid immutable revision and content digest.");
   }
   if (decision === "quarantine") {
-    vscode.window.showWarningMessage(`DockyardOS kept ${selected.packageId} in quarantine. ${reasons.join("; ")}`);
+    await panel.webview.postMessage({ type: "detail", title: `Quarantined: ${id}`, data: assessed });
+    vscode.window.showWarningMessage(`DockyardOS kept ${id} in quarantine. ${reasons.join("; ")}`);
     return;
   }
 
   let approve = false;
   if (decision === "approval-required") {
     const confirmation = await vscode.window.showWarningMessage(
-      `DockyardOS requires explicit approval for ${selected.packageId} at ${expectedRevision.slice(0, 12)}.\n\n${reasons.join("\n")}`,
+      `DockyardOS requires explicit approval for ${id} at ${expectedRevision.slice(0, 12)}.\n\n${reasons.join("\n")}`,
       { modal: true },
       "Approve this revision",
     );
-    if (confirmation !== "Approve this revision") return;
+    if (confirmation !== "Approve this revision") {
+      await panel.webview.postMessage({ type: "notice", text: `Install cancelled for ${id}.` });
+      return;
+    }
     approve = true;
   } else if (decision !== "automatic") {
     throw new Error(`Unexpected community assessment decision: ${decision || "missing"}`);
@@ -149,15 +166,47 @@ async function browseCommunityPackages(context) {
 
   const args = [
     "community", "install",
-    "--id", selected.packageId,
+    "--id", id,
     "--expected-revision", expectedRevision,
     "--expected-sha256", expectedSha256,
     "--json",
   ];
   if (approve) args.push("--approve");
   const installed = await runDockyard(args);
-  showResult(context, `Community Package Installed: ${selected.packageId}`, installed);
-  vscode.window.showInformationMessage(`DockyardOS activated ${selected.packageId} at ${expectedRevision.slice(0, 12)} after quarantine assessment.`);
+  const installedData = parseJson(installed.stdout) || { output: installed.stdout };
+  await panel.webview.postMessage({ type: "detail", title: `Installed: ${id}`, data: installedData });
+  vscode.window.showInformationMessage(`DockyardOS activated ${id} at ${expectedRevision.slice(0, 12)} after quarantine assessment.`);
+  await refreshCommunityHub(panel, `${id} activated at ${expectedRevision.slice(0, 12)}.`);
+}
+
+async function openCommunityHub(context) {
+  if (communityHubPanel) {
+    communityHubPanel.reveal(vscode.ViewColumn.One, true);
+    await refreshCommunityHub(communityHubPanel, "Community Hub refreshed.");
+    return;
+  }
+  const model = await loadCommunityHubModel();
+  const panel = vscode.window.createWebviewPanel(
+    "dockyardOS.communityHub",
+    "DockyardOS Community Hub",
+    vscode.ViewColumn.One,
+    { enableScripts: true, retainContextWhenHidden: true, localResourceRoots: [] },
+  );
+  communityHubPanel = panel;
+  panel.webview.html = renderCommunityHubHtml(panel.webview, model);
+  panel.onDidDispose(() => { if (communityHubPanel === panel) communityHubPanel = undefined; }, null, context.subscriptions);
+  panel.webview.onDidReceiveMessage((message) => guarded(async () => {
+    if (!message || typeof message !== "object") throw new Error("Invalid Community Hub message.");
+    if (message.type === "refresh") {
+      await refreshCommunityHub(panel, "Community Hub refreshed.");
+      return;
+    }
+    if (message.type === "package-action") {
+      await communityPackageAction(context, panel, message.action, message.id);
+      return;
+    }
+    throw new Error("Unsupported Community Hub message.");
+  }), null, context.subscriptions);
 }
 
 async function refreshStatus(statusBar) {
@@ -195,7 +244,9 @@ async function refreshStatus(statusBar) {
 async function guarded(action) {
   try { return await action(); }
   catch (error) {
-    vscode.window.showErrorMessage(`DockyardOS: ${error instanceof Error ? error.message : String(error)}`);
+    const message = error instanceof Error ? error.message : String(error);
+    if (communityHubPanel) void communityHubPanel.webview.postMessage({ type: "error", message });
+    vscode.window.showErrorMessage(`DockyardOS: ${message}`);
     return undefined;
   }
 }
@@ -277,7 +328,7 @@ function activate(context) {
   })));
 
   context.subscriptions.push(vscode.commands.registerCommand("dockyardOS.communityBrowse", () => guarded(async () => {
-    await browseCommunityPackages(context);
+    await openCommunityHub(context);
   })));
 
   context.subscriptions.push(vscode.commands.registerCommand("dockyardOS.communityStatus", () => guarded(async () => {
@@ -292,6 +343,7 @@ function activate(context) {
 
 function deactivate() {
   activeContext = undefined;
+  communityHubPanel = undefined;
 }
 
 module.exports = { activate, deactivate };
