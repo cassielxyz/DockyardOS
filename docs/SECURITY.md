@@ -132,9 +132,53 @@ The generated `dockyard.sarif` stays inside the run artifact directory. It conta
 
 Incomplete/error runs set SARIF `executionSuccessful` to `false` and include scanner execution notifications. The SARIF properties also carry the raw run status and Dockyard policy gate so a dashboard cannot mistake an incomplete scan for clean evidence.
 
+## Guarded GitHub SARIF upload
+
+DockyardOS can optionally publish a generated `dockyard.sarif` to GitHub code scanning. Publication is never automatic and does not accept a token on the command line.
+
+First review a non-mutating upload plan with an explicit GitHub repository, commit, and full Git ref:
+
+```bash
+dockyard security sarif upload plan \
+  --sarif ~/.dockyardos/projects/<project-id>/security/runs/<run-id>/dockyard.sarif \
+  --repository OWNER/REPO \
+  --commit <40-character-commit-sha> \
+  --ref refs/heads/main
+```
+
+The plan returns the exact SARIF SHA-256, raw/compressed size, run identity, target repository/ref/commit, and API endpoint. DockyardOS does not guess which commit the scan represents; the caller must review that mapping explicitly.
+
+Only after reviewing the plan may the same artifact be uploaded:
+
+```bash
+dockyard security sarif upload run \
+  --sarif ~/.dockyardos/projects/<project-id>/security/runs/<run-id>/dockyard.sarif \
+  --repository OWNER/REPO \
+  --commit <40-character-commit-sha> \
+  --ref refs/heads/main \
+  --expected-sha256 <sha256-from-plan> \
+  --approve
+```
+
+Upload safeguards:
+
+- only the generated `<run-id>/dockyard.sarif` inside the current project's external security-run directory is eligible;
+- the SARIF must be version 2.1.0, identify `DockyardOS` as the tool, and embed the same Dockyard run ID as its directory;
+- repository, commit, and ref are explicit and strictly validated;
+- the report is re-hashed immediately before mutation and a stale reviewed digest fails closed;
+- gzip-compressed SARIF above 10 MiB is rejected locally before upload;
+- `--approve` is mandatory and there is no auto-approval path;
+- the adapter uses the already-authenticated `gh` CLI, so tokens are not stored in Dockyard state or passed as CLI parameters;
+- the gzip+Base64 API request is written only to a mode-`0600` ephemeral file beside the run artifacts and removed after the request;
+- an external `sarif-upload-*.json` audit artifact records the target, exact SARIF digest, GitHub upload ID/status, and verification URLs without storing the compressed SARIF or credentials.
+
+GitHub processes SARIF asynchronously. A successful POST can therefore return `accepted` before processing is complete. DockyardOS performs one immediate status query and reports `complete`, `accepted`, `accepted-unverified`, or `processing-failed` without pretending a pending/failed analysis is complete.
+
+The authenticated GitHub identity must have the repository code-scanning write permission required by GitHub, and GitHub code scanning must be available for the target repository.
+
 ## Security evidence location
 
-Security run artifacts, policy, reports, threat models, and SARIF stay under DockyardOS external project state instead of being written into the application repository:
+Security run artifacts, policy, reports, threat models, SARIF, and SARIF upload audit records stay under DockyardOS external project state instead of being written into the application repository:
 
 ```text
 ~/.dockyardos/projects/<project-id>/security/

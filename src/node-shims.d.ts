@@ -35,6 +35,10 @@ declare module "node:url" {
   export function fileURLToPath(url: any): string;
 }
 
+declare module "node:zlib" {
+  export function gzipSync(...args: any[]): any;
+}
+
 declare module "node:fs/promises" {
   export function access(...args: any[]): Promise<any>;
   export function mkdir(...args: any[]): Promise<any>;
