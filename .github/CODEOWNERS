@@ -1,5 +1,6 @@
 # DockyardOS trust and release boundaries.
 # Repository settings should require Code Owner review on protected branches for these paths.
+/.github/CODEOWNERS @cassielxyz
 /registry/community.json @cassielxyz
 /registry/publishers.json @cassielxyz
 /registry/registry-keys.json @cassielxyz
