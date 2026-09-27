@@ -18,6 +18,8 @@ jobs:
           node-version: 22
       - run: npm install --ignore-scripts
       - run: npm test
+      - name: VS Code bridge syntax check
+        run: node --check integrations/vscode/extension.js
       - name: CLI smoke test
         run: |
           node dist/main.js --help
@@ -32,7 +34,10 @@ jobs:
           node dist/main.js providers plan --capability web-hosting,postgres,auth --stack web,nextjs,postgres --environment preview --free-first --json
           node dist/main.js security profiles --json
           node dist/main.js team compose --task "Build a production SaaS dashboard" --stack web,nextjs,react,supabase,postgres --json
-      - name: Security and team state CLI smoke test
+          node dist/main.js host list --json
+          node dist/main.js host plan --host cursor --scope project --json
+          node dist/main.js host plan --host codex --scope runtime --json
+      - name: Security team and host state CLI smoke test
         run: |
           root="$PWD"
           tmp=$(mktemp -d)
@@ -44,3 +49,6 @@ jobs:
           node "$root/dist/main.js" team status --json
           node "$root/dist/main.js" team advance --artifact discovery.json --decision "Reproduce before changing code" --json
           node "$root/dist/main.js" team status --json
+          node "$root/dist/main.js" host install --host cursor --scope project --json
+          node "$root/dist/main.js" host doctor --host cursor --json
+          test -f .agents/skills/dockyardos/SKILL.md
