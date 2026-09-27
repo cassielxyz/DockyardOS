@@ -2,7 +2,7 @@
 
 DockyardOS separates **discovery** from **execution**.
 
-A capability may appear in a broad discovery source without being installable. It becomes installable only when DockyardOS has an explicit package manifest with source, ref, entrypoints, permissions, trust/risk metadata, host compatibility, license, file/byte limits, and optional publisher signature data.
+A capability may appear in a broad discovery source without being installable. It becomes installable only when DockyardOS has an explicit package manifest with source, ref, entrypoints, permissions, trust/risk metadata, host compatibility, license, file/byte limits, and publisher-signature policy.
 
 ## Trust flow
 
@@ -21,9 +21,13 @@ publisher signature policy
     ↓
 automatic | approval-required | quarantine
     ↓
+pre-activation hash re-verification
+    ↓
 immutable installed version under ~/.dockyardos/community/packages/<id>/<revision>
     ↓
 active revision pointer + local tamper-evident transparency chain
+    ↓
+verified declared entrypoints exposed to supported hosts on demand
 ```
 
 DockyardOS never executes fetched community code during resolution or quarantine scanning.
@@ -71,30 +75,25 @@ Resolve an upstream ref to an immutable commit and perform quarantine assessment
 dockyard community resolve --id superpowers-core-skills
 ```
 
-The result includes:
+The result includes the resolved commit, deterministic content SHA-256, quarantine path, file/byte totals, declared/inferred permissions, entrypoint checks, script/binary findings, static canary, signature state, and install decision.
 
-- resolved Git commit
-- deterministic content SHA-256
-- quarantine path
-- file/byte totals
-- declared and inferred permissions
-- entrypoint validation
-- script/binary findings
-- static canary result
-- signature state
-- install decision
+For approval-sensitive UI/workflows, pin installation to the exact reviewed result:
 
-Install/update:
+```bash
+dockyard community install \
+  --id <package> \
+  --expected-revision <40-char-commit> \
+  --expected-sha256 <64-char-content-digest> \
+  --approve
+```
+
+If the upstream ref moves or its resolved content digest differs after assessment, installation aborts and requires a fresh assessment. `--approve` never applies to a different revision than the one reviewed.
+
+Install/update can also be run directly when policy does not require a separate review flow:
 
 ```bash
 dockyard community install --id <package>
 dockyard community update --id <package>
-```
-
-If the result is `approval-required`, rerun only after review:
-
-```bash
-dockyard community install --id <package> --approve
 ```
 
 `quarantine` decisions cannot be overridden by `--approve`.
@@ -106,12 +105,23 @@ dockyard community status
 dockyard community status --id <package>
 ```
 
+List only integrity-verified active packages and read one declared entrypoint:
+
+```bash
+dockyard community active
+dockyard community read --id <package> --entrypoint <declared/path>
+```
+
+`community read` rejects undeclared paths and re-verifies the package hash first.
+
 Rollback without re-fetching upstream:
 
 ```bash
 dockyard community rollback --id <package>
 dockyard community rollback --id <package> --revision <sha>
 ```
+
+Rollback re-verifies the stored immutable revision and refuses a missing or locally modified target.
 
 Verify/show the local transparency chain:
 
@@ -128,17 +138,25 @@ It:
 
 - rejects unsafe/malformed Git refs before invoking Git
 - uses argument-vector process execution rather than shell command interpolation
+- disables system/global Git configuration for quarantine operations
+- disables interactive credential prompting and Git LFS smudging
+- uses an empty repository-local hooks path
 - performs a shallow no-tags fetch of the declared ref
+- bounds fetched Git object size before checkout
 - detaches at `FETCH_HEAD`
 - records the exact 40-character commit SHA
+- bounds filesystem entry count and directory depth
 - enforces package-specific file and byte limits
 - rejects symlinks and non-regular special files
 - excludes `.git` metadata from package hashing/install content
+- includes executable mode in deterministic content hashing
 - validates declared entrypoints
 - structurally validates Agent Skill `SKILL.md` frontmatter
 - detects executable bits, script-like source files, binary artifacts, sensitive filenames, package-manager scripts, and install lifecycle scripts
 - infers permissions conservatively and quarantines when inferred permissions exceed the manifest
 - never executes fetched code during static canary assessment
+
+Immediately before activation, DockyardOS re-hashes the quarantined tree. After copying to the immutable package directory, it hashes again before switching the active revision pointer. This prevents post-assessment content changes from being activated.
 
 ## Signature policy
 
@@ -146,9 +164,7 @@ DockyardOS supports Ed25519 manifest signatures.
 
 Community-trust packages always require a valid signature from a key present in `registry/publishers.json`; a community manifest cannot disable that requirement. Official/maintainer packages may also require signatures explicitly.
 
-The signature covers the canonicalized package manifest excluding the `signature` field itself.
-
-Publisher keys can be revoked. A revoked or unknown key fails signature verification.
+The signature covers the canonicalized package manifest excluding the `signature` field itself. Publisher keys can be revoked; a revoked or unknown key fails verification.
 
 ## Decision policy
 
@@ -182,11 +198,24 @@ Examples include:
 
 `--approve` never bypasses quarantine.
 
+## Cross-host activation
+
+Installed community packages are not dumped wholesale into every agent context. That would defeat DockyardOS context budgets and make a large catalogue counterproductive.
+
+Instead, DockyardOS exposes verified active package metadata and declared entrypoints through the local MCP bridge:
+
+- `dockyard_community_active`
+- `dockyard_community_entrypoint`
+
+The first tool lists only active packages whose immutable stored content still matches its recorded digest. The second can read only a path explicitly declared as a package entrypoint and re-verifies package integrity before reading it. It is not a general filesystem-read tool.
+
+This lets Antigravity, Gemini CLI, Codex, Claude Code, Cursor, OpenCode, and other Dockyard MCP-capable hosts load a relevant installed skill on demand rather than loading every installed package.
+
 ## Updates and rollback
 
 Every installed revision is immutable and stored separately. An update never overwrites the previous revision directory.
 
-The state file records all installed versions and a separate active-revision pointer. Rollback changes only that pointer, so it does not need to trust the network or re-download an older release.
+The state file records all installed versions and a separate active-revision pointer. Rollback changes only that pointer after verifying the target revision's current content hash, so it does not need to trust the network or re-download an older release.
 
 An update is compared with the currently active package. Permission expansion, trust downgrade, or risk increase forces renewed approval even if an earlier revision had already been approved.
 
@@ -204,5 +233,6 @@ This is **local tamper evidence**, not a public transparency service. P6 does no
 - It does not treat popularity/stars as trust.
 - It does not permanently hard-code current provider/pricing claims into package trust decisions.
 - It does not expose provider credentials to community packages merely because they request them.
+- It does not automatically load every installed community package into every team phase.
 
-Future work can add sandboxed dynamic canaries, remote registry synchronization, publisher onboarding/signing workflows, and richer package discovery UI while preserving these boundaries.
+Future work can add sandboxed dynamic canaries, remote registry synchronization, publisher onboarding/signing workflows, external transparency anchoring, and richer package discovery UI while preserving these boundaries.
