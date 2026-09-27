@@ -46,6 +46,8 @@ export interface CheckpointState {
   next: string[];
   capabilities: string[];
   notes?: string;
+  teamRunId?: string;
+  teamPhase?: string;
 }
 
 export interface Checkpoint {
