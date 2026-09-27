@@ -143,7 +143,7 @@
 - [x] Collision-safe effective registry across bundled + verified remote manifests
 - [x] Automatic-only safe update check/apply flow with no approval bypass
 - [x] Offline installed-manifest snapshots for remote package runtime continuity
-- [ ] Registry contribution-validation service/CI for third-party submissions
+- [x] Registry contribution-validation staging/CI for third-party submissions
 - [ ] Publisher key rotation/revocation UX and migration guidance
 - [ ] External/public transparency anchoring
 - [ ] Safe automatic install/merge for host-native project config bundles
@@ -166,7 +166,8 @@
 - [x] Quarantine-only read-only package mount
 - [x] Unit/integration coverage plus VSIX/Core packaging assertions for P7 registry trust data
 - [x] Merge verified remote registry packages into a collision-safe effective discovery view
-- [ ] Contribution-validation workflow that signs only reviewed registry envelopes
+- [x] Read-only third-party contribution validation with no signing secrets in PR CI
+- [ ] Maintainer promotion/signing workflow for reviewed registry envelopes
 - [ ] Key rotation/revocation assistant without silently rewriting trust policy
 - [ ] External transparency anchoring
 
@@ -188,7 +189,8 @@
 - [x] Deterministic collision, provenance, snapshot, offline-runtime, and fail-closed update tests
 - [ ] Background/scheduled update checks exposed through host automation integrations
 - [ ] Rich VS Code remote marketplace view with provenance/conflict/update-state filters
-- [ ] Contribution-validation/signing workflow for third-party registry submissions
+- [x] Contribution-validation workflow for third-party registry submissions
+- [ ] Maintainer-controlled signing/promotion automation for reviewed submissions
 
 ## P9 — Authenticated provider actions and verified previews
 
@@ -253,10 +255,31 @@
 - [ ] Completed green full real-host matrix run from merged `main`
 - [ ] Antigravity real-CLI CI lane after an official stable noninteractive install surface is verified
 
+## P12 — Isolated community contribution validation
+
+- [x] Runtime-inert `registry/contributions` staging queue
+- [x] Runtime-inert `registry/publisher-proposals` public-key onboarding queue
+- [x] Third-party contribution manifests forced to `trust: community`
+- [x] Contribution source refs pinned to immutable lowercase 40-character Git commits
+- [x] Publisher signatures required for third-party package proposals
+- [x] Existing manifest validator and trusted/revoked Ed25519 publisher-key verifier reused
+- [x] Missing/untrusted publisher keys produce onboarding-required rather than activation
+- [x] Invalid signatures from known keys are blocked
+- [x] Valid signed proposals become review-ready but never activation-eligible from staging
+- [x] Publisher key proposals structurally verify Ed25519 public keys but never grant trust automatically
+- [x] Non-mutating promotion preparation rejects bundled package-ID collisions
+- [x] Read-only pull-request validation workflow with no signing/publishing secrets
+- [x] Proposal PRs cannot modify trusted registry/key files in the same review
+- [x] CODEOWNERS boundary covers trust files, release workflows, and CODEOWNERS itself
+- [x] Deterministic contribution/signature/onboarding/collision tests
+- [x] Contributor documentation for the two-review trust flow
+- [ ] Maintainer-controlled publisher onboarding/promotion automation after independent identity review
+- [ ] Signed reviewed registry-envelope publication pipeline
+
 ## Next production milestones
 
 - Complete a green real-host matrix run and first guarded VS Code Marketplace publication
-- Community contribution validation, richer marketplace UI, and optional scheduled safe-update checks
-- External transparency anchoring and publisher key-rotation workflow
+- Richer VS Code community marketplace/discovery UI and optional scheduled safe-update checks
+- Maintainer-controlled contribution promotion, publisher key rotation/revocation, and external transparency anchoring
 - Alternative-provider actions, live pricing/health signals, and migration rollback executors
 - Optional approved SARIF upload and expiring-policy reminder integrations
