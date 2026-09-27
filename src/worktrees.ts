@@ -2,7 +2,7 @@ import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { projectDirectory, requireProject } from "./project.js";
 import { run } from "./process.js";
-import { attachWorktree } from "./team-state.js";
+import { attachWorktree, loadTeamRun } from "./team-state.js";
 import type { WorktreePlan } from "./team-types.js";
 
 function slug(value: string, max = 48): string {
@@ -17,8 +17,21 @@ function verifyGitRef(root: string, ref: string): string {
   return result.stdout.split("\n")[0]!;
 }
 
+async function verifyWriterSlot(root: string, runId: string, agentId: string): Promise<void> {
+  const state = await loadTeamRun(root, runId);
+  if (!state) throw new Error(`Unknown DockyardOS team run: ${runId}`);
+  if (state.status !== "active") throw new Error(`Team run must be active before creating a writer worktree; current status is ${state.status}.`);
+  if (state.currentPhase !== "implementation") throw new Error(`Writer worktrees are only created during implementation; current phase is ${state.currentPhase}.`);
+  const plan = state.composition.phases.find((phase) => phase.id === "implementation");
+  const runtime = state.phases.find((phase) => phase.id === "implementation");
+  const assignment = plan?.assignments.find((item) => item.agentId === agentId);
+  if (!assignment || assignment.isolation !== "worktree-write") throw new Error(`${agentId} is not an active worktree-write implementer for this team run.`);
+  if ((runtime?.worktrees.length ?? 0) >= (plan?.maxParallelWriters ?? 1)) throw new Error(`Parallel writer budget reached (${plan?.maxParallelWriters ?? 1}).`);
+}
+
 export async function planWorktree(root: string, input: { runId: string; taskId: string; agentId: string; baseRef?: string }): Promise<WorktreePlan> {
   const project = await requireProject(root);
+  await verifyWriterSlot(project.root, input.runId, input.agentId);
   const baseRef = input.baseRef ?? "HEAD";
   verifyGitRef(project.root, baseRef);
   const runSlug = slug(input.runId, 24);
