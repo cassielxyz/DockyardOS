@@ -31,6 +31,10 @@ function bundledAntigravityPluginPath(): string {
   return fileURLToPath(new URL("../integrations/antigravity/plugin", import.meta.url));
 }
 
+function bundledNativePath(path: string): string {
+  return fileURLToPath(new URL(`../${path.replace(/^\/+/, "")}`, import.meta.url));
+}
+
 export async function inspectHost(workspaceRoot: string, host: HostId): Promise<HostInspection> {
   const adapter = hostAdapter(host);
   const projectPaths = [
@@ -44,6 +48,7 @@ export async function inspectHost(workspaceRoot: string, host: HostId): Promise<
     executableAvailable: adapter.executable ? commandExists(adapter.executable) : false,
     projectSignals: await Promise.all(projectPaths.map(async (path) => ({ path, exists: await exists(expandPath(path, workspaceRoot)) }))),
     globalSignals: await Promise.all(globalPaths.map(async (path) => ({ path, exists: await exists(expandPath(path, workspaceRoot)) }))),
+    ...(adapter.nativeBundle ? { nativeBundleAvailable: await exists(bundledNativePath(adapter.nativeBundle.path)) } : {}),
     nativeResumeAvailable: adapter.supportsNativeResume,
     features: adapter.features,
   };
@@ -82,6 +87,12 @@ export function planHostInstall(workspaceRoot: string, host: HostId, scope: Host
     warnings.push(`No verified automatic ${scope}-scope install strategy is defined for ${adapter.displayName}.`);
   }
 
+  if (adapter.nativeBundle && adapter.nativeBundle.install === "manual-review") {
+    warnings.push(`A richer native bundle is available at ${adapter.nativeBundle.path}; it is review-first because installing it may intersect with existing host instructions/MCP configuration.`);
+  }
+  if (adapter.nativeBundle && adapter.nativeBundle.install === "cli" && host !== "antigravity") {
+    warnings.push(`A richer native ${adapter.nativeBundle.mode} bundle is available at ${adapter.nativeBundle.path}; the portable skill remains the default install until the host-native install is explicitly selected.`);
+  }
   if (scope === "project") warnings.push("Project-scope host integration files may be committed to the application repository. Use user scope when you want one DockyardOS install across projects.");
   if (!adapter.supportsDockyardHooks) warnings.push(`${adapter.displayName} does not currently expose the same DockyardOS hook surface as Antigravity; durable resume still works through the shared CLI/state, but approval/context injection may require the host's own integration mechanism.`);
   return { host, workspaceRoot, actions, sharedState: { dockyardHome: dockyardHome(), projectStateIsHostIndependent: true }, warnings };
