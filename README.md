@@ -26,6 +26,9 @@ DockyardOS is a persistent autonomous-development layer for coding agents. It ad
 - local stdio `dockyard-mcp` bridge for structured continuity across supported hosts
 - one-time VS Code extension with a bundled DockyardOS Core fallback
 - safe community package registry with quarantine, signatures, permission assessment, immutable versions, rollback, and local transparency metadata
+- signed, size-bounded remote community registry synchronization with replay/equivocation protection
+- local Ed25519 publisher/registry signing workflow without exposing private-key material
+- fail-closed Docker/Podman dynamic canaries for quarantined capability code
 - one external DockyardOS state shared by every supported host
 
 ## Install once, use across projects
@@ -50,6 +53,12 @@ Community capability state lives under:
 
 ```text
 ~/.dockyardos/community/
+```
+
+Local signing keys live separately under:
+
+```text
+~/.dockyardos/signing-keys/
 ```
 
 It is not duplicated into `.claude`, `.cursor`, `.opencode`, or another host directory. Switching agent hosts therefore does not fork the project's memory.
@@ -176,7 +185,48 @@ dockyard community rollback --id <package>
 
 Community-trust packages require a valid Ed25519 manifest signature from a trusted Dockyard publisher key. Updates are re-approved if permissions expand, trust decreases, or risk increases.
 
-See [`docs/COMMUNITY.md`](docs/COMMUNITY.md) for the full distribution and trust model.
+### Signed remote registries
+
+Remote registries are disabled by default. When explicitly configured, DockyardOS requires HTTPS, an exact allowed hostname, a trusted Ed25519 registry key, response-size and age limits, and a trust ceiling. Signed envelope sequences protect against replay/rollback and same-sequence equivocation.
+
+```bash
+dockyard community remote sources
+dockyard community remote sync
+dockyard community remote cached
+```
+
+A synchronized remote registry is verified/cached metadata. It does not bypass package quarantine, publisher signatures, permission checks, immutable resolution, or approval.
+
+### Publisher signing
+
+Generate local Ed25519 signing keys and sign manifests without printing private-key material:
+
+```bash
+dockyard community publisher keygen --id <publisher> --key-id <key>
+dockyard community publisher sign --file manifest.json --key-id <key> --out manifest.signed.json
+```
+
+Registry operators can similarly use `dockyard community registry-key keygen|sign`. Private key files are created with mode `0600` under DockyardOS external state.
+
+### Isolated dynamic canaries
+
+Quarantined capability code can be tested explicitly with Docker or Podman:
+
+```bash
+dockyard community canary plan \
+  --id <package> \
+  --image <image>@sha256:<digest> \
+  --command <direct-command>
+
+dockyard community canary run \
+  --id <package> \
+  --image <image>@sha256:<digest> \
+  --command <direct-command>
+```
+
+DockyardOS refuses floating image tags, auto-pulls, direct host fallback, network access, writable package mounts, elevated Linux capabilities, or unbounded CPU/memory/PIDs/time/output. Missing backend/image produces `unavailable`, never a false pass.
+
+See [`docs/COMMUNITY.md`](docs/COMMUNITY.md) for the complete distribution, remote-registry, signing, and canary trust model.
 
 ## Let DockyardOS choose providers
 
@@ -239,7 +289,8 @@ Balanced mode is the default:
 - production deploys, destructive database actions, force pushes, infrastructure deletion, DNS changes, secret rotation, and sensitive operations require approval
 - obviously machine-destructive commands are denied
 - community capability updates do not silently gain new sensitive permissions
-- community discovery never implies package execution
+- community discovery and remote registry synchronization never imply package execution
+- dynamic community canaries never fall back to direct host execution
 - remote dynamic security testing requires explicit authorization and never infers permission from public accessibility
 
 ## Provider philosophy
