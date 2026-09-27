@@ -5,7 +5,8 @@
   "description": "Autonomous development orchestration, memory, safety, and provider routing layer for coding agents.",
   "type": "module",
   "bin": {
-    "dockyard": "./dist/main.js"
+    "dockyard": "./dist/main.js",
+    "dockyard-mcp": "./dist/mcp-server.js"
   },
   "files": ["dist", "integrations", "registry", "README.md"],
   "scripts": {
@@ -13,8 +14,13 @@
     "build": "tsc -p tsconfig.json",
     "test": "npm run build && node --test test/**/*.test.mjs",
     "check": "npm test",
-    "dockyard": "node dist/main.js"
+    "dockyard": "node dist/main.js",
+    "mcp": "node dist/mcp-server.js"
   },
   "engines": { "node": ">=20" },
+  "dependencies": {
+    "@modelcontextprotocol/server": "^2.1.0",
+    "zod": "^4.1.0"
+  },
   "devDependencies": { "typescript": "^5.8.3" }
 }
