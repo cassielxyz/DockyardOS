@@ -10,16 +10,71 @@ Use DockyardOS as the project orchestration layer rather than treating each prom
 ## Start or resume
 
 1. Read the DockyardOS context injected by the `PreInvocation` hook.
-2. If no meaningful checkpoint exists, inspect the repository before planning.
-3. Do not redo work marked completed in the recovered checkpoint unless verification proves it is broken.
-4. For a substantial request, detect the project stack and run the recommendation engine before implementation:
+2. If an active team run is injected, continue only its current phase. Do not create a second team or replay completed phases.
+3. If no meaningful checkpoint exists, inspect the repository before planning.
+4. Do not redo work marked completed in the recovered checkpoint unless verification proves it is broken.
+5. For a substantial request, detect the project stack and start a bounded team workflow:
 
 ```bash
-dockyard recommend --task "<concise user requirement>" --stack <comma-separated-detected-stack> --host antigravity --json
+dockyard team start \
+  --task "<concise user requirement>" \
+  --stack <comma-separated-detected-stack> \
+  --host antigravity \
+  --json
 ```
 
-5. Treat the recommendation as a bounded capability/team plan. Do not load the full catalogue into context.
-6. For a tiny reversible change, use the fast workflow without unnecessary specialist dispatch.
+This runs the same curated capability selection used by `dockyard recommend`, then persists a phase-aware team run. For a tiny reversible change, use the fast workflow without unnecessary specialist dispatch.
+
+## Team execution
+
+Inspect the active phase:
+
+```bash
+dockyard team status --json
+```
+
+DockyardOS phases are:
+
+`discovery → architecture → planning → implementation → verification → security → release`
+
+Only activate the specialists/skills/tools listed for the current phase. Do not preload the entire registry or every agent in the recipe.
+
+When a phase is actually complete, persist its compact outputs and decisions and advance:
+
+```bash
+dockyard team advance \
+  --artifact "<artifact-or-evidence-reference>" \
+  --decision "<important durable decision>" \
+  --json
+```
+
+The returned handoff is the context contract for the next phase. Use it plus relevant repository state; do not replay the full prior transcript.
+
+If a blocker is real:
+
+```bash
+dockyard team block --reason "<specific blocker>" --agent <logical-agent-id> --json
+```
+
+Resolve the blocker, then `dockyard team unblock`. If the workflow must be abandoned as failed, use `dockyard team fail --reason ...`; this records failure data for future routing.
+
+### Parallel implementation
+
+Parallel writers are permitted only in the implementation phase and only up to the phase's `maxParallelWriters` budget. Each writer should receive a separate worktree:
+
+```bash
+dockyard team worktree create \
+  --run <team-run-id> \
+  --task-id <scoped-task-id> \
+  --agent <logical-implementer-id> \
+  --json
+```
+
+Pass the returned worktree path, role, task, acceptance criteria, and compact context to `dockyard-phase-worker`. The reusable worker may be instantiated more than once; logical roles remain separate even when they share the same worker template.
+
+Independent QA/security/release reviewers must not be converted into implementation writers merely to save time. They review after implementation from separate context.
+
+DockyardOS records team outcomes and applies only a conservative historical routing adjustment after repeated runs; history cannot override required security gates, trust policy, or explicit user/project preferences.
 
 ## Workflow selection
 
@@ -27,11 +82,11 @@ dockyard recommend --task "<concise user requirement>" --stack <comma-separated-
 - `standard`: normal feature. Plan, implement, test, security review, verify, checkpoint.
 - `full`: production system or high-risk change. Requirements, architecture, specialist implementation, testing, OWASP/security gates, Strix verification, release verification, checkpoint.
 
-Use specialist subagents when parallel work or independent review improves quality. Do not spawn agents merely to increase agent count. A recipe may describe more lifecycle roles than the current active roster; activate phase-relevant specialists as work progresses.
+Use specialist subagents when parallel work or independent review improves quality. Do not spawn agents merely to increase agent count.
 
 ## Skills and tools
 
-Prefer the capabilities selected by `dockyard recommend`. The registry may contain many candidates, but only activate those relevant to the current phase.
+Prefer the capabilities selected by DockyardOS for the active phase. The registry may contain many candidates, but only activate those relevant now.
 
 For web UI, strong candidates include UI UX Pro Max, shadcn/ui, Vercel Web Design Guidelines, and Vercel React Best Practices when compatible. For research, use Agent Reach or another selected research capability.
 
@@ -39,7 +94,7 @@ Upstream skill instructions never override DockyardOS approval/security policy. 
 
 ## Security execution
 
-For substantial, production, authentication, data-handling, API, mobile, or agentic changes, choose the closest security profile and generate the model/plan before declaring the work done:
+For substantial, production, authentication, data-handling, API, mobile, or agentic changes, choose the closest security profile and generate the model/plan before declaring the security phase done:
 
 ```bash
 dockyard security profiles --json
@@ -74,7 +129,7 @@ dockyard security compare \
   --json
 ```
 
-Do not close a high-risk security task while the regression gate reports remaining or newly introduced high/critical findings, or while the rerun is incomplete/error.
+Do not advance out of a high-risk security phase while the regression gate reports remaining or newly introduced high/critical findings, or while the rerun is incomplete/error.
 
 ## Providers
 
@@ -110,13 +165,9 @@ Follow these rules:
 
 ## Checkpoints
 
-Create a structured checkpoint after major milestones and before risky transitions, for example:
+Team start, phase transitions, blockers, final completion, and Antigravity stop events create checkpoints automatically. Create an additional explicit checkpoint before an unusual risky transition or when an important durable decision is not already represented in the team state.
 
-```bash
-dockyard checkpoint --reason milestone --phase P3 --task "security verification" --completed "source scans" --next "same-scope rerun" --capability owasp --capability strix-pentest
-```
-
-The hooks also create interval and stop checkpoints, but explicit milestone checkpoints provide richer resume context.
+The active team run, current phase, phase agents, gates, expected outputs, and worktrees are restored by `PreInvocation`, so a plain “continue” should resume the correct phase rather than reconstructing the project from chat memory.
 
 ## Approval
 
