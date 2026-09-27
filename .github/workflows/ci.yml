@@ -32,7 +32,9 @@ jobs:
           node dist/main.js providers plan --capability web-hosting,postgres,auth --stack web,nextjs,postgres --environment preview --free-first --json
           node dist/main.js security profiles --json
           node dist/main.js team compose --task "Build a production SaaS dashboard" --stack web,nextjs,react,supabase,postgres --json
-      - name: Security and team state CLI smoke test
+          node dist/main.js hosts list --json
+          node dist/main.js hosts inspect --id gemini-cli,codex,claude-code,cursor,opencode,vscode --json
+      - name: Security, team, checkpoint, and host state smoke test
         run: |
           root="$PWD"
           tmp=$(mktemp -d)
@@ -43,4 +45,20 @@ jobs:
           node "$root/dist/main.js" team start --task "Fix the login crash" --stack typescript --json
           node "$root/dist/main.js" team status --json
           node "$root/dist/main.js" team advance --artifact discovery.json --decision "Reproduce before changing code" --json
-          node "$root/dist/main.js" team status --json
+          node "$root/dist/main.js" hosts context --id codex --json
+          node "$root/dist/main.js" hosts gate --id codex --command "git status"
+          node "$root/dist/main.js" hosts event --id codex --event stop --json
+          node "$root/dist/main.js" resume --json
+      - name: Validate host integration manifests
+        run: |
+          node -e "JSON.parse(require('fs').readFileSync('integrations/gemini-cli/gemini-extension.json','utf8'))"
+          node -e "JSON.parse(require('fs').readFileSync('integrations/gemini-cli/hooks/hooks.json','utf8'))"
+          node -e "JSON.parse(require('fs').readFileSync('integrations/codex/.codex-plugin/plugin.json','utf8'))"
+          node -e "JSON.parse(require('fs').readFileSync('integrations/codex/.mcp.json','utf8'))"
+          node -e "JSON.parse(require('fs').readFileSync('integrations/claude-code/.mcp.json','utf8'))"
+          node -e "JSON.parse(require('fs').readFileSync('integrations/cursor/.cursor/mcp.json','utf8'))"
+      - name: Build VS Code extension
+        working-directory: integrations/vscode
+        run: |
+          npm install --ignore-scripts
+          npm run build
