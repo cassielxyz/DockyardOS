@@ -52,8 +52,7 @@ export function run(command: string, args: string[], cwdOrOptions?: string | Run
 }
 
 export function commandExists(command: string): boolean {
-  const probe = process.platform === "win32"
-    ? run("where", [command], { timeoutMs: 3_000, maxOutputBytes: 4_096 })
-    : run("sh", ["-lc", `command -v ${command}`], { timeoutMs: 3_000, maxOutputBytes: 4_096 });
-  return probe.ok;
+  if (!/^[A-Za-z0-9._+-]+$/.test(command)) return false;
+  const locator = process.platform === "win32" ? "where" : "which";
+  return run(locator, [command], { timeoutMs: 3_000, maxOutputBytes: 4_096 }).ok;
 }
