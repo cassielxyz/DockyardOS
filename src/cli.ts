@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import type { Candidate, CheckpointState, CostPreference, HostId, OperatingMode, ProviderEnvironment, SecurityLevel, UpdateChannel, WorkflowProfile } from "./types.js";
+import type { SecurityProfileId, SecurityScanMode, SecurityScannerId, SecurityTargetType } from "./security-types.js";
 import { initProject, findWorkspaceRoot, loadProject } from "./project.js";
 import { createCheckpoint, loadLatestCheckpoint } from "./checkpoints.js";
 import { runDoctor } from "./doctor.js";
@@ -10,6 +11,11 @@ import { recipes, recipeById } from "./recipes.js";
 import { defaultSelectionRequest, selectCapabilities, selectionSummary } from "./selection.js";
 import { probeProviders } from "./provider-detection.js";
 import { fallbackChain, planProviders, providerPlanSummary } from "./provider-planner.js";
+import { createSecurityPlan, securityPlanSummary } from "./security-plan.js";
+import { executeSecurityPlan, securityRunSummary } from "./security-runner.js";
+import { securityProfiles } from "./security-profiles.js";
+import { compareSecurityResultFiles } from "./security-regression.js";
+import { createThreatModel, threatModelSummary } from "./threat-model.js";
 import { handlePostTool, handlePreInvocation, handlePreTool, handleStop } from "./hooks.js";
 
 function values(args: string[], name: string): string[] {
@@ -41,7 +47,37 @@ function print(data: unknown, json = false): void {
 }
 
 function usage(): void {
-  console.log(`DockyardOS CLI\n\nCommands:\n  init [--name NAME] [--mode safe|balanced|autonomous]\n  status [--json]\n  checkpoint [--reason TEXT] [--phase NAME] [--task TEXT] [--next TEXT] [--completed TEXT] [--blocked TEXT] [--capability ID]\n  resume [--json]\n  doctor [--json]\n  plan --profile fast|standard|full --stack nextjs,supabase --security standard|high [--json]\n  recommend --task \"build a SaaS dashboard\" --stack nextjs,supabase [--security high] [--host antigravity]\n  catalog [--query TEXT] [--category NAME] [--kind skill|agent|tool|mcp] [--stack NAME] [--host NAME]\n  categories\n  recipes [--id RECIPE]\n  registry verify\n  providers --capability CAPABILITY\n  providers inspect [--live] [--id vercel,supabase]\n  providers chain --capability CAPABILITY\n  providers plan --capability CAPABILITY[,CAPABILITY] --stack STACK [--environment preview|production] [--free-first] [--live]\n  policy --command \"...\" [--mode MODE] [--json]\n  hook pre-tool|post-tool|pre-invocation|stop\n`);
+  console.log(`DockyardOS CLI\n\nCommands:\n  init [--name NAME] [--mode safe|balanced|autonomous]\n  status [--json]\n  checkpoint [--reason TEXT] [--phase NAME] [--task TEXT] [--next TEXT] [--completed TEXT] [--blocked TEXT] [--capability ID]\n  resume [--json]\n  doctor [--json]\n  plan --profile fast|standard|full --stack nextjs,supabase --security standard|high [--json]\n  recommend --task \"build a SaaS dashboard\" --stack nextjs,supabase [--security high] [--host antigravity]\n  catalog [--query TEXT] [--category NAME] [--kind skill|agent|tool|mcp] [--stack NAME] [--host NAME]\n  categories\n  recipes [--id RECIPE]\n  registry verify\n  providers --capability CAPABILITY\n  providers inspect [--live] [--id vercel,supabase]\n  providers chain --capability CAPABILITY\n  providers plan --capability CAPABILITY[,CAPABILITY] --stack STACK [--environment preview|production] [--free-first] [--live]\n  security profiles\n  security plan --profile web|api|mobile|llm|general [--target .] [--target-type source|url|repository] [--mode quick|standard|deep] [--strix --strix-budget USD] [--authorized]\n  security scan --profile PROFILE [same options as security plan]\n  security threat-model --profile PROFILE\n  security compare --before PATH --after PATH\n  policy --command \"...\" [--mode MODE] [--json]\n  hook pre-tool|post-tool|pre-invocation|stop\n`);
+}
+
+function securityRequest(args: string[]): {
+  profile: SecurityProfileId;
+  target: { type: SecurityTargetType; value: string; authorized?: boolean };
+  mode: SecurityScanMode;
+  scanners?: SecurityScannerId[];
+  includeStrix?: boolean;
+  strixBudgetUsd?: number;
+} {
+  const profile = (value(args, "--profile") ?? "general") as SecurityProfileId;
+  if (!securityProfiles.some((item) => item.id === profile)) throw new Error(`Invalid security profile: ${profile}`);
+  const type = (value(args, "--target-type") ?? "source") as SecurityTargetType;
+  if (!["source", "url", "repository"].includes(type)) throw new Error(`Invalid security target type: ${type}`);
+  const mode = (value(args, "--mode") ?? "standard") as SecurityScanMode;
+  if (!["quick", "standard", "deep"].includes(mode)) throw new Error(`Invalid security scan mode: ${mode}`);
+  const scannerValues = values(args, "--scanner") as SecurityScannerId[];
+  for (const scanner of scannerValues) if (!["gitleaks", "osv-scanner", "semgrep", "strix"].includes(scanner)) throw new Error(`Invalid security scanner: ${scanner}`);
+  const includeStrix = has(args, "--strix") || scannerValues.includes("strix");
+  const budgetRaw = value(args, "--strix-budget");
+  const strixBudgetUsd = budgetRaw ? Number(budgetRaw) : undefined;
+  if (budgetRaw && (!Number.isFinite(strixBudgetUsd) || (strixBudgetUsd ?? 0) <= 0)) throw new Error("--strix-budget must be a positive number");
+  return {
+    profile,
+    target: { type, value: value(args, "--target") ?? ".", ...(type !== "source" ? { authorized: has(args, "--authorized") } : {}) },
+    mode,
+    ...(scannerValues.length ? { scanners: scannerValues } : {}),
+    ...(includeStrix ? { includeStrix: true } : {}),
+    ...(strixBudgetUsd ? { strixBudgetUsd } : {}),
+  };
 }
 
 async function main(): Promise<void> {
@@ -216,6 +252,44 @@ async function main(): Promise<void> {
       if (!capability) throw new Error("Usage: dockyard providers --capability CAPABILITY | inspect | chain | plan");
       print(providersFor(capability), true);
       break;
+    }
+    case "security": {
+      const subcommand = args[0];
+      if (subcommand === "profiles") {
+        print(securityProfiles.map((profile) => ({ id: profile.id, name: profile.displayName, framework: profile.frameworkVersion, scanners: profile.scanners, controls: profile.controls.length })), true);
+        break;
+      }
+      if (subcommand === "plan" || subcommand === "scan") {
+        const request = securityRequest(args.slice(1));
+        const plan = await createSecurityPlan(root, request);
+        if (subcommand === "plan") {
+          print(json ? plan : securityPlanSummary(plan), true);
+          break;
+        }
+        await createThreatModel(root, request.profile);
+        const result = await executeSecurityPlan(plan);
+        print(json ? result : securityRunSummary(result), true);
+        if (result.status === "findings") process.exitCode = 1;
+        else if (result.status === "error" || result.status === "incomplete") process.exitCode = 2;
+        break;
+      }
+      if (subcommand === "threat-model") {
+        const profile = (value(args, "--profile") ?? "general") as SecurityProfileId;
+        if (!securityProfiles.some((item) => item.id === profile)) throw new Error(`Invalid security profile: ${profile}`);
+        const generated = await createThreatModel(root, profile);
+        print(json ? generated : { ...threatModelSummary(generated.model), path: generated.path }, true);
+        break;
+      }
+      if (subcommand === "compare") {
+        const before = value(args, "--before");
+        const after = value(args, "--after");
+        if (!before || !after) throw new Error("security compare requires --before and --after result.json paths");
+        const compared = await compareSecurityResultFiles(before, after);
+        print(json ? compared : { gate: compared.report.gate, fixed: compared.report.fixed.length, remaining: compared.report.remaining.length, introduced: compared.report.introduced.length, reasons: compared.report.reasons, path: compared.path }, true);
+        if (compared.report.gate === "fail") process.exitCode = 1;
+        break;
+      }
+      throw new Error("Usage: dockyard security profiles | plan | scan | threat-model | compare");
     }
     case "policy": {
       const cmd = value(args, "--command");

@@ -19,7 +19,10 @@ DockyardOS is a persistent autonomous-development layer for coding agents. It ad
 - provider detection and capability-based fallback planning across Vercel, Cloudflare, Supabase and alternatives
 - local-only provider inspection plus optional safe live account/status probes
 - `free-first` provider plans that require live pricing/free-tier validation before activation
-- high-security selection that enforces OWASP review, Strix verification, secret scanning, dependency scanning, threat modeling, and regression verification
+- runnable OWASP-aligned web/API/mobile/LLM security profiles
+- Gitleaks, OSV-Scanner, Semgrep, and opt-in budget-bounded Strix execution
+- persistent threat-model and normalized security result artifacts outside source repositories
+- proof → fix → same-scope rerun regression gates
 - capability locks with exact revisions/content hashes and permission-aware update approval
 
 ## Local development
@@ -31,7 +34,7 @@ npm link
 
 dockyard init
 dockyard doctor
-dockyard checkpoint --reason milestone --phase P2 --task "provider orchestration" --next "authenticated action adapters"
+dockyard checkpoint --reason milestone --phase P3 --task "security execution" --next "agent team composer"
 dockyard resume
 ```
 
@@ -70,6 +73,32 @@ dockyard providers plan \
 
 The planner prefers compatible existing setup where useful, keeps ranked fallbacks, surfaces migration caveats, and does not pretend DNS/WAF/DDoS or different auth/realtime/storage models are interchangeable. Add `--live` only when read-only account readiness is necessary for the decision.
 
+## Security verification
+
+List the available security baselines and build a project-scoped plan:
+
+```bash
+dockyard security profiles
+dockyard security threat-model --profile web
+dockyard security plan --profile web --target . --target-type source --mode standard
+```
+
+Run the configured source security gates when the scanner tools are installed:
+
+```bash
+dockyard security scan --profile web --target . --target-type source --mode standard
+```
+
+DockyardOS normalizes findings into external project-state artifacts. Missing required scanners produce an `incomplete` result rather than a false clean result. Remote security targets require explicit authorization, and Strix is opt-in with an explicit positive budget.
+
+After a verified finding is fixed, rerun the same scope and compare the two `result.json` files:
+
+```bash
+dockyard security compare --before <first>/result.json --after <rerun>/result.json
+```
+
+The regression gate fails when high/critical findings remain or are newly introduced, or when the rerun is incomplete/error.
+
 ## Antigravity plugin
 
 After building/linking the CLI, install the plugin directory:
@@ -78,7 +107,7 @@ After building/linking the CLI, install the plugin directory:
 agy plugin install ./integrations/antigravity/plugin
 ```
 
-The plugin restores DockyardOS context before model invocations, gates risky tool actions, creates throttled checkpoints after successful mutating operations, and saves a final checkpoint when the Antigravity execution loop stops. For substantial work it routes through DockyardOS capability recommendations; for infrastructure work it also uses provider inspection/planning before choosing a service.
+The plugin restores DockyardOS context before model invocations, gates risky tool actions, creates throttled checkpoints after successful mutating operations, and saves a final checkpoint when the Antigravity execution loop stops. For substantial work it routes through DockyardOS capability recommendations; infrastructure work uses provider inspection/planning; high-risk work can use the independent Dockyard security reviewer and runnable evidence gates.
 
 ## Approval philosophy
 
@@ -89,6 +118,7 @@ Balanced mode is the default:
 - obviously machine-destructive commands are denied
 - community capability updates do not silently gain new sensitive permissions
 - production provider plans are read-only until explicit approval permits the mutation step
+- remote dynamic security testing requires explicit authorization and never infers permission from public accessibility
 
 ## Provider philosophy
 
