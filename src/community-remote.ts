@@ -54,7 +54,8 @@ function blockedHostname(hostname: string): boolean {
   if (!v4) return false;
   const parts = v4.slice(1).map(Number);
   if (parts.some((part) => part < 0 || part > 255)) return true;
-  const [a, b] = parts;
+  const a = parts[0]!;
+  const b = parts[1]!;
   return a === 10 || a === 127 || a === 0 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
 }
 
