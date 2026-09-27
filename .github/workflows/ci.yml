@@ -151,6 +151,8 @@ jobs:
           npm install --ignore-scripts
           npx @vscode/vsce package --out /tmp/dockyardos-vscode.vsix
           test -s /tmp/dockyardos-vscode.vsix
+          unzip -l /tmp/dockyardos-vscode.vsix | grep -q 'extension/community-hub-model.js'
+          unzip -l /tmp/dockyardos-vscode.vsix | grep -q 'extension/community-hub-view.js'
           unzip -l /tmp/dockyardos-vscode.vsix | grep -q 'extension/core/dist/mcp-server.js'
           unzip -l /tmp/dockyardos-vscode.vsix | grep -q 'extension/core/registry/community.json'
           unzip -l /tmp/dockyardos-vscode.vsix | grep -q 'extension/core/registry/publishers.json'
