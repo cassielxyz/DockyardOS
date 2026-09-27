@@ -1,0 +1,60 @@
+{
+  "hooks": {
+    "BeforeAgent": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "name": "dockyard-context",
+            "type": "command",
+            "command": "node \"${extensionPath}${/}hooks${/}bridge.mjs\" context",
+            "timeout": 10000,
+            "description": "Inject current DockyardOS checkpoint/team context."
+          }
+        ]
+      }
+    ],
+    "AfterTool": [
+      {
+        "matcher": "run_shell_command|write_file|replace|save_memory",
+        "hooks": [
+          {
+            "name": "dockyard-autosave",
+            "type": "command",
+            "command": "node \"${extensionPath}${/}hooks${/}bridge.mjs\" after-tool",
+            "timeout": 10000,
+            "description": "Trigger DockyardOS throttled checkpointing after mutating tools."
+          }
+        ]
+      }
+    ],
+    "PreCompress": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "name": "dockyard-pre-compress",
+            "type": "command",
+            "command": "node \"${extensionPath}${/}hooks${/}bridge.mjs\" pre-compress",
+            "timeout": 15000,
+            "description": "Save durable state before Gemini compresses context."
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "name": "dockyard-stop",
+            "type": "command",
+            "command": "node \"${extensionPath}${/}hooks${/}bridge.mjs\" stop",
+            "timeout": 15000,
+            "description": "Create a final DockyardOS session checkpoint."
+          }
+        ]
+      }
+    ]
+  }
+}
