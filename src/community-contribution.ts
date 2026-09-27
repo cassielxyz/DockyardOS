@@ -210,6 +210,10 @@ export function validatePublisherKeyProposal(value: unknown, file = "<memory>"):
   if (!Number.isFinite(Date.parse(String(proposal.createdAt ?? "")))) errors.push("Publisher key proposal createdAt must be an ISO date.");
   if (typeof proposal.publicKeyPem !== "string" || proposal.publicKeyPem.length < 40 || proposal.publicKeyPem.length > 4096) {
     errors.push("Publisher key proposal publicKeyPem is missing or outside the allowed size bound.");
+  } else if (/-----BEGIN (?:ENCRYPTED )?PRIVATE KEY-----/.test(proposal.publicKeyPem)) {
+    errors.push("Publisher key proposal must contain public key material only; private key PEM data is forbidden.");
+  } else if (!/-----BEGIN PUBLIC KEY-----[\s\S]+-----END PUBLIC KEY-----/.test(proposal.publicKeyPem)) {
+    errors.push("Publisher key proposal publicKeyPem must be a PEM PUBLIC KEY block.");
   } else {
     try {
       const key = createPublicKey(proposal.publicKeyPem);
