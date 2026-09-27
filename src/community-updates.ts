@@ -117,15 +117,22 @@ export async function applySafeCommunityUpdates(id?: string): Promise<Array<{
 
   for (const check of checks) {
     if (check.state === "up-to-date") {
-      results.push({ packageId: check.packageId, action: "unchanged", state: check.state, reason: "Active immutable revision already matches the assessed candidate.", revision: check.activeRevision });
+      results.push({
+        packageId: check.packageId,
+        action: "unchanged",
+        state: check.state,
+        reason: "Active immutable revision already matches the assessed candidate.",
+        ...(check.activeRevision ? { revision: check.activeRevision } : {}),
+      });
       continue;
     }
     if (check.state !== "update-available" || check.assessment !== "automatic" || !check.candidateRevision || !check.candidateContentSha256) {
+      const assessmentReason = check.reasons.join("; ");
       results.push({
         packageId: check.packageId,
         action: check.state === "error" ? "error" : "skipped",
         state: check.state,
-        reason: check.error ?? check.reasons.join("; ") || "Update is not eligible for unattended activation.",
+        reason: check.error ?? (assessmentReason || "Update is not eligible for unattended activation."),
         ...(check.activeRevision ? { revision: check.activeRevision } : {}),
       });
       continue;
