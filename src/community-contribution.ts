@@ -1,4 +1,5 @@
 import { createHash, createPublicKey } from "node:crypto";
+import type { Dirent } from "node:fs";
 import { readFile, readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import type { CommunityPackageManifest, CommunityRegistryIndex } from "./community-types.js";
@@ -231,10 +232,10 @@ export function validatePublisherKeyProposal(value: unknown, file = "<memory>"):
 
 async function jsonFiles(directory: string): Promise<string[]> {
   try {
-    const entries = await readdir(directory, { withFileTypes: true });
+    const entries: Dirent[] = await readdir(directory, { withFileTypes: true });
     return entries
-      .filter((entry) => entry.isFile() && entry.name.endsWith(".json"))
-      .map((entry) => resolve(directory, entry.name))
+      .filter((entry: Dirent) => entry.isFile() && entry.name.endsWith(".json"))
+      .map((entry: Dirent) => resolve(directory, entry.name))
       .sort();
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
