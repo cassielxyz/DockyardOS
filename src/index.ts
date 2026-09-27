@@ -32,7 +32,13 @@ export * from "./community-registry.js";
 export * from "./community-fetch.js";
 export * from "./community-signature.js";
 export * from "./community-transparency.js";
-export * from "./community-manager.js";
+export {
+  communityTreeSha256,
+  assessCommunityPackage,
+  resolveAssessCommunityPackage,
+  communityStatus,
+  rollbackCommunityPackage,
+} from "./community-manager.js";
 export * from "./community-install.js";
 export * from "./community-runtime.js";
 export * from "./workflow.js";
