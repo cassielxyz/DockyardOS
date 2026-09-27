@@ -1,0 +1,16 @@
+---
+description: Use DockyardOS project memory, adaptive teams, checkpoints, provider routing, and security gates for substantial agent work.
+globs:
+alwaysApply: true
+---
+
+Use the `dockyardos` MCP server as the continuity/orchestration source for this repository.
+
+- Before substantial work, call `dockyard_context` with the current project root in `workspace`. Do not redo completed checkpoint work unless verification proves it is broken.
+- Use `dockyard_recommend` before large tasks and `dockyard_team_start/status/advance` for multi-phase work.
+- Keep active capabilities bounded to the current phase; do not load the full DockyardOS catalogue.
+- Parallel writers must follow DockyardOS worktree assignments. QA, security, and release reviewers remain independent from implementation writers.
+- Use `dockyard_policy` before risky shell operations and preserve Cursor's own approval controls.
+- Production/destructive provider, database, DNS, secret, force-push, or equivalent actions require user approval.
+- High-security work keeps threat modeling, OWASP, secret/dependency/static analysis, independent review, and authorized/budget-bounded Strix verification when selected.
+- Save `dockyard_checkpoint` at milestones and before risky transitions so later `continue` can recover exact state.
