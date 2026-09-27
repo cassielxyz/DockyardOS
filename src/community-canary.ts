@@ -60,13 +60,10 @@ function quarantineRoot(): string {
 }
 
 function selectBackend(preferred?: CommunityCanaryBackend): CommunityCanaryBackend {
-  if (preferred) {
-    if (!commandExists(preferred)) throw new Error(`Requested community canary backend is unavailable: ${preferred}`);
-    return preferred;
-  }
+  if (preferred) return preferred;
   if (commandExists("docker")) return "docker";
   if (commandExists("podman")) return "podman";
-  throw new Error("No supported isolated canary backend is available. Install/configure Docker or Podman; DockyardOS will not run community executable code directly on the host.");
+  return "docker";
 }
 
 function validateRequest(request: CommunityCanaryRequest): { packagePath: string; timeoutSeconds: number; args: string[] } {
@@ -128,6 +125,25 @@ export function planCommunityCanary(request: CommunityCanaryRequest): CommunityC
 export async function executeCommunityCanary(plan: CommunityCanaryPlan): Promise<CommunityCanaryResult> {
   const startedAt = new Date().toISOString();
   await mkdir(resolve(plan.artifactPath, ".."), { recursive: true, mode: 0o700 });
+
+  if (!commandExists(plan.backend)) {
+    const result: CommunityCanaryResult = {
+      runId: plan.runId,
+      packageId: plan.packageId,
+      backend: plan.backend,
+      image: plan.image,
+      status: "unavailable",
+      exitCode: null,
+      startedAt,
+      finishedAt: new Date().toISOString(),
+      summary: `Required isolated canary backend is unavailable: ${plan.backend}. DockyardOS will not execute community code directly on the host.`,
+      stdout: "",
+      stderr: "",
+      artifactPath: plan.artifactPath,
+    };
+    await writeJsonAtomic(plan.artifactPath, result);
+    return result;
+  }
 
   const inspected = run(plan.backend, ["image", "inspect", plan.image], { timeoutMs: 10_000, maxOutputBytes: 16_384 });
   if (!inspected.ok) {
