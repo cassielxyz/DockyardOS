@@ -40,6 +40,7 @@ export interface TeamCompositionRequest {
   selectedTools: string[];
   selectedMcps: string[];
   securityGates: string[];
+  agentWeights?: Record<string, number>;
 }
 
 export interface TeamComposition {
