@@ -2,7 +2,7 @@
 
 **Build. Orchestrate. Ship.**
 
-DockyardOS is a persistent autonomous-development layer for coding agents. It adds project memory, resumable checkpoints, approval policy, adaptive specialist teams, a capability/provider registry, security gates, testing, and deployment orchestration around agent hosts such as Google Antigravity.
+DockyardOS is a persistent autonomous-development layer for coding agents. It adds project memory, resumable checkpoints, approval policy, adaptive specialist teams, a curated capability/provider registry, security gates, testing, and deployment orchestration around agent hosts such as Google Antigravity.
 
 ## What works now
 
@@ -13,9 +13,12 @@ DockyardOS is a persistent autonomous-development layer for coding agents. It ad
 - `dockyard doctor`
 - Safe / Balanced / Autonomous approval modes
 - Antigravity `PreInvocation`, `PreToolUse`, `PostToolUse`, and `Stop` hook integration
-- architect, security-reviewer, and QA-reviewer subagents
-- initial provider registry with Vercel, Cloudflare, Supabase and alternatives
-- full/high-security workflow that requires OWASP review and Strix verification when applicable
+- broad skill/agent/tool/MCP catalogue with provenance, permissions, risk, host compatibility, context cost, and update channels
+- practical project recipes and bounded adaptive specialist selection
+- natural-language task classification through `dockyard recommend`
+- provider candidates including Vercel, Cloudflare, Supabase and alternatives
+- high-security selection that enforces OWASP review, Strix verification, secret scanning, dependency scanning, threat modeling, and regression verification
+- capability locks with exact revisions/content hashes and permission-aware update approval
 
 ## Local development
 
@@ -26,11 +29,24 @@ npm link
 
 dockyard init
 dockyard doctor
-dockyard checkpoint --reason milestone --phase P0 --task "core runtime" --next "registry engine"
+dockyard checkpoint --reason milestone --phase P1 --task "registry engine" --next "provider connectors"
 dockyard resume
 ```
 
 DockyardOS project state is stored under `~/.dockyardos/projects/` rather than adding private runtime state to your application repository.
+
+## Let DockyardOS choose the team
+
+```bash
+dockyard categories
+dockyard catalog --query react --host antigravity
+
+dockyard recommend \
+  --task "Build a production SaaS dashboard" \
+  --stack web,nextjs,react,supabase,postgres
+```
+
+DockyardOS matches the task against practical recipes, then scores compatible skills, agents, tools, MCPs, and providers. A large registry stays available for discovery, while only a bounded best-fit set is selected for the active workflow.
 
 ## Antigravity plugin
 
@@ -49,9 +65,10 @@ Balanced mode is the default:
 - reversible project work can proceed automatically
 - production deploys, destructive database actions, force pushes, infrastructure deletion, and sensitive operations force an approval prompt
 - obviously machine-destructive commands are denied
+- community capability updates do not silently gain new sensitive permissions
 
 ## Provider philosophy
 
 DockyardOS selects by **capability and fit**, not by brand. A project may prefer Supabase + Vercel + Cloudflare, while another may use Neon/Firebase/Appwrite/PocketBase plus Cloudflare/Render or another compatible combination. Availability, pricing/free-tier claims, and provider limits must be checked live at selection time rather than permanently hard-coded.
 
-See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), [`docs/SECURITY.md`](docs/SECURITY.md), and [`docs/ROADMAP.md`](docs/ROADMAP.md).
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), [`docs/CAPABILITY-REGISTRY.md`](docs/CAPABILITY-REGISTRY.md), [`docs/SECURITY.md`](docs/SECURITY.md), and [`docs/ROADMAP.md`](docs/ROADMAP.md).

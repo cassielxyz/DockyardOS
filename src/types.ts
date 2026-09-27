@@ -1,6 +1,13 @@
 export type OperatingMode = "safe" | "balanced" | "autonomous";
 export type SecurityLevel = "standard" | "high";
 export type WorkflowProfile = "fast" | "standard" | "full";
+export type CapabilityKind = "skill" | "tool" | "agent" | "mcp" | "provider" | "workflow";
+export type TrustLevel = "official" | "maintainer" | "community" | "dockyard";
+export type UpdateChannel = "stable" | "recommended" | "edge" | "dev";
+export type RiskLevel = "low" | "medium" | "high";
+export type ContextCost = "tiny" | "small" | "medium" | "large";
+export type HostId = "antigravity" | "gemini-cli" | "codex" | "claude-code" | "cursor" | "opencode" | "universal";
+export type PermissionId = "filesystem-read" | "filesystem-write" | "shell" | "network" | "browser" | "git-write" | "secrets" | "database-read" | "database-write" | "deployment" | "dns";
 
 export interface ProjectConfig {
   schemaVersion: 1;
@@ -70,13 +77,32 @@ export interface DoctorCheck {
   detail: string;
 }
 
+export interface CapabilitySource {
+  type: "github" | "package" | "official-registry" | "dockyard" | "website";
+  locator: string;
+  revisionStrategy: "bundled" | "pin-on-install" | "live-metadata-only";
+  license?: string;
+}
+
 export interface Candidate {
   id: string;
   displayName: string;
   category: string;
-  kind: "skill" | "tool" | "agent" | "mcp";
-  trust: "official" | "community" | "dockyard";
+  kind: CapabilityKind;
+  trust: TrustLevel;
+  capabilities: string[];
   tags: string[];
+  stacks: string[];
+  hosts: HostId[];
+  permissions: PermissionId[];
+  risk: RiskLevel;
+  contextCost: ContextCost;
+  maturity: number;
+  maintenance: number;
+  defaultChannel: UpdateChannel;
+  source: CapabilitySource;
+  conflictsWith?: string[];
+  requires?: string[];
 }
 
 export interface ProviderDefinition {
@@ -86,6 +112,52 @@ export interface ProviderDefinition {
   connectionKinds: Array<"mcp" | "api" | "cli" | "sdk">;
   tags: string[];
   requiresLiveAvailabilityCheck: boolean;
+}
+
+export interface SelectionRequest {
+  taskType: string;
+  stack: string[];
+  capabilities: string[];
+  security: SecurityLevel;
+  host: HostId;
+  channel: UpdateChannel;
+  allowCommunity: boolean;
+  maxSkills: number;
+  maxAgents: number;
+  maxTools: number;
+  maxMcps: number;
+  preferred?: string[];
+  excluded?: string[];
+}
+
+export interface ScoredCandidate {
+  candidate: Candidate;
+  score: number;
+  reasons: string[];
+}
+
+export interface TeamRecipe {
+  id: string;
+  displayName: string;
+  taskTypes: string[];
+  stacks: string[];
+  capabilities: string[];
+  required: string[];
+  preferred: string[];
+  agents: string[];
+  securityLevel: SecurityLevel;
+  workflowProfile: WorkflowProfile;
+}
+
+export interface SelectionResult {
+  request: SelectionRequest;
+  recipe?: TeamRecipe;
+  skills: ScoredCandidate[];
+  agents: ScoredCandidate[];
+  tools: ScoredCandidate[];
+  mcps: ScoredCandidate[];
+  providers: ProviderDefinition[];
+  securityGates: string[];
 }
 
 export interface WorkflowPlan {

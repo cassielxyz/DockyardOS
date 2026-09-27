@@ -1,20 +1,8 @@
-import type { Candidate, ProviderDefinition } from "./types.js";
+import type { Candidate, ProviderDefinition, UpdateChannel } from "./types.js";
+import { catalog, categoryNames } from "./catalog.js";
 
-export const candidates: Candidate[] = [
-  { id: "superpowers", displayName: "Superpowers", category: "planning", kind: "skill", trust: "community", tags: ["spec", "planning", "subagents", "review"] },
-  { id: "ui-ux-pro-max", displayName: "UI UX Pro Max", category: "ui-ux", kind: "skill", trust: "community", tags: ["ui", "ux", "design-system", "frontend"] },
-  { id: "shadcn", displayName: "shadcn/ui", category: "components", kind: "skill", trust: "official", tags: ["react", "components", "tailwind"] },
-  { id: "agent-reach", displayName: "Agent Reach", category: "research", kind: "skill", trust: "community", tags: ["research", "web", "discovery"] },
-  { id: "owasp", displayName: "OWASP secure development", category: "security", kind: "skill", trust: "community", tags: ["appsec", "threat-model", "web"] },
-  { id: "strix", displayName: "Strix", category: "security", kind: "tool", trust: "community", tags: ["pentest", "verification", "appsec"] },
-  { id: "gitleaks", displayName: "Gitleaks", category: "security", kind: "tool", trust: "community", tags: ["secrets", "git"] },
-  { id: "osv-scanner", displayName: "OSV-Scanner", category: "security", kind: "tool", trust: "official", tags: ["dependencies", "vulnerabilities"] },
-  { id: "playwright", displayName: "Playwright", category: "testing", kind: "tool", trust: "official", tags: ["browser", "e2e", "visual"] },
-  { id: "github-mcp", displayName: "GitHub MCP", category: "source-control", kind: "mcp", trust: "official", tags: ["git", "issues", "prs", "actions"] },
-  { id: "vercel", displayName: "Vercel", category: "deployment", kind: "mcp", trust: "official", tags: ["hosting", "preview", "web"] },
-  { id: "supabase", displayName: "Supabase", category: "backend", kind: "mcp", trust: "official", tags: ["postgres", "auth", "storage", "functions"] },
-  { id: "cloudflare", displayName: "Cloudflare", category: "edge", kind: "mcp", trust: "official", tags: ["dns", "cdn", "security", "workers", "storage"] }
-];
+export { catalog, categoryNames };
+export const candidates = catalog;
 
 export const providers: ProviderDefinition[] = [
   { id: "github", displayName: "GitHub", capabilities: ["source", "issues", "pull-requests", "ci", "releases"], connectionKinds: ["mcp", "api", "cli"], tags: ["git", "automation"], requiresLiveAvailabilityCheck: false },
@@ -28,9 +16,57 @@ export const providers: ProviderDefinition[] = [
   { id: "render", displayName: "Render", capabilities: ["web-hosting", "services", "postgres", "cron"], connectionKinds: ["api", "cli"], tags: ["hosting", "backend"], requiresLiveAvailabilityCheck: true },
   { id: "railway", displayName: "Railway", capabilities: ["web-hosting", "services", "databases"], connectionKinds: ["api", "cli"], tags: ["hosting", "backend"], requiresLiveAvailabilityCheck: true },
   { id: "turso", displayName: "Turso", capabilities: ["sqlite", "edge-database"], connectionKinds: ["api", "cli", "sdk"], tags: ["database", "edge"], requiresLiveAvailabilityCheck: true },
-  { id: "sentry", displayName: "Sentry", capabilities: ["errors", "performance", "tracing"], connectionKinds: ["api", "sdk"], tags: ["observability"], requiresLiveAvailabilityCheck: true }
+  { id: "sentry", displayName: "Sentry", capabilities: ["errors", "performance", "tracing"], connectionKinds: ["api", "sdk"], tags: ["observability"], requiresLiveAvailabilityCheck: true },
+  { id: "flyio", displayName: "Fly.io", capabilities: ["web-hosting", "services", "containers", "edge-deployments"], connectionKinds: ["api", "cli"], tags: ["hosting", "containers"], requiresLiveAvailabilityCheck: true },
+  { id: "cloud-run", displayName: "Google Cloud Run", capabilities: ["containers", "services", "serverless"], connectionKinds: ["api", "cli", "sdk"], tags: ["google", "containers"], requiresLiveAvailabilityCheck: true },
+  { id: "github-pages", displayName: "GitHub Pages", capabilities: ["static-hosting"], connectionKinds: ["api", "cli"], tags: ["github", "static"], requiresLiveAvailabilityCheck: true }
 ];
+
+const CHANNEL_RANK: Record<UpdateChannel, number> = { stable: 0, recommended: 1, edge: 2, dev: 3 };
+
+export function getCandidate(id: string): Candidate | undefined {
+  return catalog.find((candidate) => candidate.id === id);
+}
 
 export function providersFor(capability: string): ProviderDefinition[] {
   return providers.filter((provider) => provider.capabilities.includes(capability));
+}
+
+export function catalogSearch(input: {
+  query?: string;
+  category?: string;
+  kind?: Candidate["kind"];
+  channel?: UpdateChannel;
+  host?: string;
+  stack?: string;
+}): Candidate[] {
+  const query = input.query?.trim().toLowerCase();
+  const maxChannel = CHANNEL_RANK[input.channel ?? "recommended"];
+  return catalog
+    .filter((candidate) => !input.category || candidate.category === input.category)
+    .filter((candidate) => !input.kind || candidate.kind === input.kind)
+    .filter((candidate) => CHANNEL_RANK[candidate.defaultChannel] <= maxChannel)
+    .filter((candidate) => !input.host || candidate.hosts.includes(input.host as Candidate["hosts"][number]) || candidate.hosts.includes("universal"))
+    .filter((candidate) => !input.stack || candidate.stacks.length === 0 || candidate.stacks.includes(input.stack.toLowerCase()))
+    .filter((candidate) => {
+      if (!query) return true;
+      const haystack = [candidate.id, candidate.displayName, candidate.category, ...candidate.capabilities, ...candidate.tags, ...candidate.stacks].join(" ").toLowerCase();
+      return haystack.includes(query);
+    });
+}
+
+export function validateCatalog(): string[] {
+  const errors: string[] = [];
+  const seen = new Set<string>();
+  for (const candidate of catalog) {
+    if (seen.has(candidate.id)) errors.push(`duplicate candidate id: ${candidate.id}`);
+    seen.add(candidate.id);
+    if (!candidate.category) errors.push(`${candidate.id}: missing category`);
+    if (!candidate.capabilities.length) errors.push(`${candidate.id}: no capabilities`);
+    if (!candidate.source.locator) errors.push(`${candidate.id}: missing source locator`);
+    if (candidate.maturity < 0 || candidate.maturity > 100) errors.push(`${candidate.id}: maturity out of range`);
+    if (candidate.maintenance < 0 || candidate.maintenance > 100) errors.push(`${candidate.id}: maintenance out of range`);
+  }
+  if (categoryNames.length < 20) errors.push(`catalog has too few categories: ${categoryNames.length}`);
+  return errors;
 }
