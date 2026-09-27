@@ -108,7 +108,7 @@ async function browseCommunityPackages(context) {
   const action = await vscode.window.showQuickPick([
     { label: "$(shield) Resolve & assess", description: "Fetch into quarantine, pin immutable commit, scan without execution", action: "assess" },
     { label: "$(eye) Show manifest", description: "Review declared source, permissions, trust, risk, entrypoints, and limits", action: "manifest" },
-    { label: "$(package) Install / update", description: "Assess first; approval is requested when policy requires it", action: "install" },
+    { label: "$(package) Install / update", description: "Assess first; approval is bound to that exact revision and content hash", action: "install" },
   ], { title: selected.label, placeHolder: "Choose a safe package action" });
   if (!action) return;
 
@@ -124,6 +124,11 @@ async function browseCommunityPackages(context) {
   const assessed = parseJson(assessmentResult.stdout);
   const decision = assessed?.assessment?.decision;
   const reasons = Array.isArray(assessed?.assessment?.reasons) ? assessed.assessment.reasons : [];
+  const expectedRevision = assessed?.resolution?.revision;
+  const expectedSha256 = assessed?.resolution?.contentSha256;
+  if (!/^[a-f0-9]{40}$/i.test(expectedRevision || "") || !/^[a-f0-9]{64}$/i.test(expectedSha256 || "")) {
+    throw new Error("Community assessment did not return a valid immutable revision and content digest.");
+  }
   if (decision === "quarantine") {
     vscode.window.showWarningMessage(`DockyardOS kept ${selected.packageId} in quarantine. ${reasons.join("; ")}`);
     return;
@@ -132,21 +137,27 @@ async function browseCommunityPackages(context) {
   let approve = false;
   if (decision === "approval-required") {
     const confirmation = await vscode.window.showWarningMessage(
-      `DockyardOS requires explicit approval for ${selected.packageId}.\n\n${reasons.join("\n")}`,
+      `DockyardOS requires explicit approval for ${selected.packageId} at ${expectedRevision.slice(0, 12)}.\n\n${reasons.join("\n")}`,
       { modal: true },
-      "Approve and install",
+      "Approve this revision",
     );
-    if (confirmation !== "Approve and install") return;
+    if (confirmation !== "Approve this revision") return;
     approve = true;
   } else if (decision !== "automatic") {
     throw new Error(`Unexpected community assessment decision: ${decision || "missing"}`);
   }
 
-  const args = ["community", "install", "--id", selected.packageId, "--json"];
+  const args = [
+    "community", "install",
+    "--id", selected.packageId,
+    "--expected-revision", expectedRevision,
+    "--expected-sha256", expectedSha256,
+    "--json",
+  ];
   if (approve) args.push("--approve");
   const installed = await runDockyard(args);
   showResult(context, `Community Package Installed: ${selected.packageId}`, installed);
-  vscode.window.showInformationMessage(`DockyardOS activated ${selected.packageId} after quarantine assessment.`);
+  vscode.window.showInformationMessage(`DockyardOS activated ${selected.packageId} at ${expectedRevision.slice(0, 12)} after quarantine assessment.`);
 }
 
 async function refreshStatus(statusBar) {
