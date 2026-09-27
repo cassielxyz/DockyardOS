@@ -14,7 +14,7 @@ try {
     await handleHostCommand(findWorkspaceRoot(), args, args.includes("--json"));
   } else if (command === "community") {
     await handleCommunityCommand(args, args.includes("--json"));
-  } else if (command === "providers" && (args[0] === "actions" || args[0] === "action")) {
+  } else if (command === "providers" && (args[0] === "actions" || args[0] === "action" || args[0] === "preview")) {
     await handleProviderActionCommand(findWorkspaceRoot(), args);
   } else {
     await import("./cli.js");
