@@ -11,6 +11,8 @@ declare namespace NodeJS {
 declare module "node:crypto" {
   export function createHash(...args: any[]): any;
   export function randomUUID(): string;
+  export function verify(...args: any[]): boolean;
+  export function createPublicKey(...args: any[]): any;
 }
 
 declare module "node:os" {
@@ -22,6 +24,8 @@ declare module "node:path" {
   export function dirname(path: string): string;
   export function resolve(...paths: string[]): string;
   export function join(...paths: string[]): string;
+  export function relative(from: string, to: string): string;
+  export function extname(path: string): string;
 }
 
 declare module "node:url" {
@@ -36,6 +40,9 @@ declare module "node:fs/promises" {
   export function rename(...args: any[]): Promise<any>;
   export function rm(...args: any[]): Promise<any>;
   export function writeFile(...args: any[]): Promise<any>;
+  export function lstat(...args: any[]): Promise<any>;
+  export function stat(...args: any[]): Promise<any>;
+  export function cp(...args: any[]): Promise<any>;
 }
 
 declare module "node:fs" {
