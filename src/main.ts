@@ -1,16 +1,19 @@
 #!/usr/bin/env node
 import { findWorkspaceRoot } from "./project.js";
 import { handleTeamCommand } from "./team-command.js";
+import { handleHostCommand } from "./host-command.js";
 
 const [, , command, ...args] = process.argv;
 
-if (command === "team") {
-  try {
+try {
+  if (command === "team") {
     await handleTeamCommand(findWorkspaceRoot(), args, args.includes("--json"));
-  } catch (error) {
-    console.error(`DockyardOS error: ${error instanceof Error ? error.message : String(error)}`);
-    process.exitCode = 1;
+  } else if (command === "host") {
+    await handleHostCommand(findWorkspaceRoot(), args, args.includes("--json"));
+  } else {
+    await import("./cli.js");
   }
-} else {
-  await import("./cli.js");
+} catch (error) {
+  console.error(`DockyardOS error: ${error instanceof Error ? error.message : String(error)}`);
+  process.exitCode = 1;
 }
