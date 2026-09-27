@@ -86,15 +86,29 @@
 
 ## P5 — Cross-host support
 
-- [ ] VS Code extension
-- [ ] Gemini CLI adapter
-- [ ] Codex adapter
-- [ ] Claude Code adapter
-- [ ] Cursor / OpenCode adapters
+- [x] Host-independent portable DockyardOS Agent Skill
+- [x] Verified host capability/install metadata with documentation provenance
+- [x] Antigravity full plugin adapter
+- [x] Gemini CLI portable skill adapter and extension-aware plan
+- [x] OpenAI Codex / Agents capability-directory and plugin-aware adapter
+- [x] Claude Code personal/project skill adapter
+- [x] Cursor portable `.agents/skills` adapter
+- [x] OpenCode portable/interoperable skill adapter
+- [x] Cross-host `dockyard host list|inspect|plan|install|doctor`
+- [x] One external Dockyard project/team state shared by every host
+- [x] Safe idempotent skill install with no silent overwrite
+- [x] VS Code extension command/status surface
+- [x] VS Code VSIX bundled Core fallback (no separate CLI required for normal packaged use)
+- [x] Reproducible VSIX CI artifact workflow
+- [ ] Publish VS Code Marketplace listing/release channel
+- [ ] Rich native plugin/hook bundles for every non-Antigravity host where APIs permit equivalent behavior
+- [ ] Cross-host end-to-end matrix tests against installed real host CLIs in opt-in CI environments
 
 ## P6 — Community distribution
 
 - [ ] Registry service
 - [ ] Contribution validation CI
-- [ ] Update signatures and rollback
+- [ ] Safe fetch/install/update engine for selected community capabilities
+- [ ] Cryptographic update signatures and rollback
+- [ ] Canary/sandbox evaluation before activation
 - [ ] Package discovery UI
