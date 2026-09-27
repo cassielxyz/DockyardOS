@@ -98,6 +98,30 @@ dockyard security policy remove --id upstream-fix-pending
 
 The policy lives outside the source repository under the current project's DockyardOS external state.
 
+## Expiry review reminders
+
+Security exceptions are temporary by design. DockyardOS can generate a read-only review report for exceptions that are already expired or will expire soon:
+
+```bash
+dockyard security policy reminders
+dockyard security policy reminders --within-days 14
+dockyard security policy reminders --within-days 30 --owner security-team
+```
+
+The default review window is 30 days and can be set from 1 through 90 days. The report includes:
+
+- exception id and kind;
+- owner and rationale;
+- created/expiry timestamps;
+- `expired` or `expiring-soon` status;
+- signed `daysUntilExpiry` evidence;
+- the Gitleaks fingerprint or OSV advisory/package identity needed to understand what the exception covers;
+- summary counts and `needsReview` for host/automation integrations.
+
+`reminders` never renews an exception, changes its expiry, removes it, or converts it to a different policy state. An expired exception remains expired and already stops matching findings under the normal policy evaluator. The command only makes the approaching review obligation explicit so a human can remove the exception, remediate the underlying issue, or deliberately create a new reviewed policy decision through the existing bounded policy commands.
+
+Owner filtering is case-insensitive and only narrows the read-only report; it does not transfer ownership.
+
 ## Evaluate a completed security run
 
 Evaluate one immutable normalized run result:
