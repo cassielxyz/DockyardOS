@@ -6,6 +6,7 @@ import test from "node:test";
 
 process.env.DOCKYARD_HOME = await mkdtemp(join(tmpdir(), "dockyard-community-runtime-home-"));
 const dockyard = await import("../dist/index.js");
+const communityManager = await import("../dist/community-manager.js");
 
 test("active community runtime exposes only declared verified entrypoints", async () => {
   const registry = await dockyard.loadCommunityRegistry();
@@ -51,7 +52,7 @@ test("active community runtime exposes only declared verified entrypoints", asyn
   };
   const assessment = await dockyard.assessCommunityPackage(manifest, resolved, scan);
   assert.equal(assessment.decision, "approval-required");
-  await dockyard.installResolvedCommunityPackage(manifest, resolved, assessment, { approve: true });
+  await communityManager.installResolvedCommunityPackage(manifest, resolved, assessment, { approve: true });
 
   const active = await dockyard.activeCommunityPackages();
   assert.equal(active.length, 1);
