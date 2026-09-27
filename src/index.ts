@@ -4,6 +4,7 @@ export * from "./checkpoints.js";
 export * from "./policy.js";
 export * from "./catalog.js";
 export * from "./registry.js";
+export * from "./registry-lock.js";
 export * from "./recipes.js";
 export * from "./selection.js";
 export * from "./workflow.js";
