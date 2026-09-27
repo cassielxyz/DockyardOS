@@ -72,17 +72,22 @@ export const hostAdapters: HostAdapterDefinition[] = [
   {
     id: "cursor",
     displayName: "Cursor",
-    features: ["skills", "hooks", "subagents", "commands", "project-instructions"],
+    executable: "agent",
+    features: ["skills", "hooks", "subagents", "commands", "project-instructions", "resume"],
     preferredSkillLocations: [
       { scope: "project", path: ".agents/skills/dockyardos", strategy: "copy-skill", note: "Cursor discovers Agent Skills from .agents/skills and Cursor-specific skill folders." },
       { scope: "user", path: "~/.agents/skills/dockyardos", strategy: "copy-skill" },
     ],
     projectInstructionFiles: ["AGENTS.md", ".cursor/rules"],
-    supportsNativeResume: false,
+    supportsNativeResume: true,
     supportsDockyardHooks: true,
     nativeBundle: { path: "integrations/native/cursor", mode: "project-files", install: "manual-review", note: "Optional MCP config and compact always-on rule are templates only; existing project rules/config are never overwritten automatically." },
-    notes: ["Use portable .agents/skills as the preferred DockyardOS surface rather than duplicating one copy per compatible directory."],
-    verifiedAgainst: [{ date: VERIFIED, source: "https://docs.cursor.com/context/skills" }],
+    notes: ["Use portable .agents/skills as the preferred DockyardOS surface rather than duplicating one copy per compatible directory.", "Cursor CLI uses the `agent` executable and supports native resume/continue; DockyardOS remains the cross-host durable state source."],
+    verifiedAgainst: [
+      { date: VERIFIED, source: "https://cursor.com/docs/context/skills" },
+      { date: VERIFIED, source: "https://cursor.com/docs/cli/installation" },
+      { date: VERIFIED, source: "https://cursor.com/docs/cli/using" },
+    ],
   },
   {
     id: "opencode",
