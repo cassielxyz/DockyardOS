@@ -17,6 +17,7 @@ const GITHUB_REPOSITORY = /^[A-Za-z0-9_.-]{1,100}\/[A-Za-z0-9_.-]{1,100}$/;
 const SAFE_BRANCH = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$/;
 const SHA256 = /^[a-f0-9]{64}$/;
 const GIT_OBJECT_SHA = /^[a-f0-9]{40}$/i;
+const CANONICAL_BASE64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 const GITHUB_API_VERSION = "2026-03-10";
 const MAX_PUBLICATION_BYTES = 1024 * 1024;
 const MAX_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000;
@@ -88,6 +89,7 @@ export interface RegistryPublicationResult {
 interface LoadedIndex {
   index: CommunityRegistryIndex;
   path: string;
+  reviewPath: string;
   sha256: string;
 }
 
@@ -177,8 +179,9 @@ function validateExpiry(value: string, reviewedAt: string): string {
 }
 
 async function loadStagedIndex(root: string, inputPath: string): Promise<LoadedIndex> {
-  const base = resolve(root, "registry", "remote-publications");
-  const target = resolve(root, inputPath);
+  const projectRoot = resolve(root);
+  const base = resolve(projectRoot, "registry", "remote-publications");
+  const target = resolve(projectRoot, inputPath);
   const rel = relative(base, target);
   if (!rel || rel.startsWith("..") || isAbsolute(rel) || !target.endsWith(".json")) {
     throw new Error("Registry publication index must be a .json file inside registry/remote-publications/.");
@@ -195,7 +198,21 @@ async function loadStagedIndex(root: string, inputPath: string): Promise<LoadedI
   }
   const errors = validateCommunityRegistry(index);
   if (errors.length) throw new Error(`Registry publication index is invalid: ${errors.join("; ")}`);
-  return { index, path: target, sha256: maintainerObjectSha256(index) };
+  return {
+    index,
+    path: target,
+    reviewPath: relative(projectRoot, target).replace(/\\/g, "/"),
+    sha256: maintainerObjectSha256(index),
+  };
+}
+
+async function loadPublicationTrustStore(root: string, pathOverride?: string): Promise<RegistryTrustStore> {
+  const target = pathOverride ? resolve(root, pathOverride) : resolve(root, "registry", "registry-keys.json");
+  const stat = await lstat(target);
+  if (!stat.isFile() || stat.isSymbolicLink()) {
+    throw new Error("Registry publication trust store must be a real regular non-symlink file.");
+  }
+  return loadRegistryTrustStore(target);
 }
 
 function trustedRegistryKey(store: RegistryTrustStore, registryId: string, keyId: string): RegistryTrustStore["keys"][number] {
@@ -233,6 +250,15 @@ function ensureGh(gh?: RegistryPublicationGhExecutor): void {
 
 function isNotFound(result: ProcessResult): boolean {
   return /(?:HTTP\s+404|\b404\b|Not Found)/i.test(`${result.stderr}\n${result.stdout}`);
+}
+
+function decodeCanonicalBase64(value: string, expectedBytes: number): Buffer {
+  const compact = value.replace(/\s/g, "");
+  if (!CANONICAL_BASE64.test(compact)) throw new Error("GitHub registry target returned malformed Base64 content.");
+  const bytes = Buffer.from(compact, "base64");
+  if (bytes.length !== expectedBytes) throw new Error("GitHub registry target Base64 content length does not match the declared file size.");
+  if (bytes.toString("base64") !== compact) throw new Error("GitHub registry target Base64 content is not canonical.");
+  return bytes;
 }
 
 function readGitHubContent(
@@ -273,8 +299,7 @@ function readGitHubContent(
     throw new Error("GitHub registry target size is invalid or exceeds the 1 MiB publication bound.");
   }
   if (typeof parsed.sha !== "string" || !GIT_OBJECT_SHA.test(parsed.sha)) throw new Error("GitHub registry target returned an invalid blob SHA.");
-  const bytes = Buffer.from(parsed.content.replace(/\s/g, ""), "base64");
-  if (bytes.length !== parsed.size) throw new Error("GitHub registry target Base64 content length does not match the declared file size.");
+  const bytes = decodeCanonicalBase64(parsed.content, parsed.size);
   let envelope: SignedRegistryEnvelope;
   try {
     envelope = JSON.parse(bytes.toString("utf8")) as SignedRegistryEnvelope;
@@ -336,7 +361,7 @@ export async function planRegistryPublication(
   const review = validateReview(input, options.now ?? new Date());
   const expiresAt = validateExpiry(input.expiresAt, review.reviewedAt);
   const loaded = await loadStagedIndex(root, input.indexPath);
-  const trustStore = await loadRegistryTrustStore(options.trustStorePath);
+  const trustStore = await loadPublicationTrustStore(root, options.trustStorePath);
   trustedRegistryKey(trustStore, registryId, keyId);
   const envelope = unsignedEnvelope({ registryId, keyId, sequence, review, expiresAt }, loaded.index);
   const envelopePayloadSha256 = sha256(remoteRegistryEnvelopePayload(envelope));
@@ -354,7 +379,7 @@ export async function planRegistryPublication(
     keyId,
     sequence,
     expiresAt,
-    indexPath: loaded.path,
+    indexPath: loaded.reviewPath,
     indexSha256: loaded.sha256,
     envelopePayloadSha256,
     target: { provider: "github" as const, repository, path: targetPath, branch },
@@ -414,7 +439,7 @@ export async function publishRegistryEnvelope(
 
   const loaded = await loadStagedIndex(root, input.indexPath);
   if (loaded.sha256 !== plan.indexSha256) throw new Error("Registry publication index changed immediately before signing; aborting.");
-  const trustStore = await loadRegistryTrustStore(options.trustStorePath);
+  const trustStore = await loadPublicationTrustStore(root, options.trustStorePath);
   const trustedKey = trustedRegistryKey(trustStore, plan.registryId, plan.keyId);
   const unsigned = unsignedEnvelope(plan, loaded.index);
   if (sha256(remoteRegistryEnvelopePayload(unsigned)) !== plan.envelopePayloadSha256) {
@@ -459,18 +484,23 @@ export async function publishRegistryEnvelope(
   const commit = response?.commit && typeof response.commit === "object" && !Array.isArray(response.commit) ? response.commit as Record<string, unknown> : undefined;
   const blobSha = typeof content?.sha === "string" && GIT_OBJECT_SHA.test(content.sha) ? content.sha.toLowerCase() : undefined;
   const commitSha = typeof commit?.sha === "string" && GIT_OBJECT_SHA.test(commit.sha) ? commit.sha.toLowerCase() : undefined;
+  const responseMetadataErrors: string[] = [];
+  if (!response) responseMetadataErrors.push("GitHub publication response was not a JSON object");
+  if (!blobSha) responseMetadataErrors.push("GitHub publication response did not include a valid content blob SHA");
+  if (!commitSha) responseMetadataErrors.push("GitHub publication response did not include a valid commit SHA");
 
-  let status: RegistryPublicationResult["status"] = "complete";
-  let verificationError: string | undefined;
+  let status: RegistryPublicationResult["status"] = responseMetadataErrors.length ? "published-unverified" : "complete";
+  let verificationError = responseMetadataErrors.length ? responseMetadataErrors.join("; ") : undefined;
   try {
     const verified = readGitHubContent(plan.target.repository, plan.target.path, plan.target.branch, gh, plan.registryId);
     if (!verified.exists || verified.sequence !== plan.sequence || verified.contentSha256 !== signedContentSha256) {
       throw new Error("post-publication GitHub content does not match the exact signed envelope bytes/sequence");
     }
-    if (blobSha && verified.blobSha !== blobSha) throw new Error("post-publication GitHub blob SHA does not match the mutation response");
+    if (!blobSha || verified.blobSha !== blobSha) throw new Error("post-publication GitHub blob SHA does not match a valid mutation response blob SHA");
   } catch (error) {
     status = "published-unverified";
-    verificationError = error instanceof Error ? error.message : String(error);
+    const postError = error instanceof Error ? error.message : String(error);
+    verificationError = verificationError ? `${verificationError}; ${postError}` : postError;
   }
 
   const directory = publicationDirectory(plan.registryId);
