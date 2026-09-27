@@ -1,4 +1,4 @@
-import { resolve } from "node:path";
+import { relative, resolve } from "node:path";
 import type { SecurityFinding, SecurityRunResult, SecuritySeverity } from "./security-types.js";
 import type { SecurityPolicyEvaluation } from "./security-policy.js";
 import { writeJsonAtomic } from "./fs-utils.js";
@@ -27,6 +27,11 @@ function ruleName(id: string): string {
 
 function matchForIndex(policy: SecurityPolicyEvaluation, index: number) {
   return policy.matched.find((item) => item.findingIndex === index);
+}
+
+function isInside(root: string, candidate: string): boolean {
+  const rel = relative(resolve(root), resolve(candidate));
+  return rel === "" || (!rel.startsWith("..") && !rel.startsWith("/") && !rel.startsWith("\\"));
 }
 
 export function securityRunToSarif(result: SecurityRunResult, policy: SecurityPolicyEvaluation): Record<string, unknown> {
@@ -120,10 +125,9 @@ export function securityRunToSarif(result: SecurityRunResult, policy: SecurityPo
 }
 
 export async function exportSecuritySarif(result: SecurityRunResult, policy: SecurityPolicyEvaluation, outputPath?: string): Promise<{ path: string; sarif: Record<string, unknown> }> {
-  const target = outputPath ? resolve(outputPath) : resolve(result.artifactDirectory, "dockyard.sarif");
-  if (outputPath && !target.startsWith(resolve(result.artifactDirectory))) {
-    throw new Error("Security SARIF output must stay inside the security run artifact directory.");
-  }
+  const artifactRoot = resolve(result.artifactDirectory);
+  const target = outputPath ? resolve(outputPath) : resolve(artifactRoot, "dockyard.sarif");
+  if (!isInside(artifactRoot, target)) throw new Error("Security SARIF output must stay inside the security run artifact directory.");
   const sarif = securityRunToSarif(result, policy);
   await writeJsonAtomic(target, sarif);
   return { path: target, sarif };
