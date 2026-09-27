@@ -1,5 +1,5 @@
 import { getCandidate } from "./registry.js";
-import type { Candidate } from "./types.js";
+import type { Candidate, SelectionResult } from "./types.js";
 import type { AgentAssignment, TeamComposition, TeamCompositionRequest, TeamPhaseId, TeamPhasePlan } from "./team-types.js";
 
 const PHASE_ORDER: TeamPhaseId[] = ["discovery", "architecture", "planning", "implementation", "verification", "security", "release"];
@@ -118,7 +118,6 @@ function phasePlan(request: TeamCompositionRequest, phase: TeamPhaseId): TeamPha
   const budget = phaseBudget(request.workflowProfile, phase);
   let agents = request.selectedAgents.filter((id) => (AGENT_PHASES[id] ?? ["implementation"]).includes(phase));
 
-  // Preserve independent gates before filling lower-value phase specialists.
   const priority = phase === "verification"
     ? ["qa-reviewer-agent", "browser-qa-agent", "api-reviewer-agent", "accessibility-agent", "performance-agent", "observability-agent"]
     : phase === "security"
@@ -219,6 +218,22 @@ export function composeTeam(request: TeamCompositionRequest): TeamComposition {
       handoffExcludes: ["full previous transcript", "unrelated skills", "raw secrets", "unbounded tool output", "other writers' private scratch context"],
     },
   };
+}
+
+export function composeTeamFromSelection(task: string, selection: SelectionResult): TeamComposition {
+  return composeTeam({
+    task,
+    taskType: selection.request.taskType,
+    stack: selection.request.stack,
+    security: selection.request.security,
+    workflowProfile: selection.recipe?.workflowProfile ?? (selection.request.taskType === "bug-fix" ? "standard" : "standard"),
+    ...(selection.recipe?.id ? { recipeId: selection.recipe.id } : {}),
+    selectedAgents: selection.agents.map((item) => item.candidate.id),
+    selectedSkills: selection.skills.map((item) => item.candidate.id),
+    selectedTools: selection.tools.map((item) => item.candidate.id),
+    selectedMcps: selection.mcps.map((item) => item.candidate.id),
+    securityGates: selection.securityGates,
+  });
 }
 
 export function teamCompositionSummary(team: TeamComposition): Record<string, unknown> {
