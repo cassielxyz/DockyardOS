@@ -28,7 +28,7 @@ test("scheduled update configuration is opt-in and interval bounded", () => {
   assert.equal(normalizeScheduledUpdateConfig({ enabled: true, applySafeAutomatically: true }).applySafeAutomatically, true);
 });
 
-test("scheduled delay respects last successful attempt and startup grace", () => {
+test("scheduled delay respects last attempt and startup grace", () => {
   const now = Date.parse("2026-09-27T12:00:00.000Z");
   const interval = 6 * 60 * 60 * 1000;
   assert.equal(nextScheduledDelay(undefined, interval, now), STARTUP_GRACE_MS);
@@ -70,6 +70,26 @@ test("VS Code scheduled updater is constrained to the existing safe CLI boundary
   const extension = await readFile("integrations/vscode/extension.js", "utf8");
   assert.match(extension, /community", "updates", "check", "--json"/);
   assert.match(extension, /community", "updates", "apply-safe", "--json"/);
-  assert.doesNotMatch(extension, /community", "install"[^\n]+scheduled/i);
   assert.match(extension, /workspace\.isTrusted/);
+  assert.match(extension, /LAST_UPDATE_ATTEMPT_KEY/);
+  assert.match(extension, /finally\s*\{\s*scheduleCommunityUpdateChecks\(context\)/s);
+
+  const cycleStart = extension.indexOf("async function runCommunityUpdateCycle");
+  const cycleEnd = extension.indexOf("function scheduleCommunityUpdateChecks", cycleStart);
+  assert.ok(cycleStart >= 0 && cycleEnd > cycleStart);
+  const scheduledCycle = extension.slice(cycleStart, cycleEnd);
+  assert.doesNotMatch(scheduledCycle, /community", "install"/);
+  assert.doesNotMatch(scheduledCycle, /--approve/);
+});
+
+test("VS Code package keeps scheduled updates disabled by default and bounded", async () => {
+  const packageJson = JSON.parse(await readFile("integrations/vscode/package.json", "utf8"));
+  assert.ok(packageJson.activationEvents.includes("onStartupFinished"));
+  assert.ok(packageJson.activationEvents.includes("onCommand:dockyardOS.communityUpdatesCheck"));
+  const properties = packageJson.contributes.configuration.properties;
+  assert.equal(properties["dockyardOS.communityUpdates.enabled"].default, false);
+  assert.equal(properties["dockyardOS.communityUpdates.intervalMinutes"].minimum, MIN_INTERVAL_MINUTES);
+  assert.equal(properties["dockyardOS.communityUpdates.intervalMinutes"].maximum, MAX_INTERVAL_MINUTES);
+  assert.equal(properties["dockyardOS.communityUpdates.applySafeAutomatically"].default, false);
+  assert.match(packageJson.scripts.check, /community-update-scheduler\.js/);
 });
