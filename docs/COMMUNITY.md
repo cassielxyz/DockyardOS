@@ -1,13 +1,13 @@
 # DockyardOS Community Distribution
 
-DockyardOS separates **discovery** from **execution**.
+DockyardOS separates **discovery**, **trust**, **installation**, and **execution**.
 
 A capability may appear in a broad discovery source without being installable. It becomes installable only when DockyardOS has an explicit package manifest with source, ref, entrypoints, permissions, trust/risk metadata, host compatibility, license, file/byte limits, and publisher-signature policy.
 
 ## Trust flow
 
 ```text
-discovery source
+discovery source / signed remote registry
     ↓ metadata only
 explicit Dockyard package manifest
     ↓
@@ -18,6 +18,8 @@ quarantine directory under ~/.dockyardos/community/quarantine
 static scan + entrypoint validation + permission inference
     ↓
 publisher signature policy
+    ↓
+optional isolated dynamic canary
     ↓
 automatic | approval-required | quarantine
     ↓
@@ -30,7 +32,7 @@ active revision pointer + local tamper-evident transparency chain
 verified declared entrypoints exposed to supported hosts on demand
 ```
 
-DockyardOS never executes fetched community code during resolution or quarantine scanning.
+DockyardOS never executes fetched community code during resolution or static quarantine scanning. Dynamic canaries are explicit and run only in a supported isolated container backend.
 
 ## Bundled registry
 
@@ -39,14 +41,16 @@ The packaged registry lives at:
 ```text
 registry/community.json
 registry/publishers.json
+registry/remotes.json
+registry/registry-keys.json
 ```
 
 `community.json` contains two different concepts:
 
 - `packages`: explicitly installable manifests with known entrypoints and safety metadata.
-- `discoverySources`: broader official/maintainer/community catalogues that DockyardOS can search/index later, but which are not executable merely because they are listed.
+- `discoverySources`: broader official/maintainer/community catalogues that DockyardOS can search/index, but which are not executable merely because they are listed.
 
-The initial installable package is a curated subset of Superpowers skills. Broad discovery sources include the official MCP Registry and selected official/maintainer capability repositories.
+`remotes.json` contains explicitly configured signed remote-registry endpoints. It ships with no enabled remote source by default. `registry-keys.json` contains public Ed25519 keys trusted for those registry envelopes.
 
 ## CLI
 
@@ -87,32 +91,20 @@ dockyard community install \
   --approve
 ```
 
-If the upstream ref moves or its resolved content digest differs after assessment, installation aborts and requires a fresh assessment. `--approve` never applies to a different revision than the one reviewed.
-
-Install/update can also be run directly when policy does not require a separate review flow:
-
-```bash
-dockyard community install --id <package>
-dockyard community update --id <package>
-```
-
-`quarantine` decisions cannot be overridden by `--approve`.
+If the upstream ref moves or its resolved content digest differs after assessment, installation aborts and requires a fresh assessment. `--approve` never applies to a different revision than the one reviewed and never bypasses quarantine.
 
 Inspect installed versions and active revision:
 
 ```bash
-dockyard community status
 dockyard community status --id <package>
+dockyard community active
 ```
 
-List only integrity-verified active packages and read one declared entrypoint:
+Read one declared entrypoint only after integrity verification:
 
 ```bash
-dockyard community active
 dockyard community read --id <package> --entrypoint <declared/path>
 ```
-
-`community read` rejects undeclared paths and re-verifies the package hash first.
 
 Rollback without re-fetching upstream:
 
@@ -130,9 +122,104 @@ dockyard community transparency verify
 dockyard community transparency show
 ```
 
+## Signed remote registries
+
+P7 adds a remote registry transport without turning network discovery into automatic trust.
+
+A configured source must specify an exact HTTPS hostname, a trusted Ed25519 key, maximum response size, maximum envelope age, and a trust ceiling. DockyardOS refuses redirects, credentials embedded in URLs, non-default HTTPS ports, localhost/private IPv4 targets, oversized responses, expired/future/stale envelopes, unknown/revoked keys, malformed indexes, or packages whose declared trust exceeds the source ceiling.
+
+The signed envelope includes a monotonic positive `sequence`. DockyardOS rejects lower sequence numbers and rejects **equivocation** when the same sequence is presented with different signed content. Verified versions are stored under external DockyardOS state and re-verified before cached indexes are exposed.
+
+Inspect configured sources and verified cache metadata:
+
+```bash
+dockyard community remote sources
+dockyard community remote cached
+```
+
+Synchronize every enabled source or one source:
+
+```bash
+dockyard community remote sync
+dockyard community remote sync --id <registry-id>
+```
+
+Remote registries are disabled by default. A successfully synchronized remote package is still metadata; it does **not** bypass the package manifest, quarantine, signature, permission, integrity, or approval boundaries used by the installation pipeline.
+
+## Publisher and registry signing
+
+DockyardOS can generate local Ed25519 signing keys for publishers and remote registries.
+
+```bash
+dockyard community publisher keygen --id <publisher-id> --key-id <key-id>
+dockyard community registry-key keygen --id <registry-id> --key-id <key-id>
+```
+
+Private keys are stored under:
+
+```text
+~/.dockyardos/signing-keys/
+```
+
+with private key files created mode `0600`. DockyardOS outputs the public registration/trust-store record and the local private-key path, but never prints private-key material.
+
+Sign a package manifest:
+
+```bash
+dockyard community publisher sign \
+  --file manifest.json \
+  --key-id <key-id> \
+  --out manifest.signed.json
+```
+
+Sign a remote registry envelope:
+
+```bash
+dockyard community registry-key sign \
+  --file envelope.json \
+  --key-id <key-id> \
+  --out envelope.signed.json
+```
+
+The output path is create-only; DockyardOS refuses to silently overwrite an existing signed file. Key rotation/revocation remains an explicit trust-store maintenance operation rather than an automatic rewrite of bundled trust policy.
+
+## Sandboxed dynamic canaries
+
+P7 adds an explicit dynamic canary runner for quarantined capability code. It is **not** a host fallback and does not weaken P6 static quarantine.
+
+Plan or run a canary after resolving a package:
+
+```bash
+dockyard community canary plan \
+  --id <package> \
+  --image <image>@sha256:<digest> \
+  --command <direct-command> \
+  --arg <argument>
+
+dockyard community canary run \
+  --id <package> \
+  --image <image>@sha256:<digest> \
+  --command <direct-command>
+```
+
+DockyardOS requires Docker or Podman for execution and refuses direct execution on the host. The image must already exist locally and be digest-pinned; `--pull=never` prevents an implicit network fetch.
+
+The container is launched with:
+
+- no network
+- read-only root filesystem
+- all Linux capabilities dropped
+- `no-new-privileges`
+- bounded PIDs, memory, CPU, timeout, argument count, and output
+- unprivileged user
+- small no-exec `/tmp`
+- only the resolved quarantine package mounted read-only at `/workspace`
+
+If the backend or pinned image is unavailable, the result is `unavailable`, never `pass`. A failed canary cannot override a quarantine decision or grant installation approval.
+
 ## Resolution and quarantine rules
 
-The P6 fetcher currently accepts only GitHub `owner/repo` sources from validated package manifests.
+The safe fetcher accepts only GitHub `owner/repo` sources from validated package manifests.
 
 It:
 
@@ -178,7 +265,7 @@ Examples include:
 
 - declared high-impact permissions such as shell/network/browser/git-write/secrets/database-write/deployment/DNS
 - high static findings that do not require quarantine
-- a warning-level canary
+- a warning-level static canary
 - non-low-risk maintainer packages
 - first install of a correctly signed community package
 - updates that add permissions
@@ -200,9 +287,7 @@ Examples include:
 
 ## Cross-host activation
 
-Installed community packages are not dumped wholesale into every agent context. That would defeat DockyardOS context budgets and make a large catalogue counterproductive.
-
-Instead, DockyardOS exposes verified active package metadata and declared entrypoints through the local MCP bridge:
+Installed community packages are not dumped wholesale into every agent context. Instead, DockyardOS exposes verified active package metadata and declared entrypoints through the local MCP bridge:
 
 - `dockyard_community_active`
 - `dockyard_community_entrypoint`
@@ -223,16 +308,16 @@ An update is compared with the currently active package. Permission expansion, t
 
 DockyardOS writes a local append-style hash chain under its external community state. Each record includes the previous record hash and its own deterministic SHA-256 hash.
 
-This is **local tamper evidence**, not a public transparency service. P6 does not claim that a local attacker who can rewrite the entire Dockyard home cannot replace both the log and state. A future public registry/signature service can anchor these records externally.
+This is **local tamper evidence**, not a public transparency service. DockyardOS does not claim that a local attacker who can rewrite the entire Dockyard home cannot replace both the log and state. External/public anchoring remains future work.
 
-## What P6 intentionally does not do yet
+## Still intentionally not automatic
 
-- It does not execute arbitrary package tests during quarantine.
+- Remote registry metadata does not automatically install or execute packages.
+- Dynamic canaries never execute without a supported isolation backend.
+- DockyardOS does not auto-pull canary images.
 - It does not automatically merge native project configuration files.
 - It does not install an item directly from an awesome list/search result without an explicit Dockyard manifest.
 - It does not treat popularity/stars as trust.
-- It does not permanently hard-code current provider/pricing claims into package trust decisions.
 - It does not expose provider credentials to community packages merely because they request them.
 - It does not automatically load every installed community package into every team phase.
-
-Future work can add sandboxed dynamic canaries, remote registry synchronization, publisher onboarding/signing workflows, external transparency anchoring, and richer package discovery UI while preserving these boundaries.
+- External transparency anchoring, registry contribution-validation infrastructure, safe host-config merge, and richer marketplace UI remain future work.
