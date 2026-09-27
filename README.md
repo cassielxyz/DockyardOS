@@ -27,6 +27,9 @@ DockyardOS is a persistent autonomous-development layer for coding agents. It ad
 - one-time VS Code extension with a bundled DockyardOS Core fallback
 - safe community package registry with quarantine, signatures, permission assessment, immutable versions, rollback, and local transparency metadata
 - signed, size-bounded remote community registry synchronization with replay/equivocation protection
+- collision-safe effective registry that can expose unique verified remote packages without allowing remote shadowing
+- stored manifest snapshots so installed remote capabilities remain usable offline
+- automatic-only safe update checking/application with no approval bypass
 - local Ed25519 publisher/registry signing workflow without exposing private-key material
 - fail-closed Docker/Podman dynamic canaries for quarantined capability code
 - one external DockyardOS state shared by every supported host
@@ -185,7 +188,7 @@ dockyard community rollback --id <package>
 
 Community-trust packages require a valid Ed25519 manifest signature from a trusted Dockyard publisher key. Updates are re-approved if permissions expand, trust decreases, or risk increases.
 
-### Signed remote registries
+### Signed remote registries and the effective registry
 
 Remote registries are disabled by default. When explicitly configured, DockyardOS requires HTTPS, an exact allowed hostname, a trusted Ed25519 registry key, response-size and age limits, and a trust ceiling. Signed envelope sequences protect against replay/rollback and same-sequence equivocation.
 
@@ -195,7 +198,27 @@ dockyard community remote sync
 dockyard community remote cached
 ```
 
-A synchronized remote registry is verified/cached metadata. It does not bypass package quarantine, publisher signatures, permission checks, immutable resolution, or approval.
+After successful synchronization, DockyardOS builds an **effective registry** from the bundled registry plus only re-verified, non-expired remote caches. A unique remote package can appear in `community list/search/inspect/resolve/install`, but a remote package can never shadow a bundled package. If two remotes claim the same package ID, every conflicting remote claim is excluded until the ambiguity is resolved.
+
+Remote provenance is carried with effective-registry results. Installing a remote package still uses the same P6 quarantine, publisher-signature, permission, immutable-resolution, integrity, approval, activation, transparency, and rollback boundaries. DockyardOS stores the exact assessed manifest snapshot beside external community state so an already installed immutable remote capability remains self-describing and usable offline even if the registry cache later expires.
+
+### Safe community updates
+
+Check active packages against their current effective-registry candidates:
+
+```bash
+dockyard community updates check
+dockyard community updates check --id <package>
+```
+
+Apply only updates that remain eligible for **automatic** activation after a fresh pinned assessment:
+
+```bash
+dockyard community updates apply-safe
+dockyard community updates apply-safe --id <package>
+```
+
+`apply-safe` never supplies `--approve`. Permission expansion, trust downgrade, risk increase, invalid/missing signatures, quarantine findings, ambiguous/missing manifests, or any other approval-required state is skipped rather than silently accepted. The candidate is resolved and assessed again with the exact reviewed revision/content digest before activation, so an upstream ref moving between check and apply cannot be substituted silently.
 
 ### Publisher signing
 
@@ -226,7 +249,7 @@ dockyard community canary run \
 
 DockyardOS refuses floating image tags, auto-pulls, direct host fallback, network access, writable package mounts, elevated Linux capabilities, or unbounded CPU/memory/PIDs/time/output. Missing backend/image produces `unavailable`, never a false pass.
 
-See [`docs/COMMUNITY.md`](docs/COMMUNITY.md) for the complete distribution, remote-registry, signing, and canary trust model.
+See [`docs/COMMUNITY.md`](docs/COMMUNITY.md) for the complete distribution, remote-registry, signing, effective-registry, update, and canary trust model.
 
 ## Let DockyardOS choose providers
 
@@ -289,7 +312,8 @@ Balanced mode is the default:
 - production deploys, destructive database actions, force pushes, infrastructure deletion, DNS changes, secret rotation, and sensitive operations require approval
 - obviously machine-destructive commands are denied
 - community capability updates do not silently gain new sensitive permissions
-- community discovery and remote registry synchronization never imply package execution
+- remote registries cannot shadow bundled packages or win ambiguous ID collisions
+- safe update application never auto-approves an approval-required candidate
 - dynamic community canaries never fall back to direct host execution
 - remote dynamic security testing requires explicit authorization and never infers permission from public accessibility
 
