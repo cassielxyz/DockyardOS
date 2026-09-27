@@ -32,6 +32,8 @@ test("real-host matrix is opt-in only and covers current public CLI surfaces", (
   assert.match(realHostWorkflow, /workflow_dispatch:/);
   assert.doesNotMatch(realHostWorkflow, /\n\s*pull_request:/);
   assert.doesNotMatch(realHostWorkflow, /\n\s*push:/);
+  assert.doesNotMatch(realHostWorkflow, /inputs\.host/);
+  assert.doesNotMatch(realHostWorkflow, /^\s{4}if:.*matrix\./m);
   const expected = [
     ["gemini-cli", "gemini", "@google/gemini-cli"],
     ["codex", "codex", "@openai/codex"],
