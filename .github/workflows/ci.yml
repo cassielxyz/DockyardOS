@@ -81,6 +81,10 @@ jobs:
           cd "$tmp"
           node "$root/dist/main.js" init --name security-policy-smoke --mode balanced
           node "$root/dist/main.js" security policy add-secret --id ci-fixture --fingerprint 'fixture.env:1:CI_TOKEN:1' --owner ci-security --rationale 'Known inert CI fixture credential for policy smoke coverage.' --expires 2027-01-15T00:00:00Z > /tmp/p10-policy.json
+          REMINDER_EXPIRES=$(node -e "process.stdout.write(new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString())")
+          node "$root/dist/main.js" security policy add-secret --id ci-reminder --fingerprint 'reminder.env:1:CI_TOKEN:1' --owner ci-security --rationale 'Temporary inert CI fixture used to verify expiry reminder evidence.' --expires "$REMINDER_EXPIRES" > /tmp/p16-reminder-policy.json
+          node "$root/dist/main.js" security policy reminders --within-days 14 --owner ci-security > /tmp/p16-reminders.json
+          node -e "const r=JSON.parse(require('fs').readFileSync('/tmp/p16-reminders.json','utf8')); if(!r.needsReview || r.summary.expiringSoon!==1 || r.summary.expired!==0 || r.reminders?.[0]?.exceptionId!=='ci-reminder') process.exit(1)"
           export REPO_ROOT="$root"
           RESULT_PATH=$(node --input-type=module <<'NODE'
           import { mkdir, writeFile } from 'node:fs/promises';
@@ -145,6 +149,7 @@ jobs:
           node integrations/vscode/core/dist/main.js providers actions --provider vercel
           node integrations/vscode/core/dist/main.js providers preview plan --web vercel
           node integrations/vscode/core/dist/main.js security policy show
+          node integrations/vscode/core/dist/main.js security policy reminders --within-days 30
       - name: Package VS Code extension
         working-directory: integrations/vscode
         run: |
