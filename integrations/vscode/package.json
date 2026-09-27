@@ -1,0 +1,53 @@
+{
+  "name": "dockyardos-vscode",
+  "displayName": "DockyardOS",
+  "description": "Project continuity, checkpoints, adaptive teams, and DockyardOS controls for VS Code.",
+  "version": "0.1.0",
+  "publisher": "dockyardos",
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": ["Other", "Machine Learning"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      { "command": "dockyard.init", "title": "DockyardOS: Initialize Project" },
+      { "command": "dockyard.doctor", "title": "DockyardOS: Run Doctor" },
+      { "command": "dockyard.resume", "title": "DockyardOS: Show Resume Context" },
+      { "command": "dockyard.checkpoint", "title": "DockyardOS: Save Checkpoint" },
+      { "command": "dockyard.teamStart", "title": "DockyardOS: Start Agent Team" },
+      { "command": "dockyard.teamStatus", "title": "DockyardOS: Show Team Status" },
+      { "command": "dockyard.teamAdvance", "title": "DockyardOS: Advance Team Phase" },
+      { "command": "dockyard.refresh", "title": "DockyardOS: Refresh Status" }
+    ],
+    "configuration": {
+      "title": "DockyardOS",
+      "properties": {
+        "dockyard.executablePath": {
+          "type": "string",
+          "default": "dockyard",
+          "description": "Path to the DockyardOS CLI executable."
+        },
+        "dockyard.defaultHost": {
+          "type": "string",
+          "enum": ["antigravity", "gemini-cli", "codex", "claude-code", "cursor", "opencode", "vscode"],
+          "default": "vscode",
+          "description": "Host identifier used when requesting portable DockyardOS context."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "build": "tsc -p tsconfig.json",
+    "check": "npm run build",
+    "package": "vsce package --no-dependencies"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/vscode": "^1.95.0",
+    "@vscode/vsce": "^3.6.0",
+    "typescript": "^5.8.3"
+  }
+}
