@@ -86,11 +86,16 @@
 
 ## P5 — Cross-host support
 
-- [ ] VS Code extension
-- [ ] Gemini CLI adapter
-- [ ] Codex adapter
-- [ ] Claude Code adapter
-- [ ] Cursor / OpenCode adapters
+- [x] Shared host adapter contract and portable context
+- [x] Local stdio DockyardOS MCP server for context/recommend/team/checkpoint/policy
+- [x] Host inspection, lifecycle-event, and policy-gate CLI
+- [x] VS Code extension control surface
+- [x] Gemini CLI native extension, skill, MCP and lifecycle hooks
+- [x] Codex plugin/skill/MCP adapter
+- [x] Claude Code instructions/skill/MCP adapter
+- [x] Cursor rule/MCP adapter
+- [x] OpenCode instructions/MCP/read-only reviewer adapter
+- [x] Cross-host checkpoint/team continuity tests and CI
 
 ## P6 — Community distribution
 
