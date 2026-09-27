@@ -60,6 +60,53 @@ registry/registry-keys.json
 
 `registry-keys.json` contains public Ed25519 keys trusted for signed remote-registry envelopes.
 
+## Third-party contribution staging
+
+DockyardOS keeps community submissions separate from the runtime registry:
+
+```text
+registry/contributions/
+registry/publisher-proposals/
+```
+
+These directories are **review queues only**. The effective registry loader does not read them, so a pull request cannot become installable merely by adding a file there.
+
+Third-party package proposals must enter staging with:
+
+- `trust: "community"`;
+- `publisher.signatureRequired: true`;
+- `source.ref` pinned to a lowercase 40-character Git commit SHA;
+- explicit entrypoints, permissions, hosts, risk, channel, license, and package size limits;
+- the existing DockyardOS manifest safety rules.
+
+Validate the whole queue or one package:
+
+```bash
+dockyard community contribution validate \
+  --dir registry/contributions \
+  --publisher-proposals registry/publisher-proposals
+
+dockyard community contribution validate \
+  --file registry/contributions/<package>.json
+```
+
+A package signed by a currently trusted, non-revoked publisher key can become `review-ready`, but staging validation always reports `activationEligible: false`. A package whose publisher has no trusted key becomes `publisher-onboarding-required`. A bad signature using a known key is blocked.
+
+Publisher public-key proposals are also inert. CI validates identifier/date/key structure and verifies that the PEM is an Ed25519 public key, but a valid proposal is only `review-required`; it never modifies `registry/publishers.json` or grants trust.
+
+Before a maintainer promotes an already signed proposal, they can run:
+
+```bash
+dockyard community contribution prepare \
+  --file registry/contributions/<package>.json
+```
+
+`prepare` is non-mutating. It revalidates the manifest/signature and rejects bundled package-ID collisions.
+
+The pull-request validation workflow runs with read-only repository permissions and no signing/publishing secrets. It uses `pull_request`, not `pull_request_target`. A PR that changes contribution or publisher-proposal staging is rejected if it also changes `registry/community.json`, `registry/publishers.json`, or `registry/registry-keys.json`. Trust onboarding and package promotion therefore require a separate Code Owner-reviewed change.
+
+See `CONTRIBUTING.md` and the README files inside the two staging directories for the contributor flow. Maintainer-controlled signing/promotion automation remains separate future work.
+
 ## Effective registry
 
 DockyardOS builds one **effective registry** from:
@@ -430,4 +477,5 @@ This is **local tamper evidence**, not a public transparency service. DockyardOS
 - It does not treat popularity/stars as trust.
 - It does not expose provider credentials to community packages merely because they request them.
 - It does not automatically load every installed community package into every team phase.
-- Recurring update scheduling, external transparency anchoring, registry contribution-validation infrastructure, safe host-config merge, and richer marketplace UI remain future work.
+- It does not automatically trust publisher-key proposals or promote staged community submissions.
+- Recurring update scheduling, external transparency anchoring, maintainer-controlled contribution promotion/signing, safe host-config merge, and richer marketplace UI remain future work.
