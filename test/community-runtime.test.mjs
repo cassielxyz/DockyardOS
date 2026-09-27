@@ -7,16 +7,6 @@ import test from "node:test";
 process.env.DOCKYARD_HOME = await mkdtemp(join(tmpdir(), "dockyard-community-runtime-home-"));
 const dockyard = await import("../dist/index.js");
 
-async function prepareSuperpowersFixture() {
-  const registry = await dockyard.loadCommunityRegistry();
-  const manifest = registry.packages.find((pkg) => pkg.id === "superpowers-core-skills");
-  assert.ok(manifest);
-  const revision = "f".repeat(40);
-  const quarantineRoot = join(process.env.DOCKYARD_HOME, "community", "quarantine", manifest.id);
-  const quarantine = await mkdtemp(join(quarantineRoot, "runtime-").catch ? "" : "");
-  return { manifest, revision, quarantine };
-}
-
 test("active community runtime exposes only declared verified entrypoints", async () => {
   const registry = await dockyard.loadCommunityRegistry();
   const manifest = registry.packages.find((pkg) => pkg.id === "superpowers-core-skills");
@@ -48,7 +38,7 @@ test("active community runtime exposes only declared verified entrypoints", asyn
     inferredPermissions: ["filesystem-read", "shell"],
     canary: { status: "pass", checks: [{ name: "entrypoints", status: "pass", detail: "ok" }] },
   };
-  const assessment = await dockyard.assessCommunityPackage(manifest, {
+  const resolved = {
     packageId: manifest.id,
     repository: manifest.source.repository,
     requestedRef: manifest.source.ref,
@@ -58,20 +48,10 @@ test("active community runtime exposes only declared verified entrypoints", asyn
     contentSha256: digest,
     files: scan.files,
     bytes: scan.bytes,
-  }, scan);
+  };
+  const assessment = await dockyard.assessCommunityPackage(manifest, resolved, scan);
   assert.equal(assessment.decision, "approval-required");
-
-  await dockyard.installResolvedCommunityPackage(manifest, {
-    packageId: manifest.id,
-    repository: manifest.source.repository,
-    requestedRef: manifest.source.ref,
-    revision,
-    resolvedAt: new Date().toISOString(),
-    quarantinePath: quarantine,
-    contentSha256: digest,
-    files: scan.files,
-    bytes: scan.bytes,
-  }, assessment, { approve: true });
+  await dockyard.installResolvedCommunityPackage(manifest, resolved, assessment, { approve: true });
 
   const active = await dockyard.activeCommunityPackages();
   assert.equal(active.length, 1);
