@@ -110,9 +110,9 @@
 - [x] Read-only OpenCode independent reviewer template
 - [x] Native bridge metadata surfaced through host list/doctor/native-info
 - [x] MCP runtime/dependencies/native templates included in bundled VSIX Core with package-level CI assertions
-- [ ] Publish VS Code Marketplace listing/release channel
+- [ ] First live VS Code Marketplace listing/publication
 - [ ] Safe automatic merge/install of review-first native project files without clobbering existing host config
-- [ ] Cross-host end-to-end matrix tests against installed real host CLIs in opt-in CI environments
+- [ ] Completed green cross-host matrix run against installed real host CLIs in opt-in CI
 
 ## P6 — Community distribution
 
@@ -125,7 +125,7 @@
 - [x] Explicit entrypoint validation and Agent Skill structural canary
 - [x] Script/binary/install-lifecycle detection and conservative permission inference
 - [x] Automatic / approval-required / quarantine assessment
-- [x] Community-trust Ed25519 signature requirement with trusted/revoked key registry
+- [x] Community-trust Ed25519 signature requirement + trusted/revoked key registry
 - [x] Approval pinning to exact assessed revision + content digest
 - [x] Pre-copy and post-copy integrity verification before activation
 - [x] Immutable installed version directories and active revision pointer
@@ -232,9 +232,30 @@
 - [ ] Optional code-host upload adapter for generated SARIF with explicit approval
 - [ ] Policy-review reminders for exceptions nearing expiry
 
+## P11 — Guarded Marketplace release and real-host CI
+
+- [x] Marketplace-ready extension repository/homepage/issues/keyword metadata
+- [x] Existing VSIX packaging remains test-gated before release artifacts are uploaded
+- [x] Marketplace publish step is `workflow_dispatch`-only
+- [x] Publish requires explicit `publish_marketplace=true`
+- [x] Publish requires `release_tag == v<extension version>` and that exact tag on the checked-out commit
+- [x] Publish requires a repository `VSCE_PAT` secret and never stores the token in source
+- [x] Tag pushes can package release artifacts without silently publishing
+- [x] Current Cursor CLI executable (`agent`) and native resume capability reflected in host metadata
+- [x] Manual-only real-host matrix defined for Gemini CLI, Codex, Claude Code, Cursor, and OpenCode
+- [x] NPM host lanes resolve and record an exact current package version before installation
+- [x] Installer-script lanes record SHA-256 before execution
+- [x] Per-host evidence artifacts preserve install source, executable path, version, inspect, doctor, and integration results
+- [x] Real-host lanes avoid model prompts/API credentials and verify Dockyard integration only
+- [x] Deterministic tests enforce Marketplace and real-host workflow guardrails
+- [x] Release and real-host verification guide
+- [ ] First live Marketplace listing/publication using the guarded release path
+- [ ] Completed green full real-host matrix run from merged `main`
+- [ ] Antigravity real-CLI CI lane after an official stable noninteractive install surface is verified
+
 ## Next production milestones
 
-- Published VS Code Marketplace release channel and opt-in real-host matrix CI
+- Complete a green real-host matrix run and first guarded VS Code Marketplace publication
 - Community contribution validation, richer marketplace UI, and optional scheduled safe-update checks
 - External transparency anchoring and publisher key-rotation workflow
 - Alternative-provider actions, live pricing/health signals, and migration rollback executors
