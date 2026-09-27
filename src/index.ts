@@ -20,6 +20,7 @@ export * from "./security-plan.js";
 export * from "./security-runner.js";
 export * from "./security-regression.js";
 export * from "./security-policy.js";
+export * from "./security-policy-reminders.js";
 export * from "./security-sarif.js";
 export * from "./security-sarif-upload.js";
 export * from "./threat-model.js";

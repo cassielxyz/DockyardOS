@@ -8,6 +8,7 @@ import {
   loadSecurityPolicy,
   removeSecurityException,
 } from "./security-policy.js";
+import { securityPolicyReminders } from "./security-policy-reminders.js";
 import { exportSecuritySarif } from "./security-sarif.js";
 import { planSecuritySarifUpload, uploadSecuritySarif } from "./security-sarif-upload.js";
 import { projectDirectory, projectIdForRoot } from "./project.js";
@@ -68,6 +69,13 @@ async function handlePolicy(root: string, args: string[]): Promise<void> {
     console.log(JSON.stringify(await loadSecurityPolicy(root), null, 2));
     return;
   }
+  if (action === "reminders") {
+    console.log(JSON.stringify(await securityPolicyReminders(root, {
+      withinDays: value(rest, "--within-days"),
+      owner: value(rest, "--owner"),
+    }), null, 2));
+    return;
+  }
   if (action === "add-secret") {
     const policy = await addSecretBaseline(root, {
       id: required(rest, "--id"),
@@ -102,7 +110,7 @@ async function handlePolicy(root: string, args: string[]): Promise<void> {
     setGateExitCode(evaluation.gate);
     return;
   }
-  throw new Error("Usage: dockyard security policy show | add-secret --id ID --fingerprint FP --owner OWNER --rationale TEXT --expires ISO | add-dependency --id ID --advisory ID --package NAME --owner OWNER --rationale TEXT --expires ISO | remove --id ID | evaluate --result PATH");
+  throw new Error("Usage: dockyard security policy show | reminders [--within-days 1-90] [--owner OWNER] | add-secret --id ID --fingerprint FP --owner OWNER --rationale TEXT --expires ISO | add-dependency --id ID --advisory ID --package NAME --owner OWNER --rationale TEXT --expires ISO | remove --id ID | evaluate --result PATH");
 }
 
 async function handleSarif(root: string, args: string[]): Promise<void> {
