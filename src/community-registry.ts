@@ -4,6 +4,7 @@ import type { CommunityPackageManifest, CommunityRegistryIndex } from "./communi
 
 const ID = /^[a-z0-9][a-z0-9._-]{1,79}$/;
 const REPOSITORY = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
+const GIT_REF = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$/;
 const HOSTS = new Set(["antigravity", "gemini-cli", "codex", "claude-code", "cursor", "opencode", "universal"]);
 const PERMISSIONS = new Set(["filesystem-read", "filesystem-write", "shell", "network", "browser", "git-write", "secrets", "database-read", "database-write", "deployment", "dns"]);
 const KINDS = new Set(["skill", "tool", "agent", "mcp", "provider", "workflow"]);
@@ -17,6 +18,13 @@ function safeRelativePath(value: string): boolean {
   return !parts.some((part) => !part || part === "." || part === "..");
 }
 
+function safeGitRef(value: string): boolean {
+  if (!GIT_REF.test(value)) return false;
+  if (value.includes("..") || value.includes("@{") || value.endsWith(".") || value.endsWith("/") || value.endsWith(".lock")) return false;
+  if (value.includes("//") || value.includes("/.")) return false;
+  return true;
+}
+
 export function validateCommunityPackage(pkg: CommunityPackageManifest): string[] {
   const errors: string[] = [];
   if (pkg.schemaVersion !== 1) errors.push(`${pkg.id || "package"}: unsupported schemaVersion`);
@@ -27,7 +35,7 @@ export function validateCommunityPackage(pkg: CommunityPackageManifest): string[
   if (!pkg.description.trim()) errors.push(`${pkg.id}: description is required`);
   if (pkg.source.type !== "github") errors.push(`${pkg.id}: only github sources are supported by the P6 safe fetcher`);
   if (!REPOSITORY.test(pkg.source.repository)) errors.push(`${pkg.id}: source.repository must be owner/repo`);
-  if (!pkg.source.ref.trim()) errors.push(`${pkg.id}: source.ref is required`);
+  if (!safeGitRef(pkg.source.ref)) errors.push(`${pkg.id}: unsafe or invalid source.ref`);
   if (pkg.source.subdirectory && !safeRelativePath(pkg.source.subdirectory)) errors.push(`${pkg.id}: unsafe source.subdirectory`);
   if (!pkg.publisher?.id?.trim() || !pkg.publisher?.name?.trim()) errors.push(`${pkg.id}: publisher id/name are required`);
   if (!pkg.license.trim()) errors.push(`${pkg.id}: license is required`);
