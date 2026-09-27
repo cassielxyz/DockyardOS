@@ -121,7 +121,7 @@ function gitObjectBytes(output: string): number {
   return kib * 1024;
 }
 
-async function scanPackage(root: string, pkg: CommunityPackageManifest, revision: string): Promise<CommunityScanReport> {
+export async function scanCommunityPackageTree(root: string, pkg: CommunityPackageManifest, revision: string): Promise<CommunityScanReport> {
   const maxFiles = pkg.maxFiles ?? 1000;
   const maxBytes = pkg.maxBytes ?? 20 * 1024 * 1024;
   const walked = await walk(root, maxFiles, maxBytes);
@@ -238,7 +238,7 @@ export async function resolveAndQuarantine(pkg: CommunityPackageManifest): Promi
     const packageRoot = ensureInside(quarantinePath, resolve(quarantinePath, safeSubdirectory(pkg.source.subdirectory)));
     const rootMetadata = await lstat(packageRoot).catch(() => undefined);
     if (!rootMetadata?.isDirectory()) throw new Error(`Community package subdirectory does not exist: ${pkg.source.subdirectory ?? "."}`);
-    const scan = await scanPackage(packageRoot, pkg, revision);
+    const scan = await scanCommunityPackageTree(packageRoot, pkg, revision);
     const walked = await walk(packageRoot, pkg.maxFiles ?? 1000, pkg.maxBytes ?? 20 * 1024 * 1024);
     const resolution: CommunityResolution = {
       packageId: pkg.id,
