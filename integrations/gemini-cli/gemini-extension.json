@@ -5,5 +5,12 @@
   "contextFileName": "GEMINI.md",
   "plan": {
     "directory": ".gemini/plans"
+  },
+  "mcpServers": {
+    "dockyardos": {
+      "command": "dockyard-mcp",
+      "args": [],
+      "cwd": "${workspacePath}"
+    }
   }
 }
