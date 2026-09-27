@@ -1,0 +1,56 @@
+{
+  "name": "dockyardos-vscode",
+  "displayName": "DockyardOS",
+  "description": "Global VS Code control surface for DockyardOS autonomous development orchestration.",
+  "version": "0.1.0",
+  "publisher": "cassielxyz",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": ["Other", "Programming Languages", "Testing"],
+  "activationEvents": [
+    "onCommand:dockyardOS.initialize",
+    "onCommand:dockyardOS.doctor",
+    "onCommand:dockyardOS.status",
+    "onCommand:dockyardOS.resume",
+    "onCommand:dockyardOS.teamStart",
+    "onCommand:dockyardOS.teamStatus",
+    "onCommand:dockyardOS.hostDoctor"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      { "command": "dockyardOS.initialize", "title": "DockyardOS: Initialize Project", "category": "DockyardOS" },
+      { "command": "dockyardOS.doctor", "title": "DockyardOS: Run Doctor", "category": "DockyardOS" },
+      { "command": "dockyardOS.status", "title": "DockyardOS: Project Status", "category": "DockyardOS" },
+      { "command": "dockyardOS.resume", "title": "DockyardOS: Resume Context", "category": "DockyardOS" },
+      { "command": "dockyardOS.teamStart", "title": "DockyardOS: Start Project Team", "category": "DockyardOS" },
+      { "command": "dockyardOS.teamStatus", "title": "DockyardOS: Team Status", "category": "DockyardOS" },
+      { "command": "dockyardOS.hostDoctor", "title": "DockyardOS: Check Agent Host", "category": "DockyardOS" }
+    ],
+    "configuration": {
+      "title": "DockyardOS",
+      "properties": {
+        "dockyardOS.cliPath": {
+          "type": "string",
+          "default": "dockyard",
+          "description": "DockyardOS CLI executable. Leave as 'dockyard' when DockyardOS is installed globally or linked on PATH."
+        },
+        "dockyardOS.defaultHost": {
+          "type": "string",
+          "enum": ["antigravity", "gemini-cli", "codex", "claude-code", "cursor", "opencode"],
+          "default": "antigravity",
+          "description": "Agent host used by DockyardOS host checks from VS Code."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "check": "node --check extension.js",
+    "package": "npx @vscode/vsce package"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "^3.6.0"
+  }
+}
