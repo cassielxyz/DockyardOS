@@ -1,7 +1,10 @@
 const vscode = require("vscode");
 const { spawn } = require("node:child_process");
+const fs = require("node:fs");
+const path = require("node:path");
 
 const MAX_OUTPUT_BYTES = 256 * 1024;
+let activeContext;
 
 function workspaceRoot() {
   const folder = vscode.workspace.workspaceFolders?.[0];
@@ -9,13 +12,18 @@ function workspaceRoot() {
   return folder.uri.fsPath;
 }
 
-function cliPath() {
-  return vscode.workspace.getConfiguration("dockyardOS").get("cliPath", "dockyard");
+function dockyardInvocation() {
+  const configured = vscode.workspace.getConfiguration("dockyardOS").get("cliPath", "").trim();
+  if (configured) return { command: configured, prefix: [], source: "configured CLI" };
+  const bundled = activeContext && path.join(activeContext.extensionPath, "core", "dist", "main.js");
+  if (bundled && fs.existsSync(bundled)) return { command: process.execPath, prefix: [bundled], source: "bundled Core" };
+  return { command: "dockyard", prefix: [], source: "PATH CLI" };
 }
 
 function runDockyard(args, cwd = workspaceRoot()) {
   return new Promise((resolve, reject) => {
-    const child = spawn(cliPath(), args, {
+    const invocation = dockyardInvocation();
+    const child = spawn(invocation.command, [...invocation.prefix, ...args], {
       cwd,
       shell: false,
       windowsHide: true,
@@ -23,6 +31,7 @@ function runDockyard(args, cwd = workspaceRoot()) {
     });
     let stdout = "";
     let stderr = "";
+    let settled = false;
     const append = (current, chunk) => {
       const next = current + chunk.toString("utf8");
       return Buffer.byteLength(next, "utf8") <= MAX_OUTPUT_BYTES ? next : `${next.slice(0, MAX_OUTPUT_BYTES)}\n[output truncated]`;
@@ -30,11 +39,15 @@ function runDockyard(args, cwd = workspaceRoot()) {
     child.stdout.on("data", (chunk) => { stdout = append(stdout, chunk); });
     child.stderr.on("data", (chunk) => { stderr = append(stderr, chunk); });
     child.on("error", (error) => {
-      if (error.code === "ENOENT") reject(new Error(`DockyardOS CLI was not found at '${cliPath()}'. Install/link DockyardOS once or set dockyardOS.cliPath.`));
+      if (settled) return;
+      settled = true;
+      if (error.code === "ENOENT") reject(new Error(`DockyardOS ${invocation.source} is unavailable. Reinstall the DockyardOS VSIX or set dockyardOS.cliPath to a working external CLI.`));
       else reject(error);
     });
     child.on("close", (code) => {
-      if (code === 0) resolve({ stdout: stdout.trim(), stderr: stderr.trim(), code });
+      if (settled) return;
+      settled = true;
+      if (code === 0) resolve({ stdout: stdout.trim(), stderr: stderr.trim(), code, runtime: invocation.source });
       else reject(new Error((stderr || stdout || `DockyardOS exited with code ${code}`).trim()));
     });
   });
@@ -53,6 +66,7 @@ function showResult(context, title, result) {
   const channel = outputChannel(context);
   channel.clear();
   channel.appendLine(`# ${title}`);
+  if (result.runtime) channel.appendLine(`Runtime: ${result.runtime}`);
   channel.appendLine("");
   channel.appendLine(result.stdout || "(no output)");
   if (result.stderr) {
@@ -103,7 +117,10 @@ async function guarded(action) {
   }
 }
 
+const HOSTS = ["antigravity", "gemini-cli", "codex", "claude-code", "cursor", "opencode"];
+
 function activate(context) {
+  activeContext = context;
   const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 50);
   statusBar.command = "dockyardOS.status";
   statusBar.show();
@@ -154,10 +171,26 @@ function activate(context) {
 
   context.subscriptions.push(vscode.commands.registerCommand("dockyardOS.hostDoctor", () => guarded(async () => {
     const configured = vscode.workspace.getConfiguration("dockyardOS").get("defaultHost", "antigravity");
-    const host = await vscode.window.showQuickPick(["antigravity", "gemini-cli", "codex", "claude-code", "cursor", "opencode"], { title: "Check Agent Host", placeHolder: configured });
+    const host = await vscode.window.showQuickPick(HOSTS, { title: "Check Agent Host", placeHolder: configured });
     if (!host) return;
     const result = await runDockyard(["host", "doctor", "--host", host, "--json"]);
     showResult(context, `Host Doctor: ${host}`, result);
+  })));
+
+  context.subscriptions.push(vscode.commands.registerCommand("dockyardOS.hostInstall", () => guarded(async () => {
+    const configured = vscode.workspace.getConfiguration("dockyardOS").get("defaultHost", "antigravity");
+    const host = await vscode.window.showQuickPick(HOSTS, { title: "Install DockyardOS Agent Host Integration", placeHolder: configured });
+    if (!host) return;
+    const scopes = host === "codex" ? ["user", "project", "runtime"] : ["user", "project"];
+    const scope = await vscode.window.showQuickPick(scopes, { title: "Integration scope", placeHolder: "user installs once across projects" });
+    if (!scope) return;
+    const plan = await runDockyard(["host", "plan", "--host", host, "--scope", scope, "--json"]);
+    showResult(context, `Host Install Plan: ${host}`, plan);
+    const decision = await vscode.window.showInformationMessage(`Install DockyardOS integration for ${host} at ${scope} scope? Existing different skill content will not be overwritten.`, { modal: true }, "Install");
+    if (decision !== "Install") return;
+    const result = await runDockyard(["host", "install", "--host", host, "--scope", scope, "--json"]);
+    showResult(context, `Host Integration Installed: ${host}`, result);
+    vscode.window.showInformationMessage(`DockyardOS ${host} integration completed for ${scope} scope.`);
   })));
 
   const workspaceWatcher = vscode.workspace.onDidChangeWorkspaceFolders(() => refreshStatus(statusBar));
@@ -165,6 +198,8 @@ function activate(context) {
   refreshStatus(statusBar);
 }
 
-function deactivate() {}
+function deactivate() {
+  activeContext = undefined;
+}
 
 module.exports = { activate, deactivate };
