@@ -250,7 +250,7 @@ export async function mediateAgentRequest(root: string, input: {
 
   const requestHash = createHash("sha256").update(`${transcriptRequest.recordHash}\n${transcriptRequest.text}`).digest("hex");
   const previous = await readJson<RequestMediationState>(mediationPath(root, input.conversationId));
-  if (previous?.requestHash === requestHash) {
+  if (previous && previous.requestHash === requestHash) {
     return { ...previous, newRequest: false, requestAvailable: true, visibleReplyHint: visibleReplyHint(previous) };
   }
 
@@ -260,7 +260,7 @@ export async function mediateAgentRequest(root: string, input: {
   let selection: SelectionResult | undefined;
   let team: Record<string, unknown> | undefined;
   const activeTeam = await loadTeamRun(root).catch(() => undefined);
-  const hasActiveTeam = Boolean(activeTeam && activeTeam.status !== "completed" && activeTeam.status !== "cancelled" && activeTeam.status !== "failed");
+  const hasActiveTeam = Boolean(activeTeam && activeTeam.status !== "completed" && activeTeam.status !== "cancelled");
 
   if (route === "team" || route === "quick") {
     const request = defaultSelectionRequest({ task: transcriptRequest.text, stack, security, host: input.host ?? "antigravity" });
@@ -272,11 +272,11 @@ export async function mediateAgentRequest(root: string, input: {
     }
     selection = selectCapabilities(request);
     if (route === "team") {
-      if (hasActiveTeam) team = teamRunSummary(activeTeam!);
+      if (hasActiveTeam && activeTeam) team = teamRunSummary(activeTeam);
       else team = teamRunSummary((await startTeamForSelection(root, transcriptRequest.text, selection)).state);
     }
-  } else if (route === "continuation" && hasActiveTeam) {
-    team = teamRunSummary(activeTeam!);
+  } else if (route === "continuation" && hasActiveTeam && activeTeam) {
+    team = teamRunSummary(activeTeam);
   }
 
   const state: RequestMediationState = {
