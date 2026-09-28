@@ -28,13 +28,14 @@ test("Marketplace publication is manual, tag/version bound, and token gated", ()
   assert.match(marketplaceWorkflow, /vsce publish --packagePath dockyardos-vscode\.vsix/);
 });
 
-test("real-host matrix is opt-in only and covers current public CLI surfaces", () => {
+test("real-host matrix is opt-in only and covers current public CLI surfaces including Antigravity", () => {
   assert.match(realHostWorkflow, /workflow_dispatch:/);
   assert.doesNotMatch(realHostWorkflow, /\n\s*pull_request:/);
   assert.doesNotMatch(realHostWorkflow, /\n\s*push:/);
   assert.doesNotMatch(realHostWorkflow, /inputs\.host/);
   assert.doesNotMatch(realHostWorkflow, /^\s{4}if:.*matrix\./m);
   const expected = [
+    ["antigravity", "agy", "https://antigravity.google/cli/install.sh"],
     ["gemini-cli", "gemini", "@google/gemini-cli"],
     ["codex", "codex", "@openai/codex"],
     ["claude-code", "claude", "https://claude.ai/install.sh"],
@@ -48,6 +49,11 @@ test("real-host matrix is opt-in only and covers current public CLI surfaces", (
   }
   assert.match(realHostWorkflow, /npm view "\$DOCKYARD_INSTALL_SOURCE" version/);
   assert.match(realHostWorkflow, /sha256sum "\$INSTALLER"/);
+  assert.match(realHostWorkflow, /bash "\$INSTALLER" --skip-aliases --skip-path/);
+  assert.match(realHostWorkflow, /agy plugin list/);
+  assert.match(realHostWorkflow, /grep -qi 'dockyardos'/);
   assert.match(realHostWorkflow, /host doctor --host "\$DOCKYARD_REAL_HOST" --json/);
   assert.match(realHostWorkflow, /host install --host "\$DOCKYARD_REAL_HOST" --scope project --json/);
+  assert.doesNotMatch(realHostWorkflow, /agy\s+-p\s/);
+  assert.doesNotMatch(realHostWorkflow, /GEMINI_API_KEY/);
 });
