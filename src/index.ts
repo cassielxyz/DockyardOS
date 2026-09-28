@@ -17,6 +17,7 @@ export * from "./provider-actions-alternative.js";
 export * from "./provider-action-router.js";
 export * from "./provider-preview.js";
 export * from "./provider-health.js";
+export * from "./provider-migrations.js";
 export * from "./security-types.js";
 export * from "./security-profiles.js";
 export * from "./security-plan.js";
