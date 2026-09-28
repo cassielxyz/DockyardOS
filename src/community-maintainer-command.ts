@@ -1,6 +1,7 @@
 import { lstat, readFile } from "node:fs/promises";
 import { isAbsolute, relative, resolve } from "node:path";
 import { loadCommunityRegistry } from "./community-registry.js";
+import { handleRegistryAnchorCommand } from "./community-registry-anchor-command.js";
 import { handleRegistryPublicationCommand } from "./community-registry-publication-command.js";
 import { loadPublisherKeys } from "./community-signature.js";
 import { writeJsonAtomic } from "./fs-utils.js";
@@ -157,5 +158,6 @@ export async function handleCommunityMaintainerCommand(root: string, args: strin
   if (area === "publisher") return handlePublisher(root, rest);
   if (area === "promote") return handlePromotion(root, rest);
   if (area === "registry-publication") return handleRegistryPublicationCommand(root, rest);
-  throw new Error("Usage: dockyard community maintainer publisher onboard|rotate|revoke ... | promote --file registry/contributions/MANIFEST ... | registry-publication plan|run ...");
+  if (area === "registry-anchor") return handleRegistryAnchorCommand(root, rest);
+  throw new Error("Usage: dockyard community maintainer publisher onboard|rotate|revoke ... | promote --file registry/contributions/MANIFEST ... | registry-publication plan|run ... | registry-anchor plan|run ...");
 }
