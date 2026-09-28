@@ -125,15 +125,12 @@ jobs:
           if (!executableCheck || executableCheck.status !== 'pass') throw new Error('real executable stopped passing after Dockyard integration');
           if (!skillCheck || skillCheck.status !== 'pass') throw new Error('Dockyard portable host integration was not detected after install');
           NODE
-      - name: Verify Antigravity native plugin discovery without model invocation
+      - name: Verify Antigravity CLI plugin management without model invocation
         if: ${{ matrix.host == 'antigravity' }}
         run: |
           set -euo pipefail
           ROOT="$PWD"
-          FIXTURE="$(mktemp -d)"
-          mkdir -p "$FIXTURE/.agents/plugins"
-          cp -R "$ROOT/integrations/antigravity/plugin" "$FIXTURE/.agents/plugins/dockyardos"
-          cd "$FIXTURE"
+          agy plugin install "$ROOT/integrations/antigravity/plugin" 2>&1 | tee "$RUNNER_TEMP/dockyard-real-host-evidence/antigravity-plugin-install.txt"
           agy plugin list 2>&1 | tee "$RUNNER_TEMP/dockyard-real-host-evidence/antigravity-plugin-list.txt"
           grep -qi 'dockyardos' "$RUNNER_TEMP/dockyard-real-host-evidence/antigravity-plugin-list.txt"
       - name: Upload exact host evidence
