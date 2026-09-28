@@ -55,8 +55,13 @@ jobs:
         run: |
           npm install --ignore-scripts
           npm test
-      - name: Package VSIX with bundled Core
+      - name: Package VSIX with bundled Core and partner manifest
         working-directory: integrations/vscode
+        env:
+          DOCKYARD_PARTNER_VERCEL_URL: ${{ secrets.DOCKYARD_PARTNER_VERCEL_URL }}
+          DOCKYARD_PARTNER_DIGITALOCEAN_URL: ${{ secrets.DOCKYARD_PARTNER_DIGITALOCEAN_URL }}
+          DOCKYARD_PARTNER_NAMECHEAP_URL: ${{ secrets.DOCKYARD_PARTNER_NAMECHEAP_URL }}
+          DOCKYARD_PARTNER_HOSTINGER_URL: ${{ secrets.DOCKYARD_PARTNER_HOSTINGER_URL }}
         run: |
           npm install --ignore-scripts
           npm run check
@@ -65,6 +70,10 @@ jobs:
           unzip -p dockyardos-vscode.vsix extension/package.json > /tmp/vsix-package.json
           node -e "const p=require('/tmp/vsix-package.json'); if(p.name!=='dockyardos-vscode'||p.publisher!=='cassielxyz'||p.version!==process.env.extension_version) process.exit(1)"
           unzip -l dockyardos-vscode.vsix | grep -q 'extension/community-update-scheduler.js'
+          unzip -l dockyardos-vscode.vsix | grep -q 'extension/partner-offers.js'
+          unzip -l dockyardos-vscode.vsix | grep -q 'extension/partner-offers.json'
+          unzip -p dockyardos-vscode.vsix extension/partner-offers.json > /tmp/vsix-partners.json
+          node -e "const p=require('/tmp/vsix-partners.json'); if(p.schemaVersion!==1 || !Array.isArray(p.offers)) process.exit(1)"
       - uses: actions/upload-artifact@v4
         with:
           name: dockyardos-vscode-${{ env.extension_version }}

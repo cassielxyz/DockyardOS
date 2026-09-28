@@ -34,6 +34,7 @@ DockyardOS is a persistent autonomous-development layer for coding agents. It ad
 - automatic-only safe update checking/application with no approval bypass
 - local Ed25519 publisher/registry signing workflow without exposing private-key material
 - fail-closed Docker/Podman dynamic canaries for quarantined capability code
+- clearly separated sponsored/affiliate partner offers that never influence technical ranking, security, provider choice, or agent decisions
 - one external DockyardOS state shared by every supported host
 
 ## Verified real-host compatibility
@@ -381,6 +382,14 @@ The plugin restores project/team context before invocations, gates risky tool ac
 
 Other hosts use the portable skill and verified native mechanisms available to them; DockyardOS does not falsely claim identical hook/subagent behavior where the host does not expose it.
 
+## Commercial neutrality and partner offers
+
+DockyardOS can show clearly labeled sponsored or affiliate partner offers in a separate **Partners** area. Those offers are commercially separate from the decision engine: partner relationships never change capability scores, provider fallback order, pricing/free-tier evidence, security decisions, agent/subagent selection, package trust, approval requirements, or research conclusions.
+
+The extension uses text-only offers with explicit disclosure, curated HTTPS destination allowlists, no third-party ad JavaScript, no remote ad images or tracking pixels, and no DockyardOS click telemetry. Release-time and optional hosted partner feeds accept only the documented public partner URL variables; deployment/API credentials are never part of that feed.
+
+See [`docs/MONETIZATION.md`](docs/MONETIZATION.md) for the operator setup, approved partner surfaces, configuration names, and website/docs-only ad-network guidance.
+
 ## Approval philosophy
 
 Balanced mode is the default:
@@ -402,4 +411,4 @@ Balanced mode is the default:
 
 DockyardOS selects by **capability and fit**, not by brand. A project may prefer Supabase + Vercel + Cloudflare, while another may use Neon/Firebase/Appwrite/PocketBase plus Cloudflare/Render or another compatible combination. Availability, pricing/free-tier claims, and provider limits are live facts and must not be permanently hard-coded.
 
-See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), [`docs/CAPABILITY-REGISTRY.md`](docs/CAPABILITY-REGISTRY.md), [`docs/PROVIDERS.md`](docs/PROVIDERS.md), [`docs/SECURITY.md`](docs/SECURITY.md), [`docs/HOSTS.md`](docs/HOSTS.md), [`docs/COMMUNITY.md`](docs/COMMUNITY.md), and [`docs/ROADMAP.md`](docs/ROADMAP.md).
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), [`docs/CAPABILITY-REGISTRY.md`](docs/CAPABILITY-REGISTRY.md), [`docs/PROVIDERS.md`](docs/PROVIDERS.md), [`docs/SECURITY.md`](docs/SECURITY.md), [`docs/HOSTS.md`](docs/HOSTS.md), [`docs/COMMUNITY.md`](docs/COMMUNITY.md), [`docs/MONETIZATION.md`](docs/MONETIZATION.md), and [`docs/ROADMAP.md`](docs/ROADMAP.md).
