@@ -11,6 +11,7 @@ export * from "./selection.js";
 export * from "./provider-adapters.js";
 export * from "./provider-detection.js";
 export * from "./provider-planner.js";
+export * from "./provider-pricing.js";
 export * from "./provider-actions.js";
 export * from "./provider-actions-alternative.js";
 export * from "./provider-action-router.js";

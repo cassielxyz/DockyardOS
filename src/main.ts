@@ -21,7 +21,7 @@ try {
     await handleCommunityMaintainerCommand(findWorkspaceRoot(), args.slice(1));
   } else if (command === "community") {
     await handleCommunityCommand(args, args.includes("--json"));
-  } else if (command === "providers" && (args[0] === "health" || args[0] === "actions" || args[0] === "action" || args[0] === "preview")) {
+  } else if (command === "providers" && (args[0] === "health" || args[0] === "pricing" || args[0] === "actions" || args[0] === "action" || args[0] === "preview")) {
     await handleProviderActionCommand(findWorkspaceRoot(), args);
   } else if (command === "security" && (args[0] === "policy" || args[0] === "sarif")) {
     await handleSecurityEvidenceCommand(findWorkspaceRoot(), args);
