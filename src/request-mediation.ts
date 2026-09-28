@@ -289,7 +289,11 @@ export async function mediateAgentRequest(root: string, input: {
     stack,
     security: selection?.request.security ?? security,
     ...(selection ? { taskType: selection.request.taskType } : {}),
-    ...(selection?.recipe ? { recipe: selection.recipe.id, workflowProfile: selection.recipe.workflowProfile } : route === "quick" ? { workflowProfile: "fast" } : {}),
+    ...(route === "quick"
+      ? { workflowProfile: "fast" }
+      : selection?.recipe
+        ? { recipe: selection.recipe.id, workflowProfile: selection.recipe.workflowProfile }
+        : {}),
     skills: selectedIds(selection, "skills"),
     agents: selectedIds(selection, "agents"),
     tools: selectedIds(selection, "tools"),
