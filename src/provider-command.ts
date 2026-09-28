@@ -1,5 +1,5 @@
 import type { ProviderEnvironment } from "./types.js";
-import { executeProviderAction, listProviderActions, planProviderAction } from "./provider-actions.js";
+import { executeRoutedProviderAction, listRoutedProviderActions, planRoutedProviderAction } from "./provider-action-router.js";
 import { checkProviderHealthSet, providerHealthExitCode } from "./provider-health.js";
 import { executePreviewEnvironment, planPreviewEnvironment, type PreviewDatabaseTarget, type PreviewWebTarget, type PreviewWorkflowTarget } from "./provider-preview.js";
 
@@ -88,7 +88,7 @@ export async function handleProviderActionCommand(root: string, args: string[]):
 
   if (subcommand === "actions") {
     const providerId = value(rest, "--provider");
-    console.log(JSON.stringify(listProviderActions(providerId).map((action) => ({
+    console.log(JSON.stringify(listRoutedProviderActions(providerId).map((action) => ({
       providerId: action.providerId,
       actionId: action.id,
       name: action.displayName,
@@ -110,7 +110,7 @@ export async function handleProviderActionCommand(root: string, args: string[]):
     const providerId = value(actionArgs, "--provider");
     const actionId = value(actionArgs, "--action");
     if (!providerId || !actionId) throw new Error("providers action requires --provider and --action");
-    const plan = planProviderAction(root, {
+    const plan = planRoutedProviderAction(root, {
       providerId,
       actionId,
       environment: environment(actionArgs),
@@ -120,7 +120,7 @@ export async function handleProviderActionCommand(root: string, args: string[]):
       console.log(JSON.stringify(plan, null, 2));
       return;
     }
-    const result = await executeProviderAction(root, plan, {
+    const result = await executeRoutedProviderAction(root, plan, {
       approve: has(actionArgs, "--approve"),
       approveProduction: has(actionArgs, "--approve-production"),
     });
