@@ -1,0 +1,78 @@
+name: P23 Provider Migration Plans
+
+on:
+  pull_request:
+    paths:
+      - "src/provider-migrations.ts"
+      - "src/provider-migration-command.ts"
+      - "src/main.ts"
+      - "src/index.ts"
+      - "test/provider-migrations.test.mjs"
+      - ".github/workflows/p23-provider-migrations.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/provider-migrations.ts"
+      - "src/provider-migration-command.ts"
+      - "src/main.ts"
+      - "src/index.ts"
+      - "test/provider-migrations.test.mjs"
+      - ".github/workflows/p23-provider-migrations.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  migration-plans:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --ignore-scripts
+      - run: npm run build
+      - name: P23 deterministic migration tests
+        run: node --test test/provider-migrations.test.mjs
+      - name: Read-only migration CLI plan smoke
+        run: |
+          export DOCKYARD_HOME="$(mktemp -d)"
+          tmp=$(mktemp -d)
+          cat > "$tmp/forward.sql" <<'SQL'
+          CREATE TABLE dockyard_ci_fixture (id bigint PRIMARY KEY);
+          SQL
+          cat > "$tmp/rollback.sql" <<'SQL'
+          DROP TABLE dockyard_ci_fixture;
+          SQL
+          cd "$tmp"
+          node "$GITHUB_WORKSPACE/dist/main.js" providers migration plan \
+            --provider supabase \
+            --environment preview \
+            --id ci-fixture \
+            --target-label ci-preview \
+            --expected-database postgres \
+            --forward forward.sql \
+            --rollback rollback.sql > /tmp/p23-plan.json
+          node - <<'NODE'
+          const p=JSON.parse(require('fs').readFileSync('/tmp/p23-plan.json','utf8'));
+          if(p.providerId!=='supabase'||p.environment!=='preview'||p.approvalRequired!==true) process.exit(1);
+          if(p.productionApprovalRequired!==false||p.destructiveApprovalRequired!==true) process.exit(1);
+          if(!/^[a-f0-9]{64}$/.test(p.forward?.sha256)||!/^[a-f0-9]{64}$/.test(p.rollback?.sha256)) process.exit(1);
+          if(p.executor?.transactionMode!=='single-transaction') process.exit(1);
+          NODE
+          FORWARD_SHA=$(node -e "process.stdout.write(JSON.parse(require('fs').readFileSync('/tmp/p23-plan.json','utf8')).forward.sha256)")
+          ROLLBACK_SHA=$(node -e "process.stdout.write(JSON.parse(require('fs').readFileSync('/tmp/p23-plan.json','utf8')).rollback.sha256)")
+          if node "$GITHUB_WORKSPACE/dist/main.js" providers migration run \
+            --provider supabase \
+            --environment preview \
+            --id ci-fixture \
+            --target-label ci-preview \
+            --expected-database postgres \
+            --forward forward.sql \
+            --rollback rollback.sql \
+            --expected-forward-sha256 "$FORWARD_SHA" \
+            --expected-rollback-sha256 "$ROLLBACK_SHA" >/tmp/p23-should-fail.log 2>&1; then
+            echo "Migration unexpectedly passed without explicit approvals"
+            exit 1
+          fi
+          grep -q -- '--approve' /tmp/p23-should-fail.log

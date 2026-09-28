@@ -6,6 +6,7 @@ import { handleCommunityCommand } from "./community-command.js";
 import { handleCommunityContributionCommand } from "./community-contribution-command.js";
 import { handleCommunityMaintainerCommand } from "./community-maintainer-command.js";
 import { handleProviderActionCommand } from "./provider-command.js";
+import { handleProviderMigrationCommand } from "./provider-migration-command.js";
 import { handleSecurityEvidenceCommand } from "./security-command.js";
 
 const [, , command, ...args] = process.argv;
@@ -21,6 +22,8 @@ try {
     await handleCommunityMaintainerCommand(findWorkspaceRoot(), args.slice(1));
   } else if (command === "community") {
     await handleCommunityCommand(args, args.includes("--json"));
+  } else if (command === "providers" && args[0] === "migration") {
+    await handleProviderMigrationCommand(findWorkspaceRoot(), args.slice(1));
   } else if (command === "providers" && (args[0] === "health" || args[0] === "pricing" || args[0] === "actions" || args[0] === "action" || args[0] === "preview")) {
     await handleProviderActionCommand(findWorkspaceRoot(), args);
   } else if (command === "security" && (args[0] === "policy" || args[0] === "sarif")) {
