@@ -43,6 +43,7 @@ declare module "node:zlib" {
 declare module "node:fs/promises" {
   export function access(...args: any[]): Promise<any>;
   export function mkdir(...args: any[]): Promise<any>;
+  export function open(...args: any[]): Promise<any>;
   export function readFile(...args: any[]): Promise<any>;
   export function readdir(...args: any[]): Promise<any>;
   export function realpath(...args: any[]): Promise<any>;
