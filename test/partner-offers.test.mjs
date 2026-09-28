@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import test from "node:test";
+import partnerFeedHandler from "../api/partner-offers.js";
 
 const require = createRequire(import.meta.url);
 const partners = require("../integrations/vscode/partner-offers.js");
@@ -81,6 +82,41 @@ test("partner generator reads only approved public affiliate URL variables", asy
     "DOCKYARD_PARTNER_HOSTINGER_URL",
   ]) assert.match(generator, new RegExp(name));
   assert.doesNotMatch(generator, /TOKEN|PASSWORD|PRIVATE_KEY|API_KEY/);
+});
+
+test("Vercel partner feed returns only explicitly configured public URLs", () => {
+  const names = [
+    "DOCKYARD_PARTNER_VERCEL_URL",
+    "DOCKYARD_PARTNER_DIGITALOCEAN_URL",
+    "DOCKYARD_PARTNER_NAMECHEAP_URL",
+    "DOCKYARD_PARTNER_HOSTINGER_URL",
+  ];
+  const previous = Object.fromEntries(names.map((name) => [name, process.env[name]]));
+  process.env.DOCKYARD_PARTNER_VERCEL_URL = "https://vercel.com/example-affiliate";
+  process.env.DOCKYARD_PARTNER_DIGITALOCEAN_URL = "https://m.do.co/c/example";
+  process.env.DOCKYARD_PARTNER_NAMECHEAP_URL = "not-a-url";
+  delete process.env.DOCKYARD_PARTNER_HOSTINGER_URL;
+
+  const headers = {};
+  const result = { statusCode: 0, body: undefined };
+  const response = {
+    setHeader(name, value) { headers[name] = value; },
+    status(code) { result.statusCode = code; return this; },
+    json(body) { result.body = body; return body; },
+    end() { return undefined; },
+  };
+  try {
+    partnerFeedHandler({ method: "GET" }, response);
+    assert.equal(result.statusCode, 200);
+    assert.deepEqual(result.body.offers.map((offer) => offer.id), ["vercel", "digitalocean"]);
+    assert.equal(headers["Access-Control-Allow-Origin"], "*");
+    assert.equal(headers["X-Content-Type-Options"], "nosniff");
+  } finally {
+    for (const name of names) {
+      if (previous[name] === undefined) delete process.env[name];
+      else process.env[name] = previous[name];
+    }
+  }
 });
 
 test("Vercel partner feed endpoint never serializes process.env wholesale", async () => {
