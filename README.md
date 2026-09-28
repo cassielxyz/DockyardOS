@@ -36,6 +36,21 @@ DockyardOS is a persistent autonomous-development layer for coding agents. It ad
 - fail-closed Docker/Podman dynamic canaries for quarantined capability code
 - one external DockyardOS state shared by every supported host
 
+## Verified real-host compatibility
+
+On 2026-09-28, DockyardOS Real Host Matrix run `36425594147` passed all six installed-host lanes against exact merged `main` commit `854434f26e6c084dba6d6e532ff689db60ced77f`:
+
+- Google Antigravity (`agy`)
+- Gemini CLI (`gemini`)
+- OpenAI Codex (`codex`)
+- Claude Code (`claude`)
+- Cursor (`agent`)
+- OpenCode (`opencode`)
+
+The matrix installed the public host CLIs through their recorded installation mechanisms, verified each executable, and exercised DockyardOS host inspection/doctor/integration. The Antigravity lane also verified CLI-managed plugin discovery with `agy plugin install` followed by `agy plugin list`. The matrix did not authenticate to model providers, send prompts, or use model API keys.
+
+See [`docs/REAL_HOST_MATRIX_EVIDENCE_2026-09-28.md`](docs/REAL_HOST_MATRIX_EVIDENCE_2026-09-28.md) for the exact run, job IDs, retained artifact IDs, and SHA-256 digests.
+
 ## Install once, use across projects
 
 The normal user-facing setup is the VS Code extension. Release packaging puts DockyardOS Core inside the VSIX, so normal extension use does not require a separate global CLI.
