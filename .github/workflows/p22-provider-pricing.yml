@@ -44,7 +44,7 @@ jobs:
           node dist/main.js providers plan --capability web-hosting --stack web,nextjs --environment preview --free-first --json > /tmp/p22-plan.json
           node - <<'NODE'
           const p=JSON.parse(require('fs').readFileSync('/tmp/p22-plan.json','utf8'));
-          if(p.costPreference!=='free-first') process.exit(1);
+          if(p.request?.costPreference!=='free-first') process.exit(1);
           if(!Array.isArray(p.pricingEvidence) || p.pricingEvidence.length!==0) process.exit(1);
-          if(!p.choices?.[0]?.selected?.livePricingCheckRequired) process.exit(1);
+          if(!p.capabilities?.[0]?.selected?.livePricingCheckRequired) process.exit(1);
           NODE
