@@ -62,18 +62,22 @@ test("Community Hub keeps partner offers separate from package recommendations",
   assert.match(model.partnerDisclosure, /do not affect technical decisions/i);
 });
 
-test("Community Hub partner surface stays CSP locked and contains no remote ad script", () => {
-  const model = normalizeCommunityHubData({}, {}, [], [], { offers: [] });
+test("Community Hub partner surface stays CSP locked and uses direct validated links", () => {
+  const model = normalizeCommunityHubData({}, {}, [], [], {
+    offers: [{ id: "vercel", brand: "vercel", title: "Vercel", description: "Deploy apps", url: "https://vercel.com/example" }],
+  });
   const html = renderCommunityHubHtml({ cspSource: "vscode-webview://unit-test" }, model);
   assert.match(html, /data-tab="partners"/);
   assert.match(html, /Sponsored \/ affiliate/);
   assert.match(html, /default-src 'none'/);
+  assert.match(html, /link\.href=p\.url/);
+  assert.doesNotMatch(html, /partner-open/);
   assert.doesNotMatch(html, /media\.ethicalads\.io/);
   assert.doesNotMatch(html, /serve\.carbonads/);
   assert.doesNotMatch(html, /unsafe-inline/);
 });
 
-test("partner generator reads only approved public affiliate URL variables", async () => {
+test("partner generator reads only approved public affiliate URL variables and enforces host allowlists", async () => {
   const generator = await readFile("integrations/vscode/scripts/generate-partner-offers.cjs", "utf8");
   for (const name of [
     "DOCKYARD_PARTNER_VERCEL_URL",
@@ -81,10 +85,12 @@ test("partner generator reads only approved public affiliate URL variables", asy
     "DOCKYARD_PARTNER_NAMECHEAP_URL",
     "DOCKYARD_PARTNER_HOSTINGER_URL",
   ]) assert.match(generator, new RegExp(name));
+  assert.match(generator, /PARTNER_HOSTS/);
+  assert.match(generator, /hostAllowed/);
   assert.doesNotMatch(generator, /TOKEN|PASSWORD|PRIVATE_KEY|API_KEY/);
 });
 
-test("Vercel partner feed returns only explicitly configured public URLs", () => {
+test("Vercel partner feed returns only explicitly configured allowlisted public URLs", () => {
   const names = [
     "DOCKYARD_PARTNER_VERCEL_URL",
     "DOCKYARD_PARTNER_DIGITALOCEAN_URL",
@@ -94,8 +100,8 @@ test("Vercel partner feed returns only explicitly configured public URLs", () =>
   const previous = Object.fromEntries(names.map((name) => [name, process.env[name]]));
   process.env.DOCKYARD_PARTNER_VERCEL_URL = "https://vercel.com/example-affiliate";
   process.env.DOCKYARD_PARTNER_DIGITALOCEAN_URL = "https://m.do.co/c/example";
-  process.env.DOCKYARD_PARTNER_NAMECHEAP_URL = "not-a-url";
-  delete process.env.DOCKYARD_PARTNER_HOSTINGER_URL;
+  process.env.DOCKYARD_PARTNER_NAMECHEAP_URL = "https://evil.example/namecheap";
+  process.env.DOCKYARD_PARTNER_HOSTINGER_URL = "https://user:pass@hostinger.com/example";
 
   const headers = {};
   const result = { statusCode: 0, body: undefined };
@@ -123,6 +129,7 @@ test("Vercel partner feed endpoint never serializes process.env wholesale", asyn
   const source = await readFile("api/partner-offers.js", "utf8");
   assert.doesNotMatch(source, /JSON\.stringify\(process\.env/);
   assert.doesNotMatch(source, /Object\.(entries|keys|values)\(process\.env/);
+  assert.match(source, /PARTNER_HOSTS/);
   assert.match(source, /Access-Control-Allow-Origin/);
   assert.match(source, /X-Content-Type-Options/);
 });
