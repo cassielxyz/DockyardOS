@@ -10,14 +10,22 @@ export const hostAdapters: HostAdapterDefinition[] = [
     features: ["skills", "plugins", "mcp", "hooks", "subagents", "rules", "commands", "resume"],
     preferredSkillLocations: [
       { scope: "project", path: ".agents/plugins/dockyardos", strategy: "copy-plugin", note: "Workspace plugin keeps project-visible host integration while DockyardOS runtime state stays external." },
-      { scope: "user", strategy: "copy-plugin", note: "Global plugin installation can be performed with the Antigravity plugin CLI where available." },
+      { scope: "user", strategy: "copy-plugin", note: "Global plugin installation can be performed with `agy plugin install /path/to/plugin`." },
     ],
     projectInstructionFiles: [],
-    supportsNativeResume: false,
+    supportsNativeResume: true,
     supportsDockyardHooks: true,
     nativeBundle: { path: "integrations/antigravity/plugin", mode: "plugin", install: "cli", note: "Full native plugin with lifecycle hooks, skills, rules, and specialist subagents." },
-    notes: ["DockyardOS uses the native Antigravity plugin/hook lifecycle for checkpoint injection and approval gating."],
-    verifiedAgainst: [{ date: VERIFIED, source: "https://antigravity.google/docs/plugins" }, { date: VERIFIED, source: "https://antigravity.google/docs/hooks" }],
+    notes: [
+      "DockyardOS uses the native Antigravity plugin/hook lifecycle for checkpoint injection and approval gating.",
+      "The official `agy` CLI supports headless runs plus `--continue` / `--conversation`; DockyardOS remains the cross-host durable state source.",
+    ],
+    verifiedAgainst: [
+      { date: "2026-09-28", source: "https://antigravity.google/docs/cli/install/" },
+      { date: "2026-09-28", source: "https://antigravity.google/docs/cli/headless/" },
+      { date: "2026-09-28", source: "https://antigravity.google/docs/plugins?tab=cli" },
+      { date: "2026-09-28", source: "https://antigravity.google/docs/hooks" },
+    ],
   },
   {
     id: "gemini-cli",

@@ -32,7 +32,7 @@
 - [x] Persisted team/agent success-failure metrics with conservative routing adjustment
 - [x] Ed25519 community package signature verification + trusted/revoked key registry
 - [x] Local tamper-evident package transparency metadata
-- [ ] External/public transparency anchoring for package action history
+- [x] External/public transparency anchoring for package action history
 
 ## P2 — Provider connector layer
 
@@ -48,10 +48,10 @@
 - [x] Production provider plans marked approval-required before mutation
 - [x] Authenticated action adapters for GitHub, Vercel, Cloudflare, and Supabase
 - [x] Authenticated action adapters for selected alternative providers
-- [ ] Live pricing/free-tier metadata fetchers with freshness timestamps
+- [x] Live pricing/free-tier metadata fetchers with freshness timestamps
 - [x] Provider outage/health verification
 - [x] Automated preview provisioning and verification
-- [ ] Migration executors with rollback artifacts
+- [x] Migration executors with rollback artifacts
 
 ## P3 — Security and verification
 
@@ -110,7 +110,7 @@
 - [x] Native bridge metadata surfaced through host list/doctor/native-info
 - [x] MCP runtime/dependencies/native templates included in bundled VSIX Core with package-level CI assertions
 - [ ] First live VS Code Marketplace listing/publication
-- [ ] Safe automatic merge/install of review-first native project files without clobbering existing host config
+- [x] Safe automatic merge/install of review-first native project files without clobbering existing host config
 - [ ] Completed green cross-host matrix run against installed real host CLIs in opt-in CI
 
 ## P6 — Community distribution
@@ -145,7 +145,7 @@
 - [x] Registry contribution-validation staging/CI for third-party submissions
 - [x] Publisher key rotation/revocation UX and migration guidance
 - [x] External/public transparency anchoring for signed remote-registry publications
-- [ ] Safe automatic install/merge for host-native project config bundles
+- [x] Safe automatic install/merge for host-native project config bundles
 - [x] Rich searchable package marketplace/discovery UI in VS Code
 
 ## P7 — Signed registry sync and sandboxed community canaries
@@ -208,9 +208,9 @@
 - [x] Preview orchestrator refuses production actions and stops after the first failed/unverified step
 - [x] Deterministic action/approval/injection/preview orchestration tests and CI smoke plans
 - [x] Authenticated action adapters for selected alternative providers
-- [ ] Live pricing/free-tier metadata fetchers with freshness timestamps
+- [x] Live pricing/free-tier metadata fetchers with freshness timestamps
 - [x] Provider outage/health verification
-- [ ] Migration executors with rollback artifacts
+- [x] Migration executors with rollback artifacts
 
 ## P10 — Expiring security exceptions and SARIF evidence
 
@@ -244,7 +244,7 @@
 - [x] Publish requires a repository `VSCE_PAT` secret and never stores the token in source
 - [x] Tag pushes can package release artifacts without silently publishing
 - [x] Current Cursor CLI executable (`agent`) and native resume capability reflected in host metadata
-- [x] Manual-only real-host matrix defined for Gemini CLI, Codex, Claude Code, Cursor, and OpenCode
+- [x] Manual-only real-host matrix defined for Antigravity, Gemini CLI, Codex, Claude Code, Cursor, and OpenCode
 - [x] NPM host lanes resolve and record an exact current package version before installation
 - [x] Installer-script lanes record SHA-256 before execution
 - [x] Per-host evidence artifacts preserve install source, executable path, version, inspect, doctor, and integration results
@@ -253,7 +253,7 @@
 - [x] Release and real-host verification guide
 - [ ] First live Marketplace listing/publication using the guarded release path
 - [ ] Completed green full real-host matrix run from merged `main`
-- [ ] Antigravity real-CLI CI lane after an official stable noninteractive install surface is verified
+- [x] Antigravity real-CLI CI lane using the official stable public installer and plugin CLI surface
 
 ## P12 — Isolated community contribution validation
 
@@ -388,9 +388,62 @@
 - [x] Deterministic non-network tests plus read-only CLI plan smoke workflow
 - [x] Exact final-head CI and focused P21 plan-smoke workflow green before merge
 
+## P22 — Live provider pricing evidence
+
+- [x] Allowlisted official provider pricing/free-tier evidence sources
+- [x] Freshness timestamps and cached evidence rather than timeless free-tier assumptions
+- [x] Explicit free / trial / paid / unknown classification for provider capabilities
+- [x] Free-first provider planning consumes only fresh compatible evidence and keeps missing/stale evidence visible
+- [x] Marketing-page drift or temporary trials cannot silently become permanent architecture decisions
+- [x] Deterministic mocked-page classification/hash/freshness tests and focused CI smoke
+
+## P23 — Transactional provider migrations
+
+- [x] Explicit migration planning separated from mutation
+- [x] Postgres migration execution with transaction boundaries where supported
+- [x] Exact reviewed migration content/state binding before apply
+- [x] Rollback artifacts and durable migration evidence
+- [x] Fail-closed target/path/command validation and production approval boundaries
+- [x] Deterministic migration regression tests and focused CI workflow
+
+## P24 — Safe host-native configuration merge
+
+- [x] Explicit per-host merge maps replace recursive bundle copying
+- [x] Strict MCP-map merge preserves unrelated servers/settings
+- [x] Marked additive instruction blocks preserve shared project instructions
+- [x] Dockyard-owned unique files never overwrite customized content silently
+- [x] Existing OpenCode JSONC is review-required instead of reformatted/rewritten
+- [x] Codex compatibility bundle remains confined to `.dockyard/plugins/openai/`
+- [x] Symlink/path bounds and whole-plan fail-closed conflict behavior
+- [x] Exact plan SHA-256 approval binding with immediate re-plan before write
+- [x] `dockyard host native list|plan|apply` plus host doctor/native-info visibility
+- [x] Deterministic merge/stale-plan/conflict/idempotency tests and exact-head CI
+
+## P25 — Public package-action transparency anchor
+
+- [x] Verify the local tamper-evident community package action chain before any network mutation
+- [x] Public witness exposes only anchor namespace, record count, chain-head hash, and exact log SHA-256
+- [x] Package ids/actions/details and reviewer identity/rationale stay out of public witness bytes
+- [x] Public GitHub repository/branch verification
+- [x] Content-addressed create-only witness paths with exact-existing idempotency and conflicting-existing refusal
+- [x] Explicit review/approval plus exact plan SHA-256 binding
+- [x] Immediate local/remote re-plan before mutation and exact post-write byte verification
+- [x] Durable local audit evidence and `anchored-unverified` status when final proof is incomplete
+- [x] Deterministic privacy/tamper/stale-plan/conflict/Base64 tests and exact-head CI
+
+## P26 — Official Antigravity real-CLI lane
+
+- [x] Verify current official `agy` installer, headless, plugin-management, and native continuation documentation
+- [x] Add Antigravity to the manual real-host matrix using Google's official installer
+- [x] Record installer SHA-256 before execution and avoid CI shell-profile mutation with official skip flags
+- [x] Verify real `agy --version` through DockyardOS host inspect/doctor flow
+- [x] Verify DockyardOS workspace plugin discovery using `agy plugin list` without model invocation
+- [x] Keep real-host matrix manual-only and free of model/API credentials
+- [x] Update Antigravity host metadata for native `--continue` / `--conversation` support
+- [x] Deterministic workflow/host metadata regression tests
+- [ ] Complete a green manually dispatched six-host real-host matrix run from merged `main`
+
 ## Next production milestones
 
-- Complete a green real-host matrix run and first guarded VS Code Marketplace publication
-- Live pricing/free-tier metadata fetchers with freshness timestamps
-- Migration executors with rollback artifacts
-- Safe automatic install/merge for review-first host-native project configuration without clobbering existing files
+- Complete the green manually dispatched real-host matrix and preserve its per-host evidence artifacts
+- Perform the first guarded VS Code Marketplace publication after publisher/token/tag setup

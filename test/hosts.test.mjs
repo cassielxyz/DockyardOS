@@ -15,6 +15,17 @@ test("host registry covers every requested coding host with durable shared state
   }
 });
 
+test("Antigravity adapter tracks the official agy CLI, plugin surface, and native continuation", () => {
+  const antigravity = dockyard.hostAdapter("antigravity");
+  assert.equal(antigravity.executable, "agy");
+  assert.equal(antigravity.supportsNativeResume, true);
+  assert.ok(antigravity.features.includes("plugins"));
+  assert.ok(antigravity.features.includes("resume"));
+  assert.ok(antigravity.verifiedAgainst.some((item) => item.source.includes("antigravity.google/docs/cli/install")));
+  assert.ok(antigravity.verifiedAgainst.some((item) => item.source.includes("antigravity.google/docs/cli/headless")));
+  assert.ok(antigravity.verifiedAgainst.some((item) => item.source.includes("plugins?tab=cli")));
+});
+
 test("Cursor adapter tracks the current agent CLI and native resume surface", () => {
   const cursor = dockyard.hostAdapter("cursor");
   assert.equal(cursor.executable, "agent");
