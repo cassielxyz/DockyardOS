@@ -10,6 +10,13 @@ import type {
 import { providers } from "./registry.js";
 import { providerAdapter } from "./provider-adapters.js";
 import { probeProviders } from "./provider-detection.js";
+import {
+  assessProviderPricingForCapability,
+  loadCachedProviderPricingEvidence,
+  providerPricingDefinitions,
+  refreshProviderPricingEvidence,
+  type ProviderPricingEvidence,
+} from "./provider-pricing.js";
 
 const READINESS_SCORE: Record<ProviderReadiness, number> = {
   linked: 42,
@@ -63,6 +70,17 @@ const CAPABILITY_NOTES: Record<string, string[]> = {
   dns: ["DNS is an infrastructure control-plane capability. Provider migration requires explicit approval and a rollback plan."],
 };
 
+interface CandidatePricingSummary {
+  verification: string;
+  freshness: string;
+  freeModels: string[];
+  sourceUrls: string[];
+  scoreAdjustment: number;
+}
+
+type PricedProviderPlanCandidate = ProviderPlanCandidate & { pricing?: CandidatePricingSummary };
+export type ProviderPlanWithPricing = ProviderPlan & { pricingEvidence: ProviderPricingEvidence[] };
+
 function providerById(id: string): ProviderDefinition | undefined {
   return providers.find((provider) => provider.id === id);
 }
@@ -89,8 +107,9 @@ function rankCandidate(
   capability: string,
   request: ProviderPlanRequest,
   probes: ProviderProbeResult[],
+  pricingByProvider: Map<string, ProviderPricingEvidence>,
   preferredForRequirement: string[] = [],
-): ProviderPlanCandidate | undefined {
+): PricedProviderPlanCandidate | undefined {
   if (request.excludedProviders?.includes(provider.id)) return undefined;
   const adapter = providerAdapter(provider.id);
   if (adapter && !adapter.environments.includes(request.environment)) return undefined;
@@ -122,8 +141,20 @@ function rankCandidate(
     reasons.push(`stack fit (${stackMatches.join(", ")}) +${points}`);
   }
 
+  let pricing: CandidatePricingSummary | undefined;
+  let livePricingCheckRequired = provider.requiresLiveAvailabilityCheck;
   if (request.costPreference === "free-first") {
-    reasons.push("free-tier eligibility must be checked live before activation");
+    const assessment = assessProviderPricingForCapability(pricingByProvider.get(provider.id), capability);
+    score += assessment.pricingScore;
+    reasons.push(assessment.reason);
+    livePricingCheckRequired = assessment.livePricingCheckRequired;
+    pricing = {
+      verification: assessment.verification,
+      freshness: assessment.freshness,
+      freeModels: assessment.verifiedModels,
+      sourceUrls: assessment.sourceUrls,
+      scoreAdjustment: assessment.pricingScore,
+    };
   } else if (request.costPreference === "performance") {
     reasons.push("performance preference requested; benchmark/provider-specific evaluation remains required");
   }
@@ -138,20 +169,38 @@ function rankCandidate(
     reasons,
     capabilities: [capability],
     liveAvailabilityCheckRequired: provider.requiresLiveAvailabilityCheck,
-    livePricingCheckRequired: request.costPreference === "free-first" || provider.requiresLiveAvailabilityCheck,
+    livePricingCheckRequired,
+    ...(pricing ? { pricing } : {}),
   };
 }
 
-export async function planProviders(root: string, request: ProviderPlanRequest): Promise<ProviderPlan> {
+function pricingProviderIds(request: ProviderPlanRequest): string[] {
+  const configured = new Set(providerPricingDefinitions.map((definition) => definition.providerId));
+  const ids = new Set<string>();
+  for (const requirement of request.requirements) {
+    for (const provider of capabilityProviders(requirement.capability)) {
+      if (!request.excludedProviders?.includes(provider.id) && configured.has(provider.id)) ids.add(provider.id);
+    }
+  }
+  return [...ids].sort();
+}
+
+export async function planProviders(root: string, request: ProviderPlanRequest): Promise<ProviderPlanWithPricing> {
   const probes = await probeProviders(root, { live: request.live });
+  const pricingEvidence = request.costPreference === "free-first"
+    ? request.live
+      ? await refreshProviderPricingEvidence(pricingProviderIds(request))
+      : await loadCachedProviderPricingEvidence(pricingProviderIds(request))
+    : [];
+  const pricingByProvider = new Map(pricingEvidence.map((item) => [item.providerId, item]));
   const capabilityPlans: ProviderCapabilityPlan[] = [];
   const unresolved: string[] = [];
 
   for (const requirement of request.requirements) {
     const compatible = capabilityProviders(requirement.capability);
     const ranked = compatible
-      .map((provider) => rankCandidate(provider, requirement.capability, request, probes, requirement.preferredProviders ?? []))
-      .filter((candidate): candidate is ProviderPlanCandidate => Boolean(candidate))
+      .map((provider) => rankCandidate(provider, requirement.capability, request, probes, pricingByProvider, requirement.preferredProviders ?? []))
+      .filter((candidate): candidate is PricedProviderPlanCandidate => Boolean(candidate))
       .sort((a, b) => b.score - a.score);
 
     const selected = ranked[0];
@@ -171,32 +220,59 @@ export async function planProviders(root: string, request: ProviderPlanRequest):
     capabilities: capabilityPlans,
     unresolved,
     requiresApprovalBeforeProductionMutation: request.environment === "production",
+    pricingEvidence,
   };
 }
 
 export function providerPlanSummary(plan: ProviderPlan): Record<string, unknown> {
+  const pricedPlan = plan as ProviderPlanWithPricing;
   return {
     environment: plan.request.environment,
     costPreference: plan.request.costPreference,
     liveChecked: plan.request.live,
-    choices: plan.capabilities.map((item) => ({
-      capability: item.capability,
-      required: item.required,
-      selected: item.selected ? {
-        id: item.selected.provider.id,
-        name: item.selected.provider.displayName,
-        readiness: item.selected.readiness,
-        score: item.selected.score,
-        liveAvailabilityCheckRequired: item.selected.liveAvailabilityCheckRequired,
-        livePricingCheckRequired: item.selected.livePricingCheckRequired,
-      } : null,
-      fallbacks: item.fallbacks.slice(0, 4).map((candidate) => ({
-        id: candidate.provider.id,
-        readiness: candidate.readiness,
-        score: candidate.score,
+    pricingEvidence: pricedPlan.pricingEvidence?.map((item) => ({
+      providerId: item.providerId,
+      verification: item.verification,
+      freshness: item.freshness,
+      verifiedModels: item.verifiedModels,
+      fetchedAt: item.fetchedAt,
+      evidenceSha256: item.evidenceSha256,
+      sources: item.sources.map((source) => ({
+        sourceId: source.sourceId,
+        url: source.url,
+        status: source.status,
+        sha256: source.sha256,
+        bytes: source.bytes,
+        verifiedModels: source.verifiedModels,
+        error: source.error,
       })),
-      notes: item.compatibilityNotes,
-    })),
+    })) ?? [],
+    choices: plan.capabilities.map((item) => {
+      const selected = item.selected as PricedProviderPlanCandidate | undefined;
+      return {
+        capability: item.capability,
+        required: item.required,
+        selected: selected ? {
+          id: selected.provider.id,
+          name: selected.provider.displayName,
+          readiness: selected.readiness,
+          score: selected.score,
+          liveAvailabilityCheckRequired: selected.liveAvailabilityCheckRequired,
+          livePricingCheckRequired: selected.livePricingCheckRequired,
+          ...(selected.pricing ? { pricing: selected.pricing } : {}),
+        } : null,
+        fallbacks: item.fallbacks.slice(0, 4).map((candidate) => {
+          const priced = candidate as PricedProviderPlanCandidate;
+          return {
+            id: candidate.provider.id,
+            readiness: candidate.readiness,
+            score: candidate.score,
+            ...(priced.pricing ? { pricing: priced.pricing } : {}),
+          };
+        }),
+        notes: item.compatibilityNotes,
+      };
+    }),
     unresolved: plan.unresolved,
     approvalRequiredForProductionMutation: plan.requiresApprovalBeforeProductionMutation,
   };
