@@ -14,7 +14,7 @@ function originLabel(origin) {
   return String(origin.kind || "unknown");
 }
 
-function normalizeCommunityHubData(listValue, statusValue, updatesValue, warnings = []) {
+function normalizeCommunityHubData(listValue, statusValue, updatesValue, warnings = [], partnerFeed = {}) {
   const list = asObject(listValue);
   const status = asObject(statusValue);
   const installed = asObject(status.packages);
@@ -70,12 +70,24 @@ function normalizeCommunityHubData(listValue, statusValue, updatesValue, warning
     expiresAt: registry?.expiresAt ? String(registry.expiresAt) : null,
   }));
 
+  const partnerOffers = asArray(asObject(partnerFeed).offers).map((offer) => ({
+    id: String(offer?.id || ""),
+    brand: String(offer?.brand || ""),
+    title: String(offer?.title || "Partner offer"),
+    description: String(offer?.description || ""),
+    category: String(offer?.category || "developer-tool"),
+    url: String(offer?.url || ""),
+    disclosure: String(offer?.disclosure || "Sponsored / affiliate link"),
+  })).filter((offer) => offer.id && offer.brand && offer.url);
+
   return {
     generatedAt: new Date().toISOString(),
     packages,
     discoverySources,
     conflicts,
     remoteRegistries,
+    partnerOffers,
+    partnerDisclosure: String(asObject(partnerFeed).disclosure || "Partner offers are sponsored or affiliate links and never influence DockyardOS recommendations."),
     warnings: asArray(warnings).map(String),
     summary: {
       packages: packages.length,
@@ -86,6 +98,7 @@ function normalizeCommunityHubData(listValue, statusValue, updatesValue, warning
       discoverySources: discoverySources.length,
       conflicts: conflicts.length,
       remoteRegistries: remoteRegistries.length,
+      partnerOffers: partnerOffers.length,
     },
   };
 }
