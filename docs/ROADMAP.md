@@ -386,7 +386,7 @@
 - [x] Unknown/secret parameters, preview production names, unsafe paths, and short Render commits fail closed
 - [x] Current Neon/Render detection metadata and read-only auth probes aligned with their supported CLIs
 - [x] Deterministic non-network tests plus read-only CLI plan smoke workflow
-- [ ] Exact final-head CI and focused P21 plan-smoke workflow green before merge
+- [x] Exact final-head CI and focused P21 plan-smoke workflow green before merge
 
 ## Next production milestones
 
