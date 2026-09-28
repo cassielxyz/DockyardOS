@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self'; script-src 'self'; style-src 'self'; img-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'self'">
+  <title>DockyardOS Control</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">DockyardOS</p>
+        <h1>Public Edition Control</h1>
+        <p class="lede">Manage first-party sponsored placements without exposing signing or storage credentials to published clients.</p>
+      </div>
+      <span id="connectionState" class="pill">Locked</span>
+    </header>
+
+    <section class="panel auth-panel" aria-labelledby="authTitle">
+      <div>
+        <h2 id="authTitle">Administrator access</h2>
+        <p>The token stays in this browser tab only. It is never bundled into DockyardOS.</p>
+      </div>
+      <div class="auth-row">
+        <input id="adminToken" type="password" autocomplete="off" placeholder="Admin bearer token" aria-label="Admin bearer token">
+        <button id="connectButton" type="button">Connect</button>
+        <button id="disconnectButton" class="secondary" type="button">Clear</button>
+      </div>
+    </section>
+
+    <section id="dashboard" class="dashboard hidden" aria-live="polite">
+      <div class="grid stats-grid">
+        <article class="panel metric"><span>Sessions</span><strong id="metricSessions">0</strong></article>
+        <article class="panel metric"><span>Impressions</span><strong id="metricImpressions">0</strong></article>
+        <article class="panel metric"><span>Leases</span><strong id="metricLeases">0</strong></article>
+        <article class="panel metric"><span>Storage</span><strong id="metricStorage">—</strong></article>
+      </div>
+
+      <section class="panel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Policy</p>
+            <h2>Global ad rules</h2>
+          </div>
+          <button id="refreshButton" class="secondary" type="button">Refresh</button>
+        </div>
+        <div class="form-grid">
+          <label class="toggle"><input id="adsEnabled" type="checkbox"><span>Public ad service enabled</span></label>
+          <label>Minimum view time (ms)<input id="minViewMs" type="number" min="1500" max="60000" step="500"></label>
+          <label>Lease duration (seconds)<input id="leaseSeconds" type="number" min="300" max="86400" step="60"></label>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Campaigns</p>
+            <h2>Sponsored placements</h2>
+            <p>Text-only, clearly disclosed placements. Technical recommendations remain independent of sponsors.</p>
+          </div>
+          <button id="addCampaignButton" class="secondary" type="button">Add campaign</button>
+        </div>
+        <div id="campaigns" class="campaigns"></div>
+        <div class="save-row">
+          <span id="saveStatus" class="status-text"></span>
+          <button id="saveButton" type="button">Save server policy</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Operations</p>
+            <h2>Runtime notes</h2>
+          </div>
+        </div>
+        <ul class="notes">
+          <li>Published clients never receive the admin token, Upstash token, or signing secret.</li>
+          <li>Removing an ad in a modified open-source fork cannot be prevented; official published builds are enforced through signed server leases.</li>
+          <li>Campaign revenue never changes provider ranking, security findings, capability scoring, or agent selection.</li>
+        </ul>
+      </section>
+    </section>
+  </main>
+  <script src="./app.js" defer></script>
+</body>
+</html>

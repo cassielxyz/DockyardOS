@@ -9,12 +9,55 @@ import { handleCommunityMaintainerCommand } from "./community-maintainer-command
 import { handlePackageTransparencyAnchorCommand } from "./community-package-transparency-anchor-command.js";
 import { handleProviderActionCommand } from "./provider-command.js";
 import { handleProviderMigrationCommand } from "./provider-migration-command.js";
+import { checkPublicAdGate } from "./public-ad-gate.js";
 import { handleSecurityEvidenceCommand } from "./security-command.js";
 
 const [, , command, ...args] = process.argv;
 
+function gateExempt(commandName: string | undefined): boolean {
+  return !commandName || ["init", "host", "hook", "--help", "-h", "help"].includes(commandName);
+}
+
+async function publicCliGate(): Promise<boolean> {
+  if (gateExempt(command)) return true;
+  const root = findWorkspaceRoot();
+  const gate = await checkPublicAdGate(root);
+  if (!gate.required || gate.status === "active") return true;
+  const json = args.includes("--json");
+  if (gate.status === "sponsor-required") {
+    const payload = {
+      dockyardPublicEdition: true,
+      status: gate.status,
+      ad: gate.ad,
+      remainingMs: gate.remainingMs,
+      instruction: "View the clearly labeled sponsored placement, then retry the DockyardOS command after the minimum window.",
+    };
+    if (json) console.log(JSON.stringify(payload, null, 2));
+    else {
+      console.log(`[${gate.ad.disclosure}] ${gate.ad.title}`);
+      console.log(gate.ad.body);
+      console.log(`${gate.ad.ctaLabel}: ${gate.ad.ctaUrl}`);
+      console.log(`\nOfficial DockyardOS public edition: retry this command after about ${Math.max(1, Math.ceil(gate.remainingMs / 1000))}s.`);
+    }
+    process.exitCode = 3;
+    return false;
+  }
+  const payload = {
+    dockyardPublicEdition: true,
+    status: "unavailable",
+    reason: gate.reason,
+    instruction: "Retry when the official DockyardOS public-edition control plane is available.",
+  };
+  if (json) console.error(JSON.stringify(payload, null, 2));
+  else console.error(`DockyardOS official public-edition gate unavailable: ${gate.reason}`);
+  process.exitCode = 4;
+  return false;
+}
+
 try {
-  if (command === "init") {
+  if (!await publicCliGate()) {
+    // Sponsor/service-gate output has already been emitted; do not dispatch the requested operation.
+  } else if (command === "init") {
     await handleInitCommand(findWorkspaceRoot(), args, args.includes("--json"));
   } else if (command === "team") {
     await handleTeamCommand(findWorkspaceRoot(), args, args.includes("--json"));

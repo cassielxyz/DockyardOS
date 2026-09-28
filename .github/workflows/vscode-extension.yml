@@ -51,11 +51,20 @@ jobs:
             test "$REQUESTED_TAG" = "$EXPECTED_TAG" || { echo "release_tag $REQUESTED_TAG does not match extension version $EXPECTED_TAG" >&2; exit 1; }
             git tag --points-at HEAD | grep -Fx "$EXPECTED_TAG" >/dev/null || { echo "checked out commit is not tagged $EXPECTED_TAG" >&2; exit 1; }
           fi
-      - name: Build DockyardOS Core
+      - name: Build and test DockyardOS Core as source-development edition
         run: |
           npm install --ignore-scripts
           npm test
-      - name: Package VSIX with bundled Core and partner manifest
+          node -e "const p=require('./registry/public-release.json'); if(p.edition!=='source-development'||p.adEnforcement!=='development'||p.controlPlaneUrl!==null) process.exit(1)"
+      - name: Stamp official public edition server gate
+        env:
+          DOCKYARD_PUBLIC_CONTROL_URL: ${{ vars.DOCKYARD_PUBLIC_CONTROL_URL }}
+        run: |
+          set -euo pipefail
+          test -n "${DOCKYARD_PUBLIC_CONTROL_URL:-}" || { echo "Repository variable DOCKYARD_PUBLIC_CONTROL_URL is required for public release packaging" >&2; exit 1; }
+          node scripts/stamp-public-release.mjs
+          node -e "const p=require('./registry/public-release.json'); if(p.edition!=='official-public'||p.adEnforcement!=='required'||!String(p.controlPlaneUrl||'').startsWith('https://')) process.exit(1)"
+      - name: Package VSIX with bundled Core, required public gate, and partner manifest
         working-directory: integrations/vscode
         env:
           DOCKYARD_PARTNER_VERCEL_URL: ${{ secrets.DOCKYARD_PARTNER_VERCEL_URL }}
@@ -72,8 +81,11 @@ jobs:
           unzip -l dockyardos-vscode.vsix | grep -q 'extension/community-update-scheduler.js'
           unzip -l dockyardos-vscode.vsix | grep -q 'extension/partner-offers.js'
           unzip -l dockyardos-vscode.vsix | grep -q 'extension/partner-offers.json'
+          unzip -l dockyardos-vscode.vsix | grep -q 'extension/core/registry/public-release.json'
           unzip -p dockyardos-vscode.vsix extension/partner-offers.json > /tmp/vsix-partners.json
+          unzip -p dockyardos-vscode.vsix extension/core/registry/public-release.json > /tmp/vsix-public-release.json
           node -e "const p=require('/tmp/vsix-partners.json'); if(p.schemaVersion!==1 || !Array.isArray(p.offers)) process.exit(1)"
+          node -e "const p=require('/tmp/vsix-public-release.json'); if(p.edition!=='official-public'||p.adEnforcement!=='required'||!p.controlPlaneUrl) process.exit(1)"
       - uses: actions/upload-artifact@v4
         with:
           name: dockyardos-vscode-${{ env.extension_version }}
@@ -87,4 +99,6 @@ jobs:
         run: |
           set -euo pipefail
           test -n "${VSCE_PAT:-}" || { echo "VSCE_PAT secret is required for Marketplace publishing" >&2; exit 1; }
+          unzip -p dockyardos-vscode.vsix extension/core/registry/public-release.json > /tmp/vsix-public-release-before-publish.json
+          node -e "const p=require('/tmp/vsix-public-release-before-publish.json'); if(p.edition!=='official-public'||p.adEnforcement!=='required'||!p.controlPlaneUrl) process.exit(1)"
           npx @vscode/vsce publish --packagePath dockyardos-vscode.vsix -p "$VSCE_PAT"
