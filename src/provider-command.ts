@@ -1,6 +1,11 @@
 import type { ProviderEnvironment } from "./types.js";
 import { executeRoutedProviderAction, listRoutedProviderActions, planRoutedProviderAction } from "./provider-action-router.js";
 import { checkProviderHealthSet, providerHealthExitCode } from "./provider-health.js";
+import {
+  loadCachedProviderPricingEvidence,
+  providerPricingCacheLocation,
+  refreshProviderPricingEvidence,
+} from "./provider-pricing.js";
 import { executePreviewEnvironment, planPreviewEnvironment, type PreviewDatabaseTarget, type PreviewWebTarget, type PreviewWorkflowTarget } from "./provider-preview.js";
 
 function value(args: string[], name: string): string | undefined {
@@ -50,15 +55,15 @@ function previewRequest(args: string[]) {
   };
 }
 
-function healthIds(args: string[]): string[] | undefined {
-  const raw = value(args, "--provider");
+function commaSeparatedIds(args: string[], flag: string): string[] | undefined {
+  const raw = value(args, flag);
   if (!raw) return undefined;
   const ids = raw.split(",").map((item) => item.trim()).filter(Boolean);
-  if (!ids.length) throw new Error("--provider must contain at least one provider id.");
+  if (!ids.length) throw new Error(`${flag} must contain at least one provider id.`);
   return ids;
 }
 
-function healthTimeout(args: string[]): number | undefined {
+function boundedTimeout(args: string[]): number | undefined {
   const raw = value(args, "--timeout-ms");
   if (raw === undefined) return undefined;
   const parsed = Number(raw);
@@ -73,7 +78,7 @@ export async function handleProviderActionCommand(root: string, args: string[]):
   const rest = args.slice(1);
 
   if (subcommand === "health") {
-    const results = await checkProviderHealthSet({ ids: healthIds(rest), timeoutMs: healthTimeout(rest) });
+    const results = await checkProviderHealthSet({ ids: commaSeparatedIds(rest, "--provider"), timeoutMs: boundedTimeout(rest) });
     const exitCode = providerHealthExitCode(results);
     console.log(JSON.stringify({
       schemaVersion: 1,
@@ -83,6 +88,22 @@ export async function handleProviderActionCommand(root: string, args: string[]):
       providers: results,
     }, null, 2));
     process.exitCode = exitCode;
+    return;
+  }
+
+  if (subcommand === "pricing") {
+    const ids = commaSeparatedIds(rest, "--provider");
+    const cachedOnly = has(rest, "--cached");
+    const providers = cachedOnly
+      ? await loadCachedProviderPricingEvidence(ids)
+      : await refreshProviderPricingEvidence(ids, { timeoutMs: boundedTimeout(rest) });
+    console.log(JSON.stringify({
+      schemaVersion: 1,
+      mode: cachedOnly ? "cache" : "live",
+      checkedAt: new Date().toISOString(),
+      cachePath: providerPricingCacheLocation(),
+      providers,
+    }, null, 2));
     return;
   }
 
@@ -144,5 +165,5 @@ export async function handleProviderActionCommand(root: string, args: string[]):
     return;
   }
 
-  throw new Error("Usage: dockyard providers health [--provider github,vercel,cloudflare,supabase] [--timeout-ms 1000-15000] | actions [--provider ID] | action plan|run --provider ID --action ID --environment preview|production [--param key=value] [--approve] [--approve-production] | preview plan|run [--web vercel|cloudflare-pages|cloudflare-worker] [--database supabase] [--workflow github] [--param provider.key=value] [--approve]");
+  throw new Error("Usage: dockyard providers health [--provider github,vercel,cloudflare,supabase] [--timeout-ms 1000-15000] | pricing [--provider vercel,cloudflare,...] [--cached] [--timeout-ms 1000-15000] | actions [--provider ID] | action plan|run --provider ID --action ID --environment preview|production [--param key=value] [--approve] [--approve-production] | preview plan|run [--web vercel|cloudflare-pages|cloudflare-worker] [--database supabase] [--workflow github] [--param provider.key=value] [--approve]");
 }
