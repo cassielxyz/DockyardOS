@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -60,6 +60,22 @@ test("project-scope Antigravity install writes the full workspace plugin idempot
   assert.ok(forced.results.some((item) => item.action === "copy-plugin" && item.status === "installed"));
   const restored = JSON.parse(await readFile(pluginPath, "utf8"));
   assert.equal(restored.name, "dockyardos");
+});
+
+test("project-scope host install refuses symlinked integration parents", async () => {
+  const root = await mkdtemp(join(tmpdir(), "dockyard-host-symlink-root-"));
+  const outside = await mkdtemp(join(tmpdir(), "dockyard-host-symlink-outside-"));
+  await dockyard.initProject(root, { name: "host-symlink", mode: "balanced" });
+  await symlink(outside, join(root, ".agents"), "dir");
+
+  await assert.rejects(
+    () => dockyard.executeHostInstall(root, "antigravity", "project"),
+    /contains a symbolic link/i,
+  );
+  await assert.rejects(
+    () => dockyard.executeHostInstall(root, "cursor", "project"),
+    /contains a symbolic link/i,
+  );
 });
 
 test("Cursor adapter tracks the current agent CLI and native resume surface", () => {
