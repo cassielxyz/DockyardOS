@@ -53,6 +53,7 @@ test("real-host matrix stays opt-in and supports a maintainer verification branc
   assert.match(realHostWorkflow, /bash "\$INSTALLER" --dir "\$HOME\/\.local\/bin"/);
   assert.doesNotMatch(realHostWorkflow, /--skip-aliases/);
   assert.doesNotMatch(realHostWorkflow, /--skip-path/);
+  assert.match(realHostWorkflow, /agy plugin install "\$ROOT\/integrations\/antigravity\/plugin"/);
   assert.match(realHostWorkflow, /agy plugin list/);
   assert.match(realHostWorkflow, /grep -qi 'dockyardos'/);
   assert.match(realHostWorkflow, /host doctor --host "\$DOCKYARD_REAL_HOST" --json/);
