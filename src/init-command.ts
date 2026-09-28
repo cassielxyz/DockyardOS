@@ -78,14 +78,14 @@ export async function handleInitCommand(root: string, args: string[], json = fal
   const requestedHostRaw = value(args, "--host");
   const requestedHost = validHost(requestedHostRaw);
   if (requestedHostRaw && !requestedHost) throw new Error(`Invalid --host: ${requestedHostRaw}`);
-  const host = requestedHost ?? detectedHost();
+  const host = requestedHost ?? detectedHost() ?? "antigravity";
   const requestedScope = value(args, "--host-scope") as HostScope | undefined;
   if (requestedScope && !["user", "project", "runtime"].includes(requestedScope)) throw new Error(`Invalid --host-scope: ${requestedScope}`);
 
-  let integration: Record<string, unknown> = { status: "not-detected", message: "No supported agent host executable was detected. DockyardOS project state is initialized; pass --host or set DOCKYARD_HOST to activate a specific agent integration." };
+  let integration: Record<string, unknown>;
   if (has(args, "--no-host-integration")) {
     integration = { status: "skipped", message: "Automatic agent-host integration was explicitly disabled for this initialization." };
-  } else if (host) {
+  } else {
     const scope = requestedScope ?? defaultScope(host);
     try {
       integration = await activateHostIntegration(root, host, scope);
