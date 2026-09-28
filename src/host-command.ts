@@ -2,6 +2,7 @@ import type { HostId } from "./types.js";
 import type { HostScope } from "./host-types.js";
 import { hostAdapter, hostAdapters } from "./host-adapters.js";
 import { executeHostInstall, inspectHost, inspectHosts, planHostInstall } from "./host-manager.js";
+import { applyNativeHostMerge, nativeMergeHosts, planNativeHostMerge } from "./host-native-merge.js";
 
 function value(args: string[], name: string): string | undefined {
   const index = args.indexOf(name);
@@ -37,6 +38,7 @@ export async function handleHostCommand(root: string, args: string[], json: bool
       supportsNativeResume: adapter.supportsNativeResume,
       supportsDockyardHooks: adapter.supportsDockyardHooks,
       nativeBundle: adapter.nativeBundle ?? null,
+      nativeMergeSupported: nativeMergeHosts().includes(adapter.id),
       verifiedAgainst: adapter.verifiedAgainst,
     }));
     console.log(JSON.stringify(data, null, 2));
@@ -65,6 +67,33 @@ export async function handleHostCommand(root: string, args: string[], json: bool
     return;
   }
 
+  if (subcommand === "native") {
+    const action = rest[0] ?? "list";
+    const nativeArgs = rest.slice(1);
+    if (action === "list") {
+      console.log(JSON.stringify(nativeMergeHosts().map((id) => ({ id, name: hostAdapter(id).displayName })), null, 2));
+      return;
+    }
+    const host = parseHost(value(nativeArgs, "--host"));
+    if (!nativeMergeHosts().includes(host)) {
+      throw new Error(`${hostAdapter(host).displayName} does not use the P24 review-first project-file merge path; use its verified native install surface instead.`);
+    }
+    if (action === "plan") {
+      console.log(JSON.stringify(await planNativeHostMerge(root, host), null, 2));
+      return;
+    }
+    if (action === "apply") {
+      const expectedPlanSha256 = value(nativeArgs, "--expected-plan-sha256");
+      if (!expectedPlanSha256) throw new Error("--expected-plan-sha256 is required for native apply");
+      console.log(JSON.stringify(await applyNativeHostMerge(root, host, {
+        approve: has(nativeArgs, "--approve"),
+        expectedPlanSha256,
+      }), null, 2));
+      return;
+    }
+    throw new Error("Usage: dockyard host native list | plan --host HOST | apply --host HOST --approve --expected-plan-sha256 SHA256");
+  }
+
   if (subcommand === "native-info") {
     const host = parseHost(value(rest, "--host"));
     const adapter = hostAdapter(host);
@@ -73,8 +102,11 @@ export async function handleHostCommand(root: string, args: string[], json: bool
       host,
       available: inspection.nativeBundleAvailable ?? false,
       bundle: adapter.nativeBundle ?? null,
+      safeMergeSupported: nativeMergeHosts().includes(host),
       note: adapter.nativeBundle
-        ? "Native bundles are additive to the portable skill. Review-first bundles are intentionally not copied over existing project config automatically."
+        ? nativeMergeHosts().includes(host)
+          ? "Native bundle uses the P24 explicit plan/apply merge path. Existing unrelated config is preserved; conflicts remain review-required."
+          : "Native bundle uses its verified host-native install surface rather than the P24 project-file merge path."
         : "No additional native bundle is registered for this host.",
     }, null, 2));
     return;
@@ -92,11 +124,12 @@ export async function handleHostCommand(root: string, args: string[], json: bool
       ...(adapter.executable ? [{ name: "host-executable", status: inspection.executableAvailable ? "pass" : "warn", detail: inspection.executableAvailable ? `${adapter.executable} is available on PATH.` : `${adapter.executable} is not currently available on PATH.` }] : []),
       { name: "portable-skill", status: discovered ? "pass" : "warn", detail: discovered ? "A verified DockyardOS portable host integration signal is present." : preferred.length ? "DockyardOS portable skill/plugin has not been detected for this host in the inspected locations." : "No portable skill location is configured for this host." },
       ...(adapter.nativeBundle ? [{ name: "native-bundle", status: inspection.nativeBundleAvailable ? "pass" : "warn", detail: inspection.nativeBundleAvailable ? `Optional ${adapter.nativeBundle.mode} bundle is packaged at ${adapter.nativeBundle.path}.` : `Configured native bundle is missing: ${adapter.nativeBundle.path}` }] : []),
+      ...(nativeMergeHosts().includes(host) ? [{ name: "native-safe-merge", status: "pass", detail: "P24 explicit native plan/apply rules are available; customized/malformed/conflicting files remain review-required." }] : []),
       { name: "resume", status: "pass", detail: adapter.supportsNativeResume ? "Host has native resume in addition to DockyardOS durable resume." : "DockyardOS durable resume is available even without a host-native resume feature." },
     ];
     console.log(JSON.stringify(json ? { host, inspection, checks } : checks, null, 2));
     return;
   }
 
-  throw new Error("Usage: dockyard host list | inspect [--host HOST] | plan --host HOST [--scope user|project|runtime] | install --host HOST [--scope ...] [--force] | native-info --host HOST | doctor --host HOST");
+  throw new Error("Usage: dockyard host list | inspect [--host HOST] | plan --host HOST [--scope user|project|runtime] | install --host HOST [--scope ...] [--force] | native list|plan|apply ... | native-info --host HOST | doctor --host HOST");
 }
