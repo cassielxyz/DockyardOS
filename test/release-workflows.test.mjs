@@ -49,7 +49,9 @@ test("real-host matrix is opt-in only and covers current public CLI surfaces inc
   }
   assert.match(realHostWorkflow, /npm view "\$DOCKYARD_INSTALL_SOURCE" version/);
   assert.match(realHostWorkflow, /sha256sum "\$INSTALLER"/);
-  assert.match(realHostWorkflow, /bash "\$INSTALLER" --skip-aliases --skip-path/);
+  assert.match(realHostWorkflow, /bash "\$INSTALLER" --dir "\$HOME\/\.local\/bin"/);
+  assert.doesNotMatch(realHostWorkflow, /--skip-aliases/);
+  assert.doesNotMatch(realHostWorkflow, /--skip-path/);
   assert.match(realHostWorkflow, /agy plugin list/);
   assert.match(realHostWorkflow, /grep -qi 'dockyardos'/);
   assert.match(realHostWorkflow, /host doctor --host "\$DOCKYARD_REAL_HOST" --json/);

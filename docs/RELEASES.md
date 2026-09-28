@@ -43,7 +43,7 @@ Covered hosts:
 
 For npm packages, the workflow resolves the current published version and records it before installing that exact version. For installer scripts, it downloads the script over HTTPS and records its SHA-256 before execution. This evidence is uploaded per host for 14 days.
 
-The Antigravity lane uses Google's official installer with `--skip-aliases --skip-path`, then adds the documented `~/.local/bin` location only to the current Actions job. This avoids editing CI shell profiles while still exercising the real installed `agy` binary.
+The Antigravity lane uses Google's current official installer option `--dir` to install directly into `~/.local/bin`, then adds that directory only to the current Actions job through `GITHUB_PATH`. This keeps the CI install noninteractive and avoids relying on shell-profile edits. The matrix deliberately does not pass historical `--skip-aliases` or `--skip-path` flags because the current official installer no longer supports them.
 
 After installation, the job verifies:
 
@@ -60,10 +60,11 @@ The workflow does not authenticate to model providers or perform prompts/complet
 
 ## Antigravity provenance
 
-P26 is based on Google's current official Antigravity CLI documentation:
+P26 is based on Google's current official Antigravity CLI documentation and the live installer contract exercised by the real-host matrix:
 
 - installer: `https://antigravity.google/cli/install.sh`
-- default Linux/macOS binary path: `~/.local/bin/agy`
+- installer option used by DockyardOS CI: `--dir <path>`
+- Linux/macOS binary path used by the matrix: `~/.local/bin/agy`
 - plugin management: `agy plugin list`, `agy plugin install ...`
 - headless mode: `agy -p ...`
 - native conversation continuation: `--continue` / `--conversation`

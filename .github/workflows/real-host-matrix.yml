@@ -81,7 +81,8 @@ jobs:
           test "$(wc -c < "$INSTALLER")" -gt 100
           sha256sum "$INSTALLER" | tee "$RUNNER_TEMP/dockyard-real-host-evidence/installer.sha256"
           if [ "$DOCKYARD_REAL_HOST" = "antigravity" ]; then
-            bash "$INSTALLER" --skip-aliases --skip-path
+            mkdir -p "$HOME/.local/bin"
+            bash "$INSTALLER" --dir "$HOME/.local/bin"
           else
             bash "$INSTALLER"
           fi
