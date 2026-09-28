@@ -40,7 +40,10 @@ test("project-scope Antigravity install writes the full workspace plugin idempot
   const plugin = JSON.parse(await readFile(pluginPath, "utf8"));
   assert.equal(plugin.name, "dockyardos");
   const hooks = JSON.parse(await readFile(join(root, ".agents", "plugins", "dockyardos", "hooks.json"), "utf8"));
-  assert.ok(hooks.hooks);
+  assert.ok(Array.isArray(hooks["dockyard-context"]?.PreInvocation));
+  assert.ok(Array.isArray(hooks["dockyard-context"]?.Stop));
+  assert.ok(Array.isArray(hooks["dockyard-safety-and-checkpoints"]?.PreToolUse));
+  assert.ok(Array.isArray(hooks["dockyard-safety-and-checkpoints"]?.PostToolUse));
 
   const inspection = await dockyard.inspectHost(root, "antigravity");
   assert.ok(inspection.projectSignals.some((signal) => signal.path === ".agents/plugins/dockyardos" && signal.exists));
