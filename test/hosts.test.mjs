@@ -26,6 +26,39 @@ test("Antigravity adapter tracks the official agy CLI, plugin surface, and nativ
   assert.ok(antigravity.verifiedAgainst.some((item) => item.source.includes("plugins?tab=cli")));
 });
 
+test("project-scope Antigravity install writes the full workspace plugin idempotently", async () => {
+  const root = await mkdtemp(join(tmpdir(), "dockyard-host-antigravity-"));
+  await dockyard.initProject(root, { name: "host-antigravity", mode: "balanced" });
+  const planned = dockyard.planHostInstall(root, "antigravity", "project");
+  const pluginAction = planned.actions.find((action) => action.type === "copy-plugin");
+  assert.ok(pluginAction);
+  assert.equal(pluginAction.destination, join(root, ".agents", "plugins", "dockyardos"));
+
+  const first = await dockyard.executeHostInstall(root, "antigravity", "project");
+  assert.ok(first.results.some((item) => item.action === "copy-plugin" && item.status === "installed"));
+  const pluginPath = join(root, ".agents", "plugins", "dockyardos", "plugin.json");
+  const plugin = JSON.parse(await readFile(pluginPath, "utf8"));
+  assert.equal(plugin.name, "dockyardos");
+  const hooks = JSON.parse(await readFile(join(root, ".agents", "plugins", "dockyardos", "hooks.json"), "utf8"));
+  assert.ok(hooks.hooks);
+
+  const inspection = await dockyard.inspectHost(root, "antigravity");
+  assert.ok(inspection.projectSignals.some((signal) => signal.path === ".agents/plugins/dockyardos" && signal.exists));
+
+  const second = await dockyard.executeHostInstall(root, "antigravity", "project");
+  assert.ok(second.results.some((item) => item.action === "copy-plugin" && item.status === "unchanged"));
+
+  await writeFile(pluginPath, `${JSON.stringify({ ...plugin, name: "local-custom-plugin" }, null, 2)}\n`, "utf8");
+  await assert.rejects(
+    () => dockyard.executeHostInstall(root, "antigravity", "project"),
+    /plugin already exists with different content/i,
+  );
+  const forced = await dockyard.executeHostInstall(root, "antigravity", "project", { force: true });
+  assert.ok(forced.results.some((item) => item.action === "copy-plugin" && item.status === "installed"));
+  const restored = JSON.parse(await readFile(pluginPath, "utf8"));
+  assert.equal(restored.name, "dockyardos");
+});
+
 test("Cursor adapter tracks the current agent CLI and native resume surface", () => {
   const cursor = dockyard.hostAdapter("cursor");
   assert.equal(cursor.executable, "agent");
