@@ -40,13 +40,14 @@ export const alternativeProviderActionDefinitions: AlternativeProviderActionDefi
     description: "Create an isolated Neon branch in an explicit project for preview/test work.",
     environments: ["preview"],
     requiredParams: ["project", "branch"],
-    optionalParams: ["parent"],
+    optionalParams: [],
     requiresLinked: false,
     timeoutMs: 120_000,
-    authProbe: { command: "neon", args: ["api", "/projects"], timeoutMs: 15_000 },
+    authProbe: { command: "neon", args: ["projects", "list", "--output", "json"], timeoutMs: 15_000 },
     notes: [
-      "Uses the current Neon CLI and explicit project/branch parameters; DockyardOS never accepts an API key on the command line.",
+      "Uses the current Neon CLI with explicit project/branch parameters and --no-secrets so connection credentials are not returned to DockyardOS logs or audit artifacts.",
       "Preview branch names commonly use preview/...; common production branch names are refused for this action.",
+      "P21 creates from the project's default branch only; alternate-parent branching stays unexposed until its current CLI contract is independently pinned.",
     ],
   },
   {
@@ -82,15 +83,16 @@ export const alternativeProviderActionDefinitions: AlternativeProviderActionDefi
     providerId: "railway",
     id: "service-deploy",
     displayName: "Deploy Railway service",
-    description: "Upload project source to an explicit Railway project/environment and optional service.",
+    description: "Upload project source to an explicit Railway project/environment/service.",
     environments: ["preview", "production"],
-    requiredParams: ["project", "railway-environment"],
-    optionalParams: ["service", "path"],
+    requiredParams: ["project", "railway-environment", "service"],
+    optionalParams: ["path"],
     requiresLinked: false,
     timeoutMs: 300_000,
     authProbe: { command: "railway", args: ["whoami"], timeoutMs: 10_000 },
     notes: [
-      "Uses Railway CI/JSON mode with explicit project and environment instead of interactive linking.",
+      "Uses Railway CI/JSON mode with explicit project, environment, and service instead of interactive linking.",
+      "Railway up --ci exits non-zero when deployment fails; post-action verification reads bounded logs using the same explicit target.",
       "A preview Dockyard environment refuses common production Railway environment names.",
     ],
   },
@@ -181,7 +183,7 @@ function validatedParams(
   const result: Record<string, string> = {};
   for (const [key, value] of Object.entries(supplied)) {
     if (key === "path") result[key] = safeProjectPath(root, value, key);
-    else if (key === "branch" || key === "parent" || key === "channel") result[key] = safeBranch(value, key);
+    else if (key === "branch" || key === "channel") result[key] = safeBranch(value, key);
     else if (key === "commit") {
       const commit = value.trim().toLowerCase();
       if (!COMMIT_SHA.test(commit)) throw new Error("Render commit must be a full 40-character Git SHA.");
@@ -203,12 +205,9 @@ function commandPlan(
   params: Record<string, string>,
 ): { command: string; args: string[]; verification: ProviderActionVerificationPlan } {
   if (action.providerId === "neon" && action.id === "preview-branch-create") {
-    const args = ["branches", "create", "--project-id", params.project!, "--name", params.branch!];
-    if (params.parent) args.push("--parent", params.parent);
-    args.push("--output", "json");
     return {
       command: "neon",
-      args,
+      args: ["branches", "create", "--project-id", params.project!, "--name", params.branch!, "--output", "json", "--no-secrets"],
       verification: {
         strategy: "command",
         command: "neon",
@@ -253,19 +252,27 @@ function commandPlan(
   if (action.providerId === "railway" && action.id === "service-deploy") {
     const args = ["up"];
     if (params.path) args.push(params.path);
-    args.push("--project", params.project!, "--environment", params["railway-environment"]!, "--ci", "--json");
-    if (params.service) args.push("--service", params.service);
-    const verifyArgs = ["deployment", "list", "--project", params.project!, "--environment", params["railway-environment"]!, "--limit", "1", "--json"];
-    if (params.service) verifyArgs.push("--service", params.service);
+    args.push(
+      "--project", params.project!,
+      "--environment", params["railway-environment"]!,
+      "--service", params.service!,
+      "--ci", "--json",
+    );
     return {
       command: "railway",
       args,
       verification: {
         strategy: "command",
         command: "railway",
-        args: verifyArgs,
+        args: [
+          "logs",
+          "--project", params.project!,
+          "--environment", params["railway-environment"]!,
+          "--service", params.service!,
+          "--lines", "1",
+        ],
         timeoutMs: 45_000,
-        description: "List the newest deployment for the explicit Railway target.",
+        description: "Read one bounded log line using the same explicit Railway project/environment/service after the CI deploy succeeds.",
       },
     };
   }
