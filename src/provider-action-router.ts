@@ -16,12 +16,16 @@ import {
 } from "./provider-actions-alternative.js";
 import type { ProviderActionDefinition } from "./provider-actions.js";
 
-export type RoutedProviderActionDefinition = ProviderActionDefinition | AlternativeProviderActionDefinition;
+export type RoutedProviderActionDefinition = ProviderActionDefinition | (AlternativeProviderActionDefinition & { requiresAuthenticated: true });
 
 export function listProviderActions(providerId?: string): RoutedProviderActionDefinition[] {
+  const alternative = listAlternativeProviderActions(providerId).map((item) => ({
+    ...item,
+    requiresAuthenticated: true as const,
+  }));
   return [
     ...listPrimaryProviderActions(providerId),
-    ...listAlternativeProviderActions(providerId),
+    ...alternative,
   ];
 }
 
