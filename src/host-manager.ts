@@ -1,6 +1,6 @@
 import { access, cp, lstat, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { dirname, resolve } from "node:path";
+import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { commandExists, run } from "./process.js";
 import { dockyardHome } from "./project.js";
@@ -33,6 +33,34 @@ function bundledAntigravityPluginPath(): string {
 
 function bundledNativePath(path: string): string {
   return fileURLToPath(new URL(`../${path.replace(/^\/+/, "")}`, import.meta.url));
+}
+
+function projectRelativePath(workspaceRoot: string, destination: string): string {
+  const root = resolve(workspaceRoot);
+  const target = resolve(destination);
+  const rel = relative(root, target);
+  if (!rel || rel === ".." || rel.startsWith("../") || rel.startsWith("..\\") || rel.startsWith("/") || rel.startsWith("\\")) {
+    throw new Error("Project-scope host integration destination must stay inside the current workspace root.");
+  }
+  return rel;
+}
+
+async function assertProjectDestinationSafe(workspaceRoot: string, destination: string): Promise<void> {
+  const root = resolve(workspaceRoot);
+  const rel = projectRelativePath(root, destination);
+  let cursor = root;
+  for (const segment of rel.split(/[\\/]+/).filter(Boolean)) {
+    cursor = resolve(cursor, segment);
+    try {
+      const entry = await lstat(cursor);
+      if (entry.isSymbolicLink()) {
+        throw new Error(`Project-scope host integration path contains a symbolic link: ${relative(root, cursor).replace(/\\/g, "/")}`);
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") break;
+      throw error;
+    }
+  }
 }
 
 export async function inspectHost(workspaceRoot: string, host: HostId): Promise<HostInspection> {
@@ -173,8 +201,10 @@ export async function executeHostInstall(workspaceRoot: string, host: HostId, sc
   const plan = planHostInstall(workspaceRoot, host, scope);
   const results: Array<Record<string, unknown>> = [];
   for (const action of plan.actions) {
+    if (action.destination && action.scope === "project") await assertProjectDestinationSafe(workspaceRoot, action.destination);
     if (action.type === "create-directory" && action.destination) {
       await mkdir(action.destination, { recursive: true });
+      await assertProjectDestinationSafe(workspaceRoot, action.destination);
       results.push({ action: action.type, destination: action.destination, status: "ok" });
     } else if (action.type === "copy-skill" && action.destination) {
       results.push({ action: action.type, destination: action.destination, status: await installPortableSkill(action.destination, options.force ?? false) });
