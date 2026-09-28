@@ -24,20 +24,19 @@ test("provider action router exposes primary and alternative actions", async () 
   assert.ok(vercel.some((item) => item.id === "preview-deploy"));
 });
 
-test("Neon preview branch plan is explicit, non-production, and verified", async () => {
+test("Neon preview branch plan is explicit, non-production, and strips secret output", async () => {
   const workspace = await root();
   const result = plan(workspace, "neon", "preview-branch-create", "preview", {
     project: "quiet-snow-1234",
     branch: "preview/pr-42",
-    parent: "main",
   });
   assert.equal(result.command, "neon");
   assert.deepEqual(result.args, [
     "branches", "create",
     "--project-id", "quiet-snow-1234",
     "--name", "preview/pr-42",
-    "--parent", "main",
     "--output", "json",
+    "--no-secrets",
   ]);
   assert.equal(result.productionApprovalRequired, false);
   assert.deepEqual(result.verification.args, ["branches", "list", "--project-id", "quiet-snow-1234", "--output", "json"]);
@@ -49,6 +48,10 @@ test("Neon preview branch plan is explicit, non-production, and verified", async
   assert.throws(
     () => plan(workspace, "neon", "preview-branch-create", "preview", { project: "quiet-snow-1234", branch: "production" }),
     /refuses a common production/i,
+  );
+  assert.throws(
+    () => plan(workspace, "neon", "preview-branch-create", "preview", { project: "quiet-snow-1234", branch: "preview/pr-42", parent: "main" }),
+    /unknown parameter/i,
   );
 });
 
@@ -80,7 +83,7 @@ test("Firebase preview and production Hosting plans pin an explicit project", as
   );
 });
 
-test("Railway deploy plan confines source path and protects preview environments", async () => {
+test("Railway deploy plan confines source path and uses one explicit target", async () => {
   const workspace = await root();
   const result = plan(workspace, "railway", "service-deploy", "preview", {
     project: "abc123",
@@ -92,17 +95,28 @@ test("Railway deploy plan confines source path and protects preview environments
     "up", "apps/web",
     "--project", "abc123",
     "--environment", "preview",
-    "--ci", "--json",
     "--service", "web",
+    "--ci", "--json",
+  ]);
+  assert.deepEqual(result.verification.args, [
+    "logs",
+    "--project", "abc123",
+    "--environment", "preview",
+    "--service", "web",
+    "--lines", "1",
   ]);
   assert.equal(result.productionApprovalRequired, false);
 
   assert.throws(
-    () => plan(workspace, "railway", "service-deploy", "preview", { project: "abc123", "railway-environment": "production" }),
+    () => plan(workspace, "railway", "service-deploy", "preview", { project: "abc123", "railway-environment": "production", service: "web" }),
     /refuses a common production/i,
   );
   assert.throws(
-    () => plan(workspace, "railway", "service-deploy", "preview", { project: "abc123", "railway-environment": "preview", path: "../outside" }),
+    () => plan(workspace, "railway", "service-deploy", "preview", { project: "abc123", "railway-environment": "preview" }),
+    /missing required.*service/i,
+  );
+  assert.throws(
+    () => plan(workspace, "railway", "service-deploy", "preview", { project: "abc123", "railway-environment": "preview", service: "web", path: "../outside" }),
     /inside the current project root/i,
   );
 });
