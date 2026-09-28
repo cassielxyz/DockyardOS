@@ -37,6 +37,7 @@ export * from "./worktrees.js";
 export * from "./host-types.js";
 export * from "./host-adapters.js";
 export * from "./host-manager.js";
+export * from "./host-native-merge.js";
 export * from "./dockyard-context.js";
 export * from "./community-types.js";
 export * from "./community-registry.js";
