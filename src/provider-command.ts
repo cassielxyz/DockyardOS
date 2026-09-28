@@ -1,5 +1,5 @@
 import type { ProviderEnvironment } from "./types.js";
-import { executeProviderAction, listProviderActions, planProviderAction } from "./provider-actions.js";
+import { executeProviderAction, listProviderActions, planProviderAction } from "./provider-action-router.js";
 import { checkProviderHealthSet, providerHealthExitCode } from "./provider-health.js";
 import { executePreviewEnvironment, planPreviewEnvironment, type PreviewDatabaseTarget, type PreviewWebTarget, type PreviewWorkflowTarget } from "./provider-preview.js";
 
