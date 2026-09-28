@@ -111,7 +111,7 @@
 - [x] MCP runtime/dependencies/native templates included in bundled VSIX Core with package-level CI assertions
 - [ ] First live VS Code Marketplace listing/publication
 - [x] Safe automatic merge/install of review-first native project files without clobbering existing host config
-- [ ] Completed green cross-host matrix run against installed real host CLIs in opt-in CI
+- [x] Completed green cross-host matrix run against installed real host CLIs in opt-in CI (run #13 on exact merged `main` SHA `854434f26e6c084dba6d6e532ff689db60ced77f`)
 
 ## P6 — Community distribution
 
@@ -137,7 +137,7 @@
 - [x] Community runtime data bundled into VSIX Core with package-level CI assertions
 - [x] Deterministic non-network tests for registry/signature/approval/update/activation/rollback/transparency logic
 - [x] Signed/size-bounded remote registry synchronization and verified cache history
-- [x] Sandboxed fail-closed dynamic canary execution for quarantined community capabilities
+- [x] Sandboxed fail-closed dynamic canary execution for quarantined executable capability versions
 - [x] Publisher + remote-registry Ed25519 key generation/signing workflow
 - [x] Collision-safe effective registry across bundled + verified remote manifests
 - [x] Automatic-only safe update check/apply flow with no approval bypass
@@ -244,7 +244,7 @@
 - [x] Publish requires a repository `VSCE_PAT` secret and never stores the token in source
 - [x] Tag pushes can package release artifacts without silently publishing
 - [x] Current Cursor CLI executable (`agent`) and native resume capability reflected in host metadata
-- [x] Manual-only real-host matrix defined for Antigravity, Gemini CLI, Codex, Claude Code, Cursor, and OpenCode
+- [x] Opt-in real-host matrix defined for Antigravity, Gemini CLI, Codex, Claude Code, Cursor, and OpenCode with manual and restricted `verify/real-host/**` triggers
 - [x] NPM host lanes resolve and record an exact current package version before installation
 - [x] Installer-script lanes record SHA-256 before execution
 - [x] Per-host evidence artifacts preserve install source, executable path, version, inspect, doctor, and integration results
@@ -252,7 +252,7 @@
 - [x] Deterministic tests enforce Marketplace and real-host workflow guardrails
 - [x] Release and real-host verification guide
 - [ ] First live Marketplace listing/publication using the guarded release path
-- [ ] Completed green full real-host matrix run from merged `main`
+- [x] Completed green full real-host matrix run from merged `main` (run #13 / `36425594147`; durable evidence in `docs/REAL_HOST_MATRIX_EVIDENCE_2026-09-28.md`)
 - [x] Antigravity real-CLI CI lane using the official stable public installer and plugin CLI surface
 
 ## P12 — Isolated community contribution validation
@@ -434,16 +434,15 @@
 ## P26 — Official Antigravity real-CLI lane
 
 - [x] Verify current official `agy` installer, headless, plugin-management, and native continuation documentation
-- [x] Add Antigravity to the manual real-host matrix using Google's official installer
-- [x] Record installer SHA-256 before execution and avoid CI shell-profile mutation with official skip flags
+- [x] Add Antigravity to the opt-in six-host real-host matrix using Google's official installer
+- [x] Record installer SHA-256 before execution and install with the current `--dir` contract without CI shell-profile mutation
 - [x] Verify real `agy --version` through DockyardOS host inspect/doctor flow
-- [x] Verify DockyardOS workspace plugin discovery using `agy plugin list` without model invocation
-- [x] Keep real-host matrix manual-only and free of model/API credentials
+- [x] Verify DockyardOS project workspace-plugin integration plus CLI-managed `agy plugin install` / `agy plugin list` discovery without model invocation
+- [x] Keep real-host execution opt-in through manual dispatch or restricted `verify/real-host/**` branches and free of model/API credentials
 - [x] Update Antigravity host metadata for native `--continue` / `--conversation` support
 - [x] Deterministic workflow/host metadata regression tests
-- [ ] Complete a green manually dispatched six-host real-host matrix run from merged `main`
+- [x] Complete a green six-host real-host matrix run from exact merged `main` SHA `854434f26e6c084dba6d6e532ff689db60ced77f` (run #13 / `36425594147`) and preserve artifact digests in `docs/REAL_HOST_MATRIX_EVIDENCE_2026-09-28.md`
 
-## Next production milestones
+## Next production milestone
 
-- Complete the green manually dispatched real-host matrix and preserve its per-host evidence artifacts
 - Perform the first guarded VS Code Marketplace publication after publisher/token/tag setup
