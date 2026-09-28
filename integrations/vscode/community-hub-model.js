@@ -1,3 +1,5 @@
+const bundledPartnerFeed = require("./partner-offers.json");
+
 function asArray(value) {
   return Array.isArray(value) ? value : [];
 }
@@ -14,7 +16,7 @@ function originLabel(origin) {
   return String(origin.kind || "unknown");
 }
 
-function normalizeCommunityHubData(listValue, statusValue, updatesValue, warnings = [], partnerFeed = {}) {
+function normalizeCommunityHubData(listValue, statusValue, updatesValue, warnings = [], partnerFeed = bundledPartnerFeed) {
   const list = asObject(listValue);
   const status = asObject(statusValue);
   const installed = asObject(status.packages);
