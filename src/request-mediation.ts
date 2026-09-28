@@ -298,7 +298,8 @@ export async function mediateAgentRequest(root: string, input: {
     securityGates: selection?.securityGates ?? [],
     ...(team ? { team } : {}),
   };
-  await writeJsonAtomic(mediationPath(root, input.conversationId), state);
+  const { team: _team, ...persistentState } = state;
+  await writeJsonAtomic(mediationPath(root, input.conversationId), persistentState);
   return { ...state, newRequest: true, requestAvailable: true, visibleReplyHint: visibleReplyHint(state) };
 }
 
