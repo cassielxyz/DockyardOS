@@ -11,16 +11,16 @@ async function root() {
 }
 
 function plan(workspace, providerId, actionId, environment, params = {}) {
-  return dockyard.planProviderAction(workspace, { providerId, actionId, environment, params });
+  return dockyard.planRoutedProviderAction(workspace, { providerId, actionId, environment, params });
 }
 
 test("provider action router exposes primary and alternative actions", async () => {
-  const firebase = dockyard.listProviderActions("firebase");
+  const firebase = dockyard.listRoutedProviderActions("firebase");
   assert.ok(firebase.some((item) => item.id === "hosting-preview-deploy"));
   assert.ok(firebase.some((item) => item.id === "hosting-production-deploy"));
   assert.ok(firebase.every((item) => item.requiresAuthenticated === true));
 
-  const vercel = dockyard.listProviderActions("vercel");
+  const vercel = dockyard.listRoutedProviderActions("vercel");
   assert.ok(vercel.some((item) => item.id === "preview-deploy"));
 });
 
@@ -139,13 +139,13 @@ test("alternative provider mutation approval fails closed before provider toolin
     channel: "pr-42",
   });
   await assert.rejects(
-    () => dockyard.executeProviderAction(workspace, preview, { approve: false }),
+    () => dockyard.executeRoutedProviderAction(workspace, preview, { approve: false }),
     /requires explicit --approve/i,
   );
 
   const production = plan(workspace, "render", "service-deploy", "production", { service: "srv-cafe123" });
   await assert.rejects(
-    () => dockyard.executeProviderAction(workspace, production, { approve: true, approveProduction: false }),
+    () => dockyard.executeRoutedProviderAction(workspace, production, { approve: true, approveProduction: false }),
     /requires explicit --approve-production/i,
   );
 });
