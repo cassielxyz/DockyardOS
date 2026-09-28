@@ -127,9 +127,9 @@ Opening a different repository resolves a different DockyardOS project ID. Switc
 
 ## Agent host integration
 
-`Install/Update Agent Host Integration` first shows the DockyardOS install plan and then asks before modifying the selected host integration location. Existing different `dockyardos` skill content is not overwritten silently.
+`Install/Update Agent Host Integration` first shows the DockyardOS install plan and then asks before modifying the selected host integration location. Existing different `dockyardos` integration content is not overwritten silently.
 
-User scope is preferred when the host supports it because it installs once across projects. Project scope is available when you intentionally want host integration files in a repository.
+User scope is preferred when the host supports it because it installs once across projects. Project scope is available when you intentionally want host integration files in a repository. Antigravity project scope installs the full DockyardOS workspace plugin at `.agents/plugins/dockyardos`; portable-skill hosts use their verified `.agents/skills` or host-specific skill location. Project-scope writes are confined to non-symlinked paths inside the current workspace.
 
 ## Build a VSIX locally
 
@@ -161,19 +161,26 @@ The workflow always uploads the validated VSIX as a GitHub Actions artifact befo
 
 ## Opt-in real-host CI
 
-`.github/workflows/real-host-matrix.yml` is deliberately `workflow_dispatch`-only. It is not part of every PR because it downloads current third-party host CLIs.
+`.github/workflows/real-host-matrix.yml` remains opt-in because it downloads current third-party host CLIs. It can be started either with a manual `workflow_dispatch` or by a maintainer creating/pushing a branch matching:
+
+```text
+verify/real-host/**
+```
+
+Normal pull requests, `main` pushes, and ordinary work branches do **not** start the expensive matrix. The verification-branch trigger exists so authenticated repository automation can request the same full matrix without weakening the opt-in boundary.
 
 The matrix currently covers:
 
+- Antigravity CLI (`agy`)
 - Gemini CLI (`gemini`)
 - OpenAI Codex CLI (`codex`)
 - Claude Code (`claude`)
 - Cursor CLI (`agent`)
 - OpenCode (`opencode`)
 
-For npm-distributed hosts, the workflow resolves the current registry version first and records that exact version before installation. For official installer-script hosts, it downloads the installer over HTTPS, records its SHA-256, and only then executes it. Each job records the executable path and reported version, then verifies DockyardOS `host inspect`, `host doctor`, and project-scope portable integration against that actually installed CLI. It does not send prompts to a model or require model/API credentials.
+For npm-distributed hosts, the workflow resolves the current registry version first and records that exact version before installation. For official installer-script hosts, it downloads the installer over HTTPS, records its SHA-256, and only then executes it. Each job records the executable path and reported version, then verifies DockyardOS `host inspect`, `host doctor`, and project-scope integration against that actually installed CLI. It does not send prompts to a model or require model/API credentials.
 
-Antigravity remains covered by DockyardOS static plugin/package tests until a stable official noninteractive public CI-install surface is available and verified. The matrix does not invent one.
+Antigravity uses the verified official noninteractive installer surface, confirms `agy --version`, installs the full project workspace plugin through DockyardOS, and separately runs `agy plugin list` against a fixture workspace to prove native plugin discovery without invoking a model.
 
 ## Verify
 
@@ -188,10 +195,10 @@ Normal CI verifies:
 7. required Core/community/MCP files inside the produced VSIX,
 8. cross-host install/doctor smoke tests using DockyardOS fixtures,
 9. Marketplace workflow guardrails and listing metadata,
-10. the opt-in real-host matrix definition and supported install surfaces,
+10. the opt-in real-host matrix definition, restricted verification-branch trigger, and supported install surfaces,
 11. Community Hub CSP/serialization/state normalization and pinned-install guardrails,
 12. scheduled-update opt-in defaults, cadence bounds, workspace-trust guard, no-approval safe-apply boundary, and scheduler file inclusion in the VSIX.
 
-The separate manual real-host workflow supplies evidence that the current external CLIs are still discoverable by DockyardOS.
+The separate opt-in real-host workflow supplies evidence that the current external CLIs are still discoverable by DockyardOS.
 
 After installing the VSIX, open a project and run `DockyardOS: Initialize Project`, then `DockyardOS: Run Doctor`. Close/reopen VS Code and use `DockyardOS: Project Status` or `Resume Context` to confirm persistent state recovery. Use `DockyardOS: Open Community Hub` to verify the searchable manifest-first community workflow, and use `DockyardOS: Check Community Updates Now` before enabling any recurring update policy.
