@@ -125,8 +125,6 @@ jobs:
         if: ${{ matrix.host == 'antigravity' }}
         run: |
           set -euo pipefail
-          PROJECT="$(node -e "const p=require('fs').readFileSync('$RUNNER_TEMP/dockyard-real-host-evidence/init.json','utf8'); JSON.parse(p); process.stdout.write('')" 2>/dev/null || true)"
-          # The previous step ran in an isolated project. Reuse a fresh fixture so plugin verification stays local and credential-free.
           ROOT="$PWD"
           FIXTURE="$(mktemp -d)"
           mkdir -p "$FIXTURE/.agents/plugins"
