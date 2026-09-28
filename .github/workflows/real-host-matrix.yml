@@ -2,6 +2,9 @@ name: Real Host Matrix
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - "verify/real-host/**"
 
 permissions:
   contents: read
