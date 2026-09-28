@@ -1,0 +1,68 @@
+const fs = require("node:fs");
+const path = require("node:path");
+
+const root = path.resolve(__dirname, "..");
+const output = path.join(root, "partner-offers.json");
+
+const definitions = [
+  {
+    env: "DOCKYARD_PARTNER_VERCEL_URL",
+    id: "vercel",
+    brand: "vercel",
+    title: "Deploy on Vercel",
+    description: "Production hosting and preview deployments for modern web applications.",
+    category: "hosting",
+  },
+  {
+    env: "DOCKYARD_PARTNER_DIGITALOCEAN_URL",
+    id: "digitalocean",
+    brand: "digitalocean",
+    title: "Build on DigitalOcean",
+    description: "Cloud infrastructure, managed databases, Kubernetes, storage, and application hosting.",
+    category: "cloud",
+  },
+  {
+    env: "DOCKYARD_PARTNER_NAMECHEAP_URL",
+    id: "namecheap",
+    brand: "namecheap",
+    title: "Domains and hosting from Namecheap",
+    description: "Domains, DNS, SSL, email, and hosting for developer projects.",
+    category: "domains",
+  },
+  {
+    env: "DOCKYARD_PARTNER_HOSTINGER_URL",
+    id: "hostinger",
+    brand: "hostinger",
+    title: "Hosting from Hostinger",
+    description: "Website and application hosting for small projects and production sites.",
+    category: "hosting",
+  },
+];
+
+function validHttps(value) {
+  if (!value) return undefined;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:" || url.username || url.password) return undefined;
+    return url.toString();
+  } catch {
+    return undefined;
+  }
+}
+
+const offers = definitions.flatMap((definition) => {
+  const value = process.env[definition.env];
+  const url = validHttps(value);
+  if (value && !url) throw new Error(`${definition.env} must be a credential-free HTTPS URL.`);
+  return url ? [{ ...definition, url }] : [];
+}).map(({ env, ...offer }) => offer);
+
+const manifest = {
+  schemaVersion: 1,
+  disclosure: "DockyardOS may receive compensation when you use a sponsored or affiliate link. Partner offers never affect agent recommendations, provider ranking, or technical decisions.",
+  generatedAt: new Date().toISOString(),
+  offers,
+};
+
+fs.writeFileSync(output, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+console.log(`Generated ${offers.length} DockyardOS partner offer(s) at ${output}`);
