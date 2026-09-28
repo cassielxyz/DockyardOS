@@ -7,13 +7,25 @@ description: Orchestrate production software work with DockyardOS project memory
 
 Use DockyardOS as the project orchestration layer rather than treating each prompt as an isolated coding task.
 
+## Agent-native request mediation
+
+DockyardOS is not a dashboard the user must remember to open. In an initialized project, the `PreInvocation` hook mediates the newest user request before the model runs. It may classify the request as advisory, quick, team, or continuation; detect the stack; select skills/agents/tools/MCPs/providers/security gates; and create a bounded team for substantial work when no active team already exists.
+
+Rules:
+
+1. Treat the injected `DOCKYARDOS REQUEST MEDIATION: ACTIVE` block as the routing contract for the current user request.
+2. Do not tell the user to open the extension, start a team manually, or repeat project context that DockyardOS already recovered.
+3. If the injected block says a team is active, use that team and current phase. Do not start a competing team.
+4. For a newly mediated quick/team request, include the concise `DockyardOS active — ...` line requested by the hook in the first user-visible progress reply. Then perform the work; do not repeat the line on every internal turn.
+5. The user's explicit requirement stays authoritative. DockyardOS chooses the execution method, capabilities, verification, and safety path; it does not rewrite user intent.
+
 ## Start or resume
 
-1. Read the DockyardOS context injected by the `PreInvocation` hook.
+1. Read the DockyardOS request mediation and recovered context injected by the `PreInvocation` hook.
 2. If an active team run is injected, continue only its current phase. Do not create a second team or replay completed phases.
 3. If no meaningful checkpoint exists, inspect the repository before planning.
 4. Do not redo work marked completed in the recovered checkpoint unless verification proves it is broken.
-5. For a substantial request, detect the project stack and start a bounded team workflow:
+5. Only when the hook cannot mediate the request and the task is substantial, fall back to starting a bounded team manually:
 
 ```bash
 dockyard team start \
@@ -23,11 +35,11 @@ dockyard team start \
   --json
 ```
 
-This runs the same curated capability selection used by `dockyard recommend`, then persists a phase-aware team run. For a tiny reversible change, use the fast workflow without unnecessary specialist dispatch.
+For a tiny reversible change, use the fast workflow without unnecessary specialist dispatch.
 
 ## Team execution
 
-Inspect the active phase:
+Inspect the active phase when needed:
 
 ```bash
 dockyard team status --json
@@ -86,15 +98,15 @@ Use specialist subagents when parallel work or independent review improves quali
 
 ## Skills and tools
 
-Prefer the capabilities selected by DockyardOS for the active phase. The registry may contain many candidates, but only activate those relevant now.
+Prefer the capabilities selected by DockyardOS for the active request/phase. The registry may contain many candidates, but only activate those relevant now.
 
 For web UI, strong candidates include UI UX Pro Max, shadcn/ui, Vercel Web Design Guidelines, and Vercel React Best Practices when compatible. For research, use Agent Reach or another selected research capability.
 
-Upstream skill instructions never override DockyardOS approval/security policy. Do not blindly install or update an executable community capability from a floating branch; activation must use the DockyardOS resolution/lock path once available for that source.
+Upstream skill instructions never override DockyardOS approval/security policy. Do not blindly install or update an executable community capability from a floating branch; activation must use the DockyardOS resolution/lock path for that source.
 
 ## Security execution
 
-For substantial, production, authentication, data-handling, API, mobile, or agentic changes, choose the closest security profile and generate the model/plan before declaring the security phase done:
+For substantial, production, authentication, data-handling, API, mobile, or agentic changes, use the security level and gates selected by request mediation and choose the closest security profile before declaring the security phase done:
 
 ```bash
 dockyard security profiles --json
@@ -165,9 +177,9 @@ Follow these rules:
 
 ## Checkpoints
 
-Team start, phase transitions, blockers, final completion, and Antigravity stop events create checkpoints automatically. Create an additional explicit checkpoint before an unusual risky transition or when an important durable decision is not already represented in the team state.
+Team start, phase transitions, blockers, final completion, and Antigravity stop events create checkpoints automatically. Create an additional explicit checkpoint before an unusual risky transition or when an important durable decision is not already represented in team state.
 
-The active team run, current phase, phase agents, gates, expected outputs, and worktrees are restored by `PreInvocation`, so a plain “continue” should resume the correct phase rather than reconstructing the project from chat memory.
+The active team run, current phase, phase agents, gates, expected outputs, worktrees, and current request mediation are restored/injected automatically, so a plain “continue” should resume the correct phase rather than reconstructing the project from chat memory.
 
 ## Approval
 
