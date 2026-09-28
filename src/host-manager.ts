@@ -1,4 +1,4 @@
-import { access, mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, cp, lstat, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -6,7 +6,7 @@ import { commandExists, run } from "./process.js";
 import { dockyardHome } from "./project.js";
 import { hostAdapter, hostAdapters } from "./host-adapters.js";
 import type { HostId } from "./types.js";
-import type { HostInspection, HostInstallAction, HostInstallPlan, HostScope } from "./host-types.js";
+import type { HostInspection, HostInstallAction, HostInstallPlan, HostInstallStrategy, HostScope } from "./host-types.js";
 
 async function exists(path: string): Promise<boolean> {
   try {
@@ -58,16 +58,17 @@ export async function inspectHosts(workspaceRoot: string): Promise<HostInspectio
   return Promise.all(hostAdapters.map((adapter) => inspectHost(workspaceRoot, adapter.id)));
 }
 
-function locationFor(host: HostId, scope: HostScope) {
+function locationFor(host: HostId, scope: HostScope, strategy: HostInstallStrategy) {
   const adapter = hostAdapter(host);
-  return adapter.preferredSkillLocations.find((item) => item.scope === scope && item.strategy === "copy-skill" && item.path);
+  return adapter.preferredSkillLocations.find((item) => item.scope === scope && item.strategy === strategy && item.path);
 }
 
 export function planHostInstall(workspaceRoot: string, host: HostId, scope: HostScope = "user"): HostInstallPlan {
   const adapter = hostAdapter(host);
   const actions: HostInstallAction[] = [];
   const warnings: string[] = [];
-  const location = locationFor(host, scope);
+  const skillLocation = locationFor(host, scope, "copy-skill");
+  const pluginLocation = locationFor(host, scope, "copy-plugin");
 
   if (host === "antigravity" && scope === "user") {
     actions.push({
@@ -77,8 +78,16 @@ export function planHostInstall(workspaceRoot: string, host: HostId, scope: Host
       reason: "Install the full DockyardOS Antigravity plugin once for this user.",
       requiresApproval: false,
     });
-  } else if (location?.path) {
-    const destination = expandPath(location.path, workspaceRoot);
+  } else if (pluginLocation?.path) {
+    actions.push({
+      type: "copy-plugin",
+      scope,
+      destination: expandPath(pluginLocation.path, workspaceRoot),
+      reason: "Install the full DockyardOS workspace plugin at the host's verified project plugin location.",
+      requiresApproval: false,
+    });
+  } else if (skillLocation?.path) {
+    const destination = expandPath(skillLocation.path, workspaceRoot);
     actions.push({ type: "create-directory", scope, destination, reason: "Create the host's Agent Skill directory when missing.", requiresApproval: false });
     actions.push({ type: "copy-skill", scope, destination, reason: "Install the host-neutral DockyardOS SKILL.md while keeping runtime state external and shared.", requiresApproval: false });
   } else if (host === "codex" && scope === "runtime") {
@@ -112,6 +121,54 @@ async function installPortableSkill(destination: string, force: boolean): Promis
   return "installed";
 }
 
+async function directoryFiles(root: string, relativePath = ""): Promise<string[]> {
+  const directory = relativePath ? resolve(root, relativePath) : root;
+  const entries = await readdir(directory, { withFileTypes: true });
+  const files: string[] = [];
+  for (const entry of [...entries].sort((left, right) => left.name.localeCompare(right.name))) {
+    const child = relativePath ? `${relativePath}/${entry.name}` : entry.name;
+    if (entry.isSymbolicLink()) throw new Error(`DockyardOS plugin tree contains a symbolic link: ${child}`);
+    if (entry.isDirectory()) files.push(...await directoryFiles(root, child));
+    else if (entry.isFile()) files.push(child);
+    else throw new Error(`DockyardOS plugin tree contains an unsupported filesystem entry: ${child}`);
+  }
+  return files;
+}
+
+async function pluginTreesEqual(source: string, destination: string): Promise<boolean> {
+  const destinationStat = await lstat(destination);
+  if (destinationStat.isSymbolicLink() || !destinationStat.isDirectory()) {
+    throw new Error(`DockyardOS plugin destination must be a real directory: ${destination}`);
+  }
+  const sourceFiles = await directoryFiles(source);
+  const destinationFiles = await directoryFiles(destination);
+  if (sourceFiles.length !== destinationFiles.length) return false;
+  for (let index = 0; index < sourceFiles.length; index += 1) {
+    if (sourceFiles[index] !== destinationFiles[index]) return false;
+    const [sourceBytes, destinationBytes] = await Promise.all([
+      readFile(resolve(source, sourceFiles[index]!)),
+      readFile(resolve(destination, destinationFiles[index]!)),
+    ]);
+    if (!sourceBytes.equals(destinationBytes)) return false;
+  }
+  return true;
+}
+
+async function installAntigravityPlugin(destination: string, force: boolean): Promise<"installed" | "unchanged"> {
+  const source = bundledAntigravityPluginPath();
+  await directoryFiles(source);
+  if (await exists(destination)) {
+    if (await pluginTreesEqual(source, destination)) return "unchanged";
+    if (!force) {
+      throw new Error(`DockyardOS Antigravity plugin already exists with different content at ${destination}. Re-run with --force only after reviewing the existing plugin.`);
+    }
+    await rm(destination, { recursive: true, force: true });
+  }
+  await mkdir(dirname(destination), { recursive: true });
+  await cp(source, destination, { recursive: true, errorOnExist: true, force: false });
+  return "installed";
+}
+
 export async function executeHostInstall(workspaceRoot: string, host: HostId, scope: HostScope, options: { force?: boolean } = {}): Promise<Record<string, unknown>> {
   const plan = planHostInstall(workspaceRoot, host, scope);
   const results: Array<Record<string, unknown>> = [];
@@ -121,6 +178,8 @@ export async function executeHostInstall(workspaceRoot: string, host: HostId, sc
       results.push({ action: action.type, destination: action.destination, status: "ok" });
     } else if (action.type === "copy-skill" && action.destination) {
       results.push({ action: action.type, destination: action.destination, status: await installPortableSkill(action.destination, options.force ?? false) });
+    } else if (action.type === "copy-plugin" && action.destination) {
+      results.push({ action: action.type, destination: action.destination, status: await installAntigravityPlugin(action.destination, options.force ?? false) });
     } else if (action.type === "run-command" && action.command) {
       if (!commandExists(action.command[0]!)) throw new Error(`${action.command[0]} is not installed or not on PATH.`);
       const result = run(action.command[0]!, action.command.slice(1), { cwd: workspaceRoot, timeoutMs: 60_000, maxOutputBytes: 16_384 });
