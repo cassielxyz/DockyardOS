@@ -95,9 +95,10 @@
     }
   },
   "scripts": {
-    "check": "node --check extension.js && node --check community-hub-model.js && node --check community-hub-view.js && node --check community-update-scheduler.js && node --check scripts/prepare-core.cjs",
+    "check": "node --check extension.js && node --check community-hub-model.js && node --check community-hub-view.js && node --check community-update-scheduler.js && node --check partner-offers.js && node --check scripts/generate-partner-offers.cjs && node --check scripts/prepare-core.cjs",
+    "generate-partners": "node scripts/generate-partner-offers.cjs",
     "prepare-core": "node scripts/prepare-core.cjs",
-    "package": "npm run prepare-core && npx @vscode/vsce package"
+    "package": "npm run generate-partners && npm run prepare-core && npx @vscode/vsce package"
   },
   "devDependencies": {
     "@vscode/vsce": "^3.6.0"
