@@ -1,3 +1,10 @@
+const PARTNER_HOSTS = {
+  vercel: ["vercel.com", "v0.dev", "v0.app", "dub.sh"],
+  digitalocean: ["digitalocean.com", "m.do.co", "do.co"],
+  namecheap: ["namecheap.com", "pxf.io", "anrdoezrs.net", "jdoqocy.com", "tkqlhce.com", "dpbolvw.net", "kqzyfj.com"],
+  hostinger: ["hostinger.com", "sjv.io", "pxf.io"],
+};
+
 const OFFER_DEFINITIONS = [
   {
     env: "DOCKYARD_PARTNER_VERCEL_URL",
@@ -33,11 +40,18 @@ const OFFER_DEFINITIONS = [
   },
 ];
 
-function validHttps(value) {
+function hostAllowed(hostname, allowed) {
+  const host = hostname.toLowerCase();
+  return allowed.some((entry) => host === entry || host.endsWith(`.${entry}`));
+}
+
+function validPartnerUrl(brand, value) {
   if (!value) return undefined;
   try {
     const url = new URL(value);
     if (url.protocol !== "https:" || url.username || url.password) return undefined;
+    const allowed = PARTNER_HOSTS[brand];
+    if (!allowed || !hostAllowed(url.hostname, allowed)) return undefined;
     return url.toString();
   } catch {
     return undefined;
@@ -51,7 +65,7 @@ export default function handler(request, response) {
   }
 
   const offers = OFFER_DEFINITIONS.flatMap((definition) => {
-    const url = validHttps(process.env[definition.env]);
+    const url = validPartnerUrl(definition.brand, process.env[definition.env]);
     return url ? [{
       id: definition.id,
       brand: definition.brand,
