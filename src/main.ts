@@ -5,6 +5,7 @@ import { handleHostCommand } from "./host-command.js";
 import { handleCommunityCommand } from "./community-command.js";
 import { handleCommunityContributionCommand } from "./community-contribution-command.js";
 import { handleCommunityMaintainerCommand } from "./community-maintainer-command.js";
+import { handlePackageTransparencyAnchorCommand } from "./community-package-transparency-anchor-command.js";
 import { handleProviderActionCommand } from "./provider-command.js";
 import { handleProviderMigrationCommand } from "./provider-migration-command.js";
 import { handleSecurityEvidenceCommand } from "./security-command.js";
@@ -20,6 +21,8 @@ try {
     await handleCommunityContributionCommand(args.slice(1));
   } else if (command === "community" && args[0] === "maintainer") {
     await handleCommunityMaintainerCommand(findWorkspaceRoot(), args.slice(1));
+  } else if (command === "community" && args[0] === "transparency" && args[1] === "anchor") {
+    await handlePackageTransparencyAnchorCommand(findWorkspaceRoot(), args.slice(2));
   } else if (command === "community") {
     await handleCommunityCommand(args, args.includes("--json"));
   } else if (command === "providers" && args[0] === "migration") {
