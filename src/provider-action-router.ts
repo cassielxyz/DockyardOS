@@ -18,7 +18,7 @@ import type { ProviderActionDefinition } from "./provider-actions.js";
 
 export type RoutedProviderActionDefinition = ProviderActionDefinition | (AlternativeProviderActionDefinition & { requiresAuthenticated: true });
 
-export function listProviderActions(providerId?: string): RoutedProviderActionDefinition[] {
+export function listRoutedProviderActions(providerId?: string): RoutedProviderActionDefinition[] {
   const alternative = listAlternativeProviderActions(providerId).map((item) => ({
     ...item,
     requiresAuthenticated: true as const,
@@ -29,14 +29,14 @@ export function listProviderActions(providerId?: string): RoutedProviderActionDe
   ];
 }
 
-export function planProviderAction(root: string, request: ProviderActionRequest): ProviderActionPlan {
+export function planRoutedProviderAction(root: string, request: ProviderActionRequest): ProviderActionPlan {
   if (isAlternativeProviderAction(request.providerId, request.actionId)) {
     return planAlternativeProviderAction(root, request);
   }
   return planPrimaryProviderAction(root, request);
 }
 
-export async function executeProviderAction(
+export async function executeRoutedProviderAction(
   root: string,
   plan: ProviderActionPlan,
   approvals: ProviderActionApprovals = {},
