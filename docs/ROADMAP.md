@@ -47,7 +47,7 @@
 - [x] Explicit migration/compatibility warnings instead of false drop-in equivalence
 - [x] Production provider plans marked approval-required before mutation
 - [x] Authenticated action adapters for GitHub, Vercel, Cloudflare, and Supabase
-- [ ] Authenticated action adapters for alternative providers
+- [x] Authenticated action adapters for selected alternative providers
 - [ ] Live pricing/free-tier metadata fetchers with freshness timestamps
 - [x] Provider outage/health verification
 - [x] Automated preview provisioning and verification
@@ -181,8 +181,8 @@
 - [x] Existing P6 quarantine/signature/permission/integrity/approval installer reused unchanged as the activation boundary
 - [x] Exact assessed manifest/provenance snapshot persisted per installed immutable revision
 - [x] Active remote capabilities and declared entrypoints remain available offline after remote cache expiry
-- [x] `community updates check [--id ID]`
-- [x] `community updates apply-safe [--id ID]`
+- [x] `dockyard community updates check [--id ID]`
+- [x] `dockyard community updates apply-safe [--id ID]`
 - [x] Safe update application performs a fresh pinned assessment and never supplies approval automatically
 - [x] Permission expansion/trust downgrade/risk increase/quarantine/ambiguity/missing-manifest states cannot be unattended updates
 - [x] Deterministic collision, provenance, snapshot, offline-runtime, and fail-closed update tests
@@ -207,7 +207,7 @@
 - [x] Multi-provider preview environment plan/run with sequential fail-closed verification
 - [x] Preview orchestrator refuses production actions and stops after the first failed/unverified step
 - [x] Deterministic action/approval/injection/preview orchestration tests and CI smoke plans
-- [ ] Authenticated action adapters for alternative providers
+- [x] Authenticated action adapters for selected alternative providers
 - [ ] Live pricing/free-tier metadata fetchers with freshness timestamps
 - [x] Provider outage/health verification
 - [ ] Migration executors with rollback artifacts
@@ -374,10 +374,23 @@
 - [x] Operator documentation including the explicit limitation that GitHub is a public witness, not an immutable timestamping authority
 - [x] Exact final-head CI executed successfully after roadmap reconciliation
 
+## P21 — Authenticated alternative provider actions
+
+- [x] Unified action router preserves existing GitHub/Vercel/Cloudflare/Supabase action behavior while adding selected alternatives
+- [x] Neon preview branch creation with explicit project/branch and `--no-secrets` output suppression
+- [x] Firebase Hosting preview-channel and production deployment adapters with explicit project selection
+- [x] Railway deployment adapter with explicit project/environment/service, project-root path confinement, CI result, and bounded verification
+- [x] Render authenticated CLI deployment adapter with optional full Git commit pin and no secret deploy-hook URLs
+- [x] Appwrite single-function noninteractive deployment from an explicitly linked project configuration
+- [x] Every new mutation requires `--approve`; production additionally requires `--approve-production`
+- [x] Unknown/secret parameters, preview production names, unsafe paths, and short Render commits fail closed
+- [x] Current Neon/Render detection metadata and read-only auth probes aligned with their supported CLIs
+- [x] Deterministic non-network tests plus read-only CLI plan smoke workflow
+- [ ] Exact final-head CI and focused P21 plan-smoke workflow green before merge
+
 ## Next production milestones
 
 - Complete a green real-host matrix run and first guarded VS Code Marketplace publication
-- Authenticated action adapters for alternative providers
 - Live pricing/free-tier metadata fetchers with freshness timestamps
 - Migration executors with rollback artifacts
 - Safe automatic install/merge for review-first host-native project configuration without clobbering existing files
