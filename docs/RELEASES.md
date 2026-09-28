@@ -2,6 +2,14 @@
 
 DockyardOS separates normal continuous integration, package creation, Marketplace publication, and third-party host verification so a routine code contribution cannot accidentally publish or execute unrelated external tooling.
 
+## Current release checkpoint
+
+The six-host real-host matrix is now green for the exact merged source SHA `854434f26e6c084dba6d6e532ff689db60ced77f`.
+
+Real Host Matrix run `#13` / `36425594147` passed Antigravity, Gemini CLI, Codex, Claude Code, Cursor, and OpenCode. All six lanes produced retained evidence artifacts with GitHub-reported SHA-256 digests. The durable record is [`REAL_HOST_MATRIX_EVIDENCE_2026-09-28.md`](REAL_HOST_MATRIX_EVIDENCE_2026-09-28.md).
+
+The remaining explicit production release gate is the first guarded VS Code Marketplace publication after publisher/token/tag setup.
+
 ## VS Code package pipeline
 
 The extension manifest lives at `integrations/vscode/package.json`. The release workflow is `.github/workflows/vscode-extension.yml`.
@@ -28,7 +36,14 @@ Rotating or revoking the Marketplace token is an account/secret-management opera
 
 ## Real-host matrix
 
-`.github/workflows/real-host-matrix.yml` is manual-only and validates DockyardOS against currently installable public host CLIs without sending model prompts.
+`.github/workflows/real-host-matrix.yml` is **opt-in** and validates DockyardOS against currently installable public host CLIs without sending model prompts.
+
+It can run in either of two explicitly controlled ways:
+
+- manual `workflow_dispatch`, or
+- a maintainer/repository-automation push to `verify/real-host/**`.
+
+Ordinary pull requests, normal development branches, and `main` pushes do not launch the external-host matrix.
 
 Covered hosts:
 
@@ -54,29 +69,36 @@ After installation, the job verifies:
 5. project-scope DockyardOS portable/native integration can be installed,
 6. a second doctor run detects both the real host executable and Dockyard integration.
 
-For Antigravity specifically, the matrix also places the real DockyardOS workspace plugin under `.agents/plugins/dockyardos` and runs `agy plugin list`, requiring the installed CLI to discover `dockyardos`. This validates the native plugin discovery surface without starting a model conversation.
+For Antigravity specifically, the matrix performs two distinct checks:
+
+1. DockyardOS installs the full project-scope workspace plugin at `.agents/plugins/dockyardos`, and DockyardOS doctor verifies that workspace integration.
+2. The real Antigravity CLI imports the bundled DockyardOS plugin through the documented `agy plugin install <path>` surface, then `agy plugin list` must report DockyardOS.
+
+The second check intentionally uses CLI-managed plugin import rather than assuming that `agy plugin list` enumerates arbitrary workspace-plugin directories.
 
 The workflow does not authenticate to model providers or perform prompts/completions, so it validates compatibility and installation surfaces without consuming model credentials. Antigravity headless model execution is deliberately not part of this lane; Google's CLI supports headless `-p` operation, but that would require an authenticated account or Gemini API key and is unnecessary for integration discovery verification.
 
 ## Antigravity provenance
 
-P26 is based on Google's current official Antigravity CLI documentation and the live installer contract exercised by the real-host matrix:
+P26 is based on Google's current official Antigravity CLI documentation and the live installer/plugin contract exercised by the real-host matrix:
 
 - installer: `https://antigravity.google/cli/install.sh`
 - installer option used by DockyardOS CI: `--dir <path>`
 - Linux/macOS binary path used by the matrix: `~/.local/bin/agy`
-- plugin management: `agy plugin list`, `agy plugin install ...`
+- CLI-managed plugin import: `agy plugin install <path>`
+- CLI-managed plugin listing: `agy plugin list`
+- workspace project plugin location used by DockyardOS: `.agents/plugins/dockyardos`
 - headless mode: `agy -p ...`
 - native conversation continuation: `--continue` / `--conversation`
 
-DockyardOS records the downloaded installer SHA-256 in the real-host evidence artifact before execution. The workflow does not pin that checksum in source because Google's installer is a moving official release channel; each manually dispatched run is intended to record exactly what current installer it tested.
+DockyardOS records the downloaded installer SHA-256 in the real-host evidence artifact before execution. The workflow does not pin that checksum in source because Google's installer is a moving official release channel; each opt-in run is intended to record exactly what current installer it tested.
 
 ## Release checklist
 
 Before a live Marketplace publication:
 
 - normal `CI` must be green on the release commit,
-- the manually dispatched real-host matrix should be green for the intended compatibility set,
+- use a green real-host matrix for the intended compatibility set; run #13 is the durable six-host checkpoint for SHA `854434f26e6c084dba6d6e532ff689db60ced77f`,
 - extension version and release tag must match,
 - inspect the uploaded VSIX artifact,
 - confirm `VSCE_PAT` belongs to the intended Marketplace publisher,

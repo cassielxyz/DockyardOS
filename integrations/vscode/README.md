@@ -180,7 +180,13 @@ The matrix currently covers:
 
 For npm-distributed hosts, the workflow resolves the current registry version first and records that exact version before installation. For official installer-script hosts, it downloads the installer over HTTPS, records its SHA-256, and only then executes it. Each job records the executable path and reported version, then verifies DockyardOS `host inspect`, `host doctor`, and project-scope integration against that actually installed CLI. It does not send prompts to a model or require model/API credentials.
 
-Antigravity uses the verified official noninteractive installer surface, confirms `agy --version`, installs the full project workspace plugin through DockyardOS, and separately runs `agy plugin list` against a fixture workspace to prove native plugin discovery without invoking a model.
+Antigravity uses the verified official noninteractive installer surface and confirms `agy --version`. DockyardOS then installs and verifies the full project workspace plugin at `.agents/plugins/dockyardos`. Separately, the real Antigravity CLI imports the bundled plugin through `agy plugin install <path>` and `agy plugin list` must report DockyardOS. This keeps the workspace-plugin check distinct from Antigravity's CLI-managed imported-plugin list and does not invoke a model.
+
+### Verified six-host checkpoint
+
+Real Host Matrix run `#13` (`36425594147`) completed successfully on exact merged `main` SHA `854434f26e6c084dba6d6e532ff689db60ced77f`. Antigravity, Gemini CLI, Codex, Claude Code, Cursor, and OpenCode all passed executable discovery, DockyardOS integration/doctor checks, and evidence upload. The six artifact IDs and GitHub-reported SHA-256 digests are preserved in [`docs/REAL_HOST_MATRIX_EVIDENCE_2026-09-28.md`](../../docs/REAL_HOST_MATRIX_EVIDENCE_2026-09-28.md) so the checkpoint remains auditable after the 14-day Actions artifact retention period.
+
+With that compatibility gate complete, the first guarded VS Code Marketplace publication remains the explicit production release step.
 
 ## Verify
 
@@ -199,6 +205,6 @@ Normal CI verifies:
 11. Community Hub CSP/serialization/state normalization and pinned-install guardrails,
 12. scheduled-update opt-in defaults, cadence bounds, workspace-trust guard, no-approval safe-apply boundary, and scheduler file inclusion in the VSIX.
 
-The separate opt-in real-host workflow supplies evidence that the current external CLIs are still discoverable by DockyardOS.
+The separate opt-in real-host workflow supplies evidence that the current external CLIs are still discoverable by DockyardOS. The first full six-host green checkpoint is recorded above; future release candidates can repeat the same opt-in matrix when host compatibility may have changed.
 
 After installing the VSIX, open a project and run `DockyardOS: Initialize Project`, then `DockyardOS: Run Doctor`. Close/reopen VS Code and use `DockyardOS: Project Status` or `Resume Context` to confirm persistent state recovery. Use `DockyardOS: Open Community Hub` to verify the searchable manifest-first community workflow, and use `DockyardOS: Check Community Updates Now` before enabling any recurring update policy.
