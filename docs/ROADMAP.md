@@ -372,7 +372,7 @@
 - [x] Durable external P20 audit evidence without credentials/private signing material
 - [x] Deterministic P19-backed mocked-GitHub, tamper, approval, idempotency, conflict, malformed-response, and symlink-escape tests
 - [x] Operator documentation including the explicit limitation that GitHub is a public witness, not an immutable timestamping authority
-- [ ] Exact final-head CI executed successfully after roadmap reconciliation
+- [x] Exact final-head CI executed successfully after roadmap reconciliation
 
 ## Next production milestones
 
