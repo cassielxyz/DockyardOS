@@ -16,6 +16,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - host: antigravity
+            executable: agy
+            install_kind: script
+            install_source: "https://antigravity.google/cli/install.sh"
           - host: gemini-cli
             executable: gemini
             install_kind: npm
@@ -76,7 +80,11 @@ jobs:
             "$DOCKYARD_INSTALL_SOURCE" -o "$INSTALLER"
           test "$(wc -c < "$INSTALLER")" -gt 100
           sha256sum "$INSTALLER" | tee "$RUNNER_TEMP/dockyard-real-host-evidence/installer.sha256"
-          bash "$INSTALLER"
+          if [ "$DOCKYARD_REAL_HOST" = "antigravity" ]; then
+            bash "$INSTALLER" --skip-aliases --skip-path
+          else
+            bash "$INSTALLER"
+          fi
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           echo "$HOME/.local/share/bin" >> "$GITHUB_PATH"
           echo "$HOME/.cursor/bin" >> "$GITHUB_PATH"
@@ -113,6 +121,19 @@ jobs:
           if (!executableCheck || executableCheck.status !== 'pass') throw new Error('real executable stopped passing after Dockyard integration');
           if (!skillCheck || skillCheck.status !== 'pass') throw new Error('Dockyard portable host integration was not detected after install');
           NODE
+      - name: Verify Antigravity native plugin discovery without model invocation
+        if: ${{ matrix.host == 'antigravity' }}
+        run: |
+          set -euo pipefail
+          PROJECT="$(node -e "const p=require('fs').readFileSync('$RUNNER_TEMP/dockyard-real-host-evidence/init.json','utf8'); JSON.parse(p); process.stdout.write('')" 2>/dev/null || true)"
+          # The previous step ran in an isolated project. Reuse a fresh fixture so plugin verification stays local and credential-free.
+          ROOT="$PWD"
+          FIXTURE="$(mktemp -d)"
+          mkdir -p "$FIXTURE/.agents/plugins"
+          cp -R "$ROOT/integrations/antigravity/plugin" "$FIXTURE/.agents/plugins/dockyardos"
+          cd "$FIXTURE"
+          agy plugin list 2>&1 | tee "$RUNNER_TEMP/dockyard-real-host-evidence/antigravity-plugin-list.txt"
+          grep -qi 'dockyardos' "$RUNNER_TEMP/dockyard-real-host-evidence/antigravity-plugin-list.txt"
       - name: Upload exact host evidence
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
