@@ -28,10 +28,11 @@ test("Marketplace publication is manual, tag/version bound, and token gated", ()
   assert.match(marketplaceWorkflow, /vsce publish --packagePath dockyardos-vscode\.vsix/);
 });
 
-test("real-host matrix is opt-in only and covers current public CLI surfaces including Antigravity", () => {
+test("real-host matrix stays opt-in and supports a maintainer verification branch trigger", () => {
   assert.match(realHostWorkflow, /workflow_dispatch:/);
   assert.doesNotMatch(realHostWorkflow, /\n\s*pull_request:/);
-  assert.doesNotMatch(realHostWorkflow, /\n\s*push:/);
+  assert.match(realHostWorkflow, /\n\s*push:\s*\n\s*branches:\s*\n\s*- ["']verify\/real-host\/\*\*["']/);
+  assert.doesNotMatch(realHostWorkflow, /branches:\s*\[[^\]]*main/);
   assert.doesNotMatch(realHostWorkflow, /inputs\.host/);
   assert.doesNotMatch(realHostWorkflow, /^\s{4}if:.*matrix\./m);
   const expected = [
