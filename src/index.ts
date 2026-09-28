@@ -9,6 +9,7 @@ export * from "./registry-lock.js";
 export * from "./recipes.js";
 export * from "./selection.js";
 export * from "./request-mediation.js";
+export * from "./public-ad-gate.js";
 export * from "./provider-adapters.js";
 export * from "./provider-detection.js";
 export * from "./provider-planner.js";
