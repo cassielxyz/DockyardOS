@@ -33,7 +33,7 @@ export interface RegistryAnchorInput {
 export interface PublicRegistryAnchorRecord {
   schemaVersion: 1;
   kind: "dockyard-registry-publication-anchor";
-  anchoredAt: string;
+  publicationReviewedAt: string;
   registryId: string;
   sequence: number;
   keyId: string;
@@ -457,7 +457,7 @@ export async function planRegistryTransparencyAnchor(
   const record: PublicRegistryAnchorRecord = {
     schemaVersion: 1,
     kind: "dockyard-registry-publication-anchor",
-    anchoredAt: review.reviewedAt,
+    publicationReviewedAt: evidence.reviewedAt,
     registryId: evidence.registryId,
     sequence: evidence.sequence,
     keyId: evidence.keyId,
@@ -505,6 +505,7 @@ export async function planRegistryTransparencyAnchor(
       "Plan is read-only and requires a complete, locally verified P19 publication audit and signed envelope.",
       "The anchor destination must be a different public GitHub repository; anchor paths are derived and create-only.",
       "Reviewer identity and rationale are bound into approval/audit evidence but are not included in the public anchor record.",
+      "Public anchor bytes derive only from immutable P19 publication evidence, so a later re-review of the same publication remains idempotent.",
       "An exact existing anchor is idempotent; different bytes at the content-addressed path fail closed.",
     ],
   };
