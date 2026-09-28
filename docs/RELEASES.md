@@ -34,6 +34,7 @@ Covered hosts:
 
 | Dockyard host | CLI executable | Installation source |
 | --- | --- | --- |
+| Google Antigravity | `agy` | `https://antigravity.google/cli/install.sh` |
 | Gemini CLI | `gemini` | `@google/gemini-cli` |
 | OpenAI Codex | `codex` | `@openai/codex` |
 | Claude Code | `claude` | `https://claude.ai/install.sh` |
@@ -42,20 +43,32 @@ Covered hosts:
 
 For npm packages, the workflow resolves the current published version and records it before installing that exact version. For installer scripts, it downloads the script over HTTPS and records its SHA-256 before execution. This evidence is uploaded per host for 14 days.
 
+The Antigravity lane uses Google's official installer with `--skip-aliases --skip-path`, then adds the documented `~/.local/bin` location only to the current Actions job. This avoids editing CI shell profiles while still exercising the real installed `agy` binary.
+
 After installation, the job verifies:
 
 1. the expected executable is on `PATH`,
 2. the executable can report its version,
 3. DockyardOS `host inspect` detects it,
 4. DockyardOS `host doctor` passes the executable check,
-5. project-scope DockyardOS portable integration can be installed,
+5. project-scope DockyardOS portable/native integration can be installed,
 6. a second doctor run detects both the real host executable and Dockyard integration.
 
-The workflow does not authenticate to model providers or perform prompts/completions, so it validates compatibility and installation surfaces without consuming model credentials.
+For Antigravity specifically, the matrix also places the real DockyardOS workspace plugin under `.agents/plugins/dockyardos` and runs `agy plugin list`, requiring the installed CLI to discover `dockyardos`. This validates the native plugin discovery surface without starting a model conversation.
 
-## Antigravity
+The workflow does not authenticate to model providers or perform prompts/completions, so it validates compatibility and installation surfaces without consuming model credentials. Antigravity headless model execution is deliberately not part of this lane; Google's CLI supports headless `-p` operation, but that would require an authenticated account or Gemini API key and is unnecessary for integration discovery verification.
 
-DockyardOS continues to package and statically verify its Antigravity plugin. P11 does not invent an unattended public installation mechanism for Antigravity. A real-CLI CI lane should be added only after an official stable noninteractive install surface is verified.
+## Antigravity provenance
+
+P26 is based on Google's current official Antigravity CLI documentation:
+
+- installer: `https://antigravity.google/cli/install.sh`
+- default Linux/macOS binary path: `~/.local/bin/agy`
+- plugin management: `agy plugin list`, `agy plugin install ...`
+- headless mode: `agy -p ...`
+- native conversation continuation: `--continue` / `--conversation`
+
+DockyardOS records the downloaded installer SHA-256 in the real-host evidence artifact before execution. The workflow does not pin that checksum in source because Google's installer is a moving official release channel; each manually dispatched run is intended to record exactly what current installer it tested.
 
 ## Release checklist
 
