@@ -45,6 +45,7 @@ declare module "node:fs/promises" {
   export function mkdir(...args: any[]): Promise<any>;
   export function readFile(...args: any[]): Promise<any>;
   export function readdir(...args: any[]): Promise<any>;
+  export function realpath(...args: any[]): Promise<any>;
   export function rename(...args: any[]): Promise<any>;
   export function rm(...args: any[]): Promise<any>;
   export function writeFile(...args: any[]): Promise<any>;

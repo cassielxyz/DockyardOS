@@ -49,6 +49,7 @@ export * from "./community-effective-install.js";
 export * from "./community-updates.js";
 export * from "./community-contribution.js";
 export * from "./community-maintainer.js";
+export * from "./community-registry-publication.js";
 export {
   communityTreeSha256,
   assessCommunityPackage,
