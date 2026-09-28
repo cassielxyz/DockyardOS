@@ -1,5 +1,5 @@
 import { createHash, createPublicKey, randomUUID, verify as verifySignature } from "node:crypto";
-import { lstat, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { lstat, mkdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { isAbsolute, relative, resolve } from "node:path";
 import { validateCommunityRegistry } from "./community-registry.js";
 import { maintainerObjectSha256, type MaintainerReview } from "./community-maintainer.js";
@@ -178,6 +178,11 @@ function validateExpiry(value: string, reviewedAt: string): string {
   return expiresAt;
 }
 
+function insideResolvedBase(base: string, target: string): boolean {
+  const rel = relative(base, target);
+  return Boolean(rel) && !rel.startsWith("..") && !isAbsolute(rel);
+}
+
 async function loadStagedIndex(root: string, inputPath: string): Promise<LoadedIndex> {
   const projectRoot = resolve(root);
   const base = resolve(projectRoot, "registry", "remote-publications");
@@ -186,8 +191,16 @@ async function loadStagedIndex(root: string, inputPath: string): Promise<LoadedI
   if (!rel || rel.startsWith("..") || isAbsolute(rel) || !target.endsWith(".json")) {
     throw new Error("Registry publication index must be a .json file inside registry/remote-publications/.");
   }
+  const baseStat = await lstat(base);
+  if (!baseStat.isDirectory() || baseStat.isSymbolicLink()) {
+    throw new Error("Registry publication review queue must be a real non-symlink directory.");
+  }
   const stat = await lstat(target);
   if (!stat.isFile() || stat.isSymbolicLink()) throw new Error("Registry publication index must be a regular non-symlink review file.");
+  const [resolvedBase, resolvedTarget] = await Promise.all([realpath(base), realpath(target)]);
+  if (!insideResolvedBase(resolvedBase, resolvedTarget)) {
+    throw new Error("Registry publication index resolves outside registry/remote-publications/; symlinked parent paths are not allowed.");
+  }
   if (stat.size > MAX_PUBLICATION_BYTES) throw new Error("Registry publication index exceeds the 1 MiB review/publication bound.");
   const bytes = await readFile(target);
   let index: CommunityRegistryIndex;
@@ -207,10 +220,24 @@ async function loadStagedIndex(root: string, inputPath: string): Promise<LoadedI
 }
 
 async function loadPublicationTrustStore(root: string, pathOverride?: string): Promise<RegistryTrustStore> {
-  const target = pathOverride ? resolve(root, pathOverride) : resolve(root, "registry", "registry-keys.json");
+  const projectRoot = resolve(root);
+  const base = resolve(projectRoot, "registry");
+  const target = pathOverride ? resolve(projectRoot, pathOverride) : resolve(base, "registry-keys.json");
+  const rel = relative(base, target);
+  if (!rel || rel.startsWith("..") || isAbsolute(rel)) {
+    throw new Error("Registry publication trust store must stay inside the repository registry directory.");
+  }
+  const baseStat = await lstat(base);
+  if (!baseStat.isDirectory() || baseStat.isSymbolicLink()) {
+    throw new Error("Registry publication registry directory must be a real non-symlink directory.");
+  }
   const stat = await lstat(target);
   if (!stat.isFile() || stat.isSymbolicLink()) {
     throw new Error("Registry publication trust store must be a real regular non-symlink file.");
+  }
+  const [resolvedBase, resolvedTarget] = await Promise.all([realpath(base), realpath(target)]);
+  if (!insideResolvedBase(resolvedBase, resolvedTarget)) {
+    throw new Error("Registry publication trust store resolves outside the repository registry directory; symlinked parent paths are not allowed.");
   }
   return loadRegistryTrustStore(target);
 }
