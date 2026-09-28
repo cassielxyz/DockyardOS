@@ -443,6 +443,22 @@
 - [x] Deterministic workflow/host metadata regression tests
 - [x] Complete a green six-host real-host matrix run from exact merged `main` SHA `854434f26e6c084dba6d6e532ff689db60ced77f` (run #13 / `36425594147`) and preserve artifact digests in `docs/REAL_HOST_MATRIX_EVIDENCE_2026-09-28.md`
 
+## P27 — Commercial-neutral partner monetization
+
+- [x] Separate text-only `Partners` surface in the VS Code Community Hub
+- [x] Explicit `Sponsored / affiliate link` disclosure on every offer
+- [x] Commercial relationships are isolated from capability scoring, provider ranking, pricing evidence, security, agent selection, package trust, approvals, and research conclusions
+- [x] Curated brand-specific HTTPS destination allowlists enforced in extension normalization, release packaging, and the hosted partner feed
+- [x] No third-party ad JavaScript, remote ad images, tracking pixels, or DockyardOS click telemetry in the extension
+- [x] Bounded partner-feed parsing with 64 KiB limit, maximum 8 offers, and duplicate-ID rejection
+- [x] Release-time `partner-offers.json` generation from four explicitly approved public partner URL variables
+- [x] Guarded Marketplace workflow maps only partner URL secrets into VSIX packaging
+- [x] Vercel `/api/partner-offers` endpoint for centrally managed public partner links with the same destination allowlists
+- [x] Public affiliate URL configuration remains separate from deployment/API credentials
+- [x] EthicalAds and Carbon/BuySellAds documented only as optional website/docs surfaces, not extension scripts
+- [x] Operator guide records current application pages and exact GitHub/Vercel configuration names
+- [x] Deterministic runtime, allowlist, CSP, feed-isolation, disclosure, and environment-handling tests
+
 ## Next production milestone
 
 - Perform the first guarded VS Code Marketplace publication after publisher/token/tag setup
