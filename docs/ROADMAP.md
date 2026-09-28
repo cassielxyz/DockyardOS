@@ -32,8 +32,7 @@
 - [x] Persisted team/agent success-failure metrics with conservative routing adjustment
 - [x] Ed25519 community package signature verification + trusted/revoked key registry
 - [x] Local tamper-evident package transparency metadata
-- [x] Sandboxed dynamic canary runner for quarantined executable capability versions
-- [ ] External/public transparency anchoring
+- [ ] External/public transparency anchoring for package action history
 
 ## P2 — Provider connector layer
 
@@ -145,7 +144,7 @@
 - [x] Offline installed-manifest snapshots for remote package runtime continuity
 - [x] Registry contribution-validation staging/CI for third-party submissions
 - [x] Publisher key rotation/revocation UX and migration guidance
-- [ ] External/public transparency anchoring
+- [x] External/public transparency anchoring for signed remote-registry publications
 - [ ] Safe automatic install/merge for host-native project config bundles
 - [x] Rich searchable package marketplace/discovery UI in VS Code
 
@@ -169,7 +168,7 @@
 - [x] Read-only third-party contribution validation with no signing secrets in PR CI
 - [x] Maintainer promotion/signing workflow for reviewed registry envelopes
 - [x] Key rotation/revocation assistant without silently rewriting trust policy
-- [ ] External transparency anchoring
+- [x] External transparency anchoring for signed registry publications
 
 ## P8 — Effective registry and safe capability updates
 
@@ -308,7 +307,7 @@
 - [x] Deterministic unit/CLI regression coverage for plan/apply, stale state, altered after-state, staging confinement, and approval guards
 - [x] Maintainer migration/runbook documentation for onboarding, rotation, revocation, and promotion
 - [x] Signed reviewed remote-registry envelope publication pipeline
-- [ ] External/public transparency anchoring
+- [x] External/public transparency anchoring for complete signed registry publications
 
 ## P15 — Scheduled safe community updates
 
@@ -356,12 +355,28 @@
 - [x] `published-unverified` state when mutation response or post-publication verification is incomplete
 - [x] Durable external signed-envelope and audit evidence without credentials/private keys
 - [x] Deterministic mocked-GitHub regression coverage
-- [ ] External/public transparency anchoring for published registry state
+- [x] External/public transparency anchoring for published registry state
+
+## P20 — Public registry transparency anchor
+
+- [x] Accept only complete P19 publication audit/envelope evidence
+- [x] Re-verify signed-envelope bytes, registry/index/payload hashes, trusted non-revoked Ed25519 key, and signature before any witness call
+- [x] Require a different publicly readable GitHub repository as the witness target
+- [x] Derive a bounded content-addressed witness path from registry id, sequence, and exact signed publication SHA-256
+- [x] Keep public witness bytes deterministic from immutable P19 evidence; keep P20 reviewer identity/rationale private
+- [x] Read-only plan with exact approval SHA-256 and explicit `--approve-anchor` mutation boundary
+- [x] Create-only GitHub Contents API mutation with exact-existing idempotency and conflicting-existing fail-closed behavior
+- [x] Strict public Base64/blob metadata validation and exact post-create byte/blob verification
+- [x] `anchored-unverified` state and exit code 2 when accepted mutation evidence cannot be fully verified
+- [x] Realpath confinement for P19 audit/envelope and canonical repository trust-store inputs
+- [x] Durable external P20 audit evidence without credentials/private signing material
+- [x] Deterministic P19-backed mocked-GitHub, tamper, approval, idempotency, conflict, malformed-response, and symlink-escape tests
+- [x] Operator documentation including the explicit limitation that GitHub is a public witness, not an immutable timestamping authority
+- [ ] Exact final-head CI executed successfully after roadmap reconciliation
 
 ## Next production milestones
 
 - Complete a green real-host matrix run and first guarded VS Code Marketplace publication
-- External/public transparency anchoring for signed remote-registry publications
 - Authenticated action adapters for alternative providers
 - Live pricing/free-tier metadata fetchers with freshness timestamps
 - Migration executors with rollback artifacts
