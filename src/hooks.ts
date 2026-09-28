@@ -2,9 +2,12 @@ import type { CheckpointState, OperatingMode, SessionState } from "./types.js";
 import { createCheckpoint, loadLatestCheckpoint, maybeCheckpoint, writeSession } from "./checkpoints.js";
 import { evaluateTool } from "./policy.js";
 import { findWorkspaceRoot, initProject, loadProject } from "./project.js";
+import { mediateAgentRequest, requestMediationAgentText } from "./request-mediation.js";
 import { loadTeamRun } from "./team-state.js";
 
 interface HookPayload {
+  invocationNum?: number;
+  initialNumSteps?: number;
   conversationId?: string;
   workspacePaths?: string[];
   transcriptPath?: string;
@@ -57,12 +60,30 @@ export async function handlePreInvocation(payload: HookPayload): Promise<Record<
     updatedAt: new Date().toISOString(),
   };
   await writeSession(project.id, session);
+
+  const mediation = await mediateAgentRequest(project.root, {
+    ...(payload.transcriptPath ? { transcriptPath: payload.transcriptPath } : {}),
+    ...(payload.conversationId ? { conversationId: payload.conversationId } : {}),
+    host: "antigravity",
+  }).catch((error) => ({
+    error: error instanceof Error ? error.message : String(error),
+  }));
+
   const latest = await loadLatestCheckpoint(project.root).catch(() => undefined);
   const team = await loadTeamRun(project.root).catch(() => undefined);
   const state = latest?.state;
   const teamPlan = team?.composition.phases.find((phase) => phase.id === team.currentPhase);
   const teamRuntime = team?.phases.find((phase) => phase.id === team.currentPhase);
+  const mediationLines = "error" in mediation
+    ? [
+        `DockyardOS request mediation degraded safely: ${mediation.error}`,
+        "Preserve recovered project state. Before substantial implementation, route the request through DockyardOS rather than answering as an isolated generic coding task.",
+        "Do not ask the user to open the extension; the agent is responsible for using DockyardOS.",
+      ]
+    : requestMediationAgentText(mediation);
   const lines = [
+    ...mediationLines,
+    "",
     `DockyardOS project: ${project.name}`,
     `Operating mode: ${project.mode}`,
     latest ? `Recovered checkpoint: ${latest.id} (${latest.reason}, ${latest.createdAt})` : "No prior checkpoint. Treat this as the first DockyardOS session for the project.",
@@ -81,9 +102,9 @@ export async function handlePreInvocation(payload: HookPayload): Promise<Record<
     team?.status === "blocked" ? "Team run is blocked. Resolve the recorded blocker before advancing phases." : "",
     team && team.status !== "completed" && team.status !== "cancelled"
       ? "Continue only the active DockyardOS team phase. Use compact handoffs and phase-relevant context; do not reactivate every specialist or replay the full previous transcript. Independent reviewers must remain separate from implementation writers."
-      : "Continue from recovered state; do not redo completed work. For substantial work, use DockyardOS team composition before implementation.",
+      : "Continue from recovered state; do not redo completed work. DockyardOS request mediation determines whether a new team is needed before implementation.",
     "Before major phase transitions, record structured state. DockyardOS approval hooks remain authoritative for risky actions.",
-  ].filter(Boolean);
+  ].filter((line) => line !== "");
   return { injectSteps: [{ ephemeralMessage: lines.join("\n") }] };
 }
 

@@ -1,15 +1,28 @@
 ---
 name: dockyardos
-description: Resume and orchestrate software projects with DockyardOS persistent checkpoints, phase-aware teams, capability selection, provider planning, approval gates, security verification, and safely installed community capabilities. Use for substantial coding/project work when DockyardOS is initialized.
+description: Resume and orchestrate software projects with DockyardOS persistent checkpoints, request mediation, phase-aware teams, capability selection, provider planning, approval gates, security verification, and safely installed community capabilities. Use for project work when DockyardOS is initialized.
 ---
 
 # DockyardOS portable skill
 
-DockyardOS is the source of durable project state. Host conversation memory is supplementary and must not replace DockyardOS checkpoints/team state.
+DockyardOS is the source of durable project state and execution routing. Host conversation memory is supplementary and must not replace DockyardOS checkpoints/team state.
+
+## Agent-native behavior
+
+The user should not have to open a DockyardOS panel or manually invoke DockyardOS after initialization. On hosts without Antigravity's native `PreInvocation` hook, treat every substantive project request as requiring DockyardOS mediation before implementation:
+
+1. recover current DockyardOS context/team state;
+2. route the user's actual request through DockyardOS capability selection;
+3. start a bounded team only when the request is substantial and no active team already exists;
+4. use selected skills/agents/tools/MCPs/providers/security gates instead of a generic one-model workflow;
+5. surface one concise `DockyardOS active — ...` line in the first user-visible progress reply for a new quick/team request;
+6. never tell the user to open the extension for normal execution.
+
+On MCP-capable hosts prefer `dockyard_context`, `dockyard_recommend`, and `dockyard_team_start`. Otherwise use the equivalent CLI commands.
 
 ## Resume first
 
-At the start of substantial work in an initialized project:
+At the start of project work in an initialized project:
 
 ```bash
 dockyard status --json
@@ -24,7 +37,7 @@ If no active team exists and the request is substantial:
 dockyard team start --task "<concise requirement>" --stack <detected,stack> --json
 ```
 
-For a tiny reversible change, avoid creating unnecessary agents.
+For a tiny reversible change, avoid creating unnecessary agents but still use DockyardOS's selected fast path and approval policy.
 
 ## Phase contract
 

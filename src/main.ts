@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { findWorkspaceRoot } from "./project.js";
+import { handleInitCommand } from "./init-command.js";
 import { handleTeamCommand } from "./team-command.js";
 import { handleHostCommand } from "./host-command.js";
 import { handleCommunityCommand } from "./community-command.js";
@@ -13,7 +14,9 @@ import { handleSecurityEvidenceCommand } from "./security-command.js";
 const [, , command, ...args] = process.argv;
 
 try {
-  if (command === "team") {
+  if (command === "init") {
+    await handleInitCommand(findWorkspaceRoot(), args, args.includes("--json"));
+  } else if (command === "team") {
     await handleTeamCommand(findWorkspaceRoot(), args, args.includes("--json"));
   } else if (command === "host") {
     await handleHostCommand(findWorkspaceRoot(), args, args.includes("--json"));
