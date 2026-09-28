@@ -51,10 +51,11 @@ export const providerAdapters: ProviderAdapterDefinition[] = [
     displayName: "Neon",
     cliCommands: ["neon", "neonctl"],
     configMarkers: [".neon", "neon.json"],
+    authProbe: { command: "neon", args: ["projects", "list", "--output", "json"], successReadiness: "authenticated", timeoutMs: 10_000 },
     capabilities: ["postgres", "serverless-postgres"],
     environments: ["preview", "production"],
     freeTierCheck: "live-required",
-    notes: ["The current CLI is `neon`; `neonctl` remains a compatibility alias."],
+    notes: ["The current CLI is `neon`; `neonctl` remains a compatibility alias. DockyardOS never passes Neon API keys as CLI arguments."],
   },
   {
     id: "firebase",
@@ -91,11 +92,13 @@ export const providerAdapters: ProviderAdapterDefinition[] = [
   {
     id: "render",
     displayName: "Render",
-    cliCommands: [],
+    cliCommands: ["render"],
     configMarkers: ["render.yaml", "render.yml"],
+    authProbe: { command: "render", args: ["workspaces", "--output", "json"], successReadiness: "authenticated", timeoutMs: 10_000 },
     capabilities: ["web-hosting", "services", "postgres", "cron"],
     environments: ["preview", "production"],
     freeTierCheck: "live-required",
+    notes: ["Render CLI authentication is verified through a read-only workspace listing; DockyardOS does not use secret deploy-hook URLs for P21 actions."],
   },
   {
     id: "railway",
