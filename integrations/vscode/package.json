@@ -101,7 +101,7 @@
         },
         "dockyardOS.dashboard.openOnStartup": {
           "type": "boolean",
-          "default": false,
+          "default": true,
           "description": "Open the DockyardOS Control Center when a trusted project workspace starts."
         },
         "dockyardOS.communityUpdates.enabled": {
