@@ -151,9 +151,9 @@ This distinction is expected VS Code behavior; the extension does not self-regis
 
 ### GitHub prerelease
 
-DockyardOS **v0.1.0 Preview 1** is available from GitHub Releases:
+DockyardOS **v0.1.1 Preview 2** is available from GitHub Releases:
 
-[Download DockyardOS v0.1.0 Preview 1](https://github.com/cassielxyz/DockyardOS/releases/tag/v0.1.0-preview.1)
+[Download DockyardOS v0.1.1 Preview 2](https://github.com/cassielxyz/DockyardOS/releases/tag/v0.1.1-preview.2)
 
 1. Download `dockyardos-vscode.vsix`.
 2. Optionally verify it with the attached `dockyardos-vscode.vsix.sha256`.
@@ -162,13 +162,13 @@ DockyardOS **v0.1.0 Preview 1** is available from GitHub Releases:
 5. Open a trusted project and use the DockyardOS Control Center.
 6. Click **Auto Initialize** for one-click project/host setup.
 
-Preview 1 is the source-development edition and does not pretend the stable public gate is configured.
+Preview 2 is the source-development edition. It fixes Auto Initialize when `agy` is unavailable, adds the Antigravity IDE-global fallback, and adds the DockyardOS Activity Bar home. It does not pretend the stable public gate is configured.
 
 ### Stable official-public release
 
 The guarded `.github/workflows/vscode-extension.yml` workflow remains the versioned stable packaging path. It tests Dockyard Core, stamps the required official-public release gate, packages the VSIX, asserts that the universal dashboard/theme/background and bundled Core are inside the package, and uploads the VSIX artifact before any optional Marketplace publication.
 
-Stable `v0.1.0` still requires a real `DOCKYARD_PUBLIC_CONTROL_URL` plus the existing Marketplace publisher/token/tag gates. Those requirements are deliberately not bypassed.
+Stable `v0.1.1` still requires a real `DOCKYARD_PUBLIC_CONTROL_URL` plus the existing Marketplace publisher/token/tag gates. Those requirements are deliberately not bypassed.
 
 ## Build locally
 
