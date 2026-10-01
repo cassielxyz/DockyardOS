@@ -2,7 +2,10 @@ import { access } from "node:fs/promises";
 import { resolve } from "node:path";
 import { activeCommunityPackages } from "./community-runtime.js";
 import { loadEffectiveCommunityRegistry } from "./community-effective-registry.js";
+import { writeJsonAtomic } from "./fs-utils.js";
 import { commandExists } from "./process.js";
+import { projectDirectory, projectIdForRoot } from "./project.js";
+import { getCandidate } from "./registry.js";
 import type { Candidate, SelectionResult } from "./types.js";
 
 export type CapabilityFulfillmentStatus =
@@ -69,12 +72,24 @@ const TOOL_EXECUTABLES: Record<string, string[]> = {
   "typescript-language-service": ["tsc"],
 };
 
-function selectedCandidates(selection: SelectionResult): Candidate[] {
+function selectionCandidates(selection: SelectionResult): Candidate[] {
   const byId = new Map<string, Candidate>();
-  for (const item of [...selection.skills, ...selection.agents, ...selection.tools, ...selection.mcps]) {
-    byId.set(item.candidate.id, item.candidate);
-  }
+  for (const item of [...selection.skills, ...selection.agents, ...selection.tools, ...selection.mcps]) byId.set(item.candidate.id, item.candidate);
   return [...byId.values()];
+}
+
+function candidatesForIds(candidateIds: string[]): { candidates: Candidate[]; unknown: string[] } {
+  const candidates: Candidate[] = [];
+  const unknown: string[] = [];
+  const seen = new Set<string>();
+  for (const id of candidateIds) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const candidate = getCandidate(id);
+    if (candidate) candidates.push(candidate);
+    else unknown.push(id);
+  }
+  return { candidates, unknown };
 }
 
 async function localExecutable(root: string, executable: string): Promise<boolean> {
@@ -105,8 +120,7 @@ function baseEntry(candidate: Candidate): Omit<CapabilityFulfillmentEntry, "stat
   };
 }
 
-export async function planCapabilityFulfillment(root: string, selection: SelectionResult): Promise<CapabilityFulfillmentPlan> {
-  const warnings: string[] = [];
+async function planForCandidates(root: string, candidates: Candidate[], warnings: string[] = []): Promise<CapabilityFulfillmentPlan> {
   const registry = await loadEffectiveCommunityRegistry();
   const effectiveIds = new Set(registry.packages.map((item) => item.manifest.id));
   const conflictIds = new Set(registry.conflicts.filter((item) => item.kind === "package").map((item) => item.id));
@@ -119,7 +133,7 @@ export async function planCapabilityFulfillment(root: string, selection: Selecti
   const activeById = new Map(active.map((item) => [item.id, item]));
 
   const entries: CapabilityFulfillmentEntry[] = [];
-  for (const candidate of selectedCandidates(selection)) {
+  for (const candidate of candidates) {
     const base = baseEntry(candidate);
 
     if (candidate.source.revisionStrategy === "bundled" || candidate.source.type === "dockyard") {
@@ -203,6 +217,24 @@ export async function planCapabilityFulfillment(root: string, selection: Selecti
     blocked: ids("blocked"),
     warnings,
   };
+}
+
+export async function planCapabilityFulfillment(root: string, selection: SelectionResult): Promise<CapabilityFulfillmentPlan> {
+  return planForCandidates(root, selectionCandidates(selection));
+}
+
+export async function planCapabilityFulfillmentForIds(root: string, candidateIds: string[]): Promise<CapabilityFulfillmentPlan> {
+  const { candidates, unknown } = candidatesForIds(candidateIds);
+  const warnings = unknown.map((id) => `Selected capability is missing from the current DockyardOS registry: ${id}`);
+  return planForCandidates(root, candidates, warnings);
+}
+
+export async function persistCapabilityFulfillment(root: string, plan: CapabilityFulfillmentPlan, requestHash?: string): Promise<string> {
+  const directory = resolve(projectDirectory(projectIdForRoot(root)), "capability-fulfillment");
+  const path = resolve(directory, requestHash && /^[a-f0-9]{64}$/i.test(requestHash) ? `${requestHash.toLowerCase()}.json` : "latest.json");
+  await writeJsonAtomic(path, { ...plan, ...(requestHash ? { requestHash } : {}) });
+  await writeJsonAtomic(resolve(directory, "latest.json"), { ...plan, ...(requestHash ? { requestHash } : {}) });
+  return path;
 }
 
 export function fulfillmentSummary(plan: CapabilityFulfillmentPlan): Record<string, unknown> {
