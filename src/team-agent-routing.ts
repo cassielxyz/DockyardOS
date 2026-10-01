@@ -8,7 +8,7 @@ export interface AgentRoutingRule {
 
 const specialist = (phases: TeamPhaseId[], leadPhases?: TeamPhaseId[]): AgentRoutingRule => ({ phases, role: "specialist", ...(leadPhases ? { leadPhases } : {}) });
 const implementer = (phases: TeamPhaseId[]): AgentRoutingRule => ({ phases, role: "implementer" });
-const reviewer = (phases: TeamPhaseId[]): AgentRoutingRule => ({ phases, role: "reviewer" });
+const reviewer = (phases: TeamPhaseId[], leadPhases?: TeamPhaseId[]): AgentRoutingRule => ({ phases, role: "reviewer", ...(leadPhases ? { leadPhases } : {}) });
 
 export const agentRouting: Record<string, AgentRoutingRule> = {
   // Original core roster.
@@ -32,21 +32,21 @@ export const agentRouting: Record<string, AgentRoutingRule> = {
   "accessibility-agent": reviewer(["verification"]),
   "performance-agent": reviewer(["verification"]),
   "api-reviewer-agent": reviewer(["verification"]),
-  "security-reviewer-agent": reviewer(["security"]),
-  "release-verifier-agent": reviewer(["release"]),
+  "security-reviewer-agent": reviewer(["security"], ["security"]),
+  "release-verifier-agent": reviewer(["release"], ["release"]),
   "observability-agent": specialist(["verification", "release"]),
   "docs-agent": specialist(["release"]),
 
   // Product, discovery and architecture.
-  "product-manager-agent": specialist(["discovery", "planning"]),
+  "product-manager-agent": specialist(["discovery", "planning"], ["discovery"]),
   "domain-analyst-agent": specialist(["discovery"]),
-  "solution-architect-agent": specialist(["architecture", "planning"]),
-  "cloud-architect-agent": specialist(["architecture", "planning"]),
-  "data-architect-agent": specialist(["architecture", "planning"]),
-  "ai-architect-agent": specialist(["architecture", "planning"]),
-  "mcp-architect-agent": specialist(["architecture", "planning"]),
+  "solution-architect-agent": specialist(["architecture", "planning"], ["architecture"]),
+  "cloud-architect-agent": specialist(["architecture", "planning"], ["architecture"]),
+  "data-architect-agent": specialist(["architecture", "planning"], ["architecture"]),
+  "ai-architect-agent": specialist(["architecture", "planning"], ["architecture"]),
+  "mcp-architect-agent": specialist(["architecture", "planning"], ["architecture"]),
   "threat-model-agent": specialist(["architecture", "security"]),
-  "migration-planner-agent": specialist(["planning"]),
+  "migration-planner-agent": specialist(["planning"], ["planning"]),
 
   // Implementation specialists.
   "sdk-agent": implementer(["implementation"]),
@@ -103,18 +103,27 @@ export const agentRouting: Record<string, AgentRoutingRule> = {
   // Operations and release specialists.
   "incident-agent": specialist(["discovery", "implementation", "verification"]),
   "sre-agent": specialist(["architecture", "verification", "release"]),
-  "release-manager-agent": specialist(["release"]),
+  "release-manager-agent": specialist(["release"], ["release"]),
   "technical-writer-agent": specialist(["release"]),
 };
 
 export function routingForAgent(agentId: string): AgentRoutingRule {
-  return agentRouting[agentId] ?? implementer(["implementation"]);
+  const routing = agentRouting[agentId];
+  if (!routing) throw new Error(`Agent has no explicit phase routing: ${agentId}`);
+  return routing;
 }
 
 export function validateAgentRouting(agentIds: string[]): string[] {
   const errors: string[] = [];
   const known = new Set(agentIds);
-  for (const id of Object.keys(agentRouting)) if (!known.has(id)) errors.push(`agent routing references missing candidate: ${id}`);
+  for (const [id, routing] of Object.entries(agentRouting)) {
+    if (!known.has(id)) errors.push(`agent routing references missing candidate: ${id}`);
+    if (!routing.phases.length) errors.push(`agent routing has no phases: ${id}`);
+    if (new Set(routing.phases).size !== routing.phases.length) errors.push(`agent routing has duplicate phases: ${id}`);
+    for (const leadPhase of routing.leadPhases ?? []) {
+      if (!routing.phases.includes(leadPhase)) errors.push(`agent lead phase is not an assigned phase: ${id}/${leadPhase}`);
+    }
+  }
   for (const id of agentIds) if (!agentRouting[id]) errors.push(`agent candidate has no explicit phase routing: ${id}`);
   return errors;
 }
