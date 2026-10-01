@@ -3,6 +3,8 @@ import { catalog as baseCatalog } from "./catalog.js";
 import { expandedCatalog } from "./catalog-expanded.js";
 import { connectorCatalog } from "./catalog-connectors.js";
 import { expandedProviders } from "./providers-expanded.js";
+import { validateRecipes } from "./recipes.js";
+import { validateAgentRouting } from "./team-agent-routing.js";
 
 const RISK_RANK: Record<Candidate["risk"], number> = { low: 0, medium: 1, high: 2 };
 const CONTEXT_RANK: Record<Candidate["contextCost"], number> = { tiny: 0, small: 1, medium: 2, large: 3 };
@@ -183,6 +185,9 @@ export function validateCatalog(): string[] {
     if (!provider.capabilities.length) errors.push(`${provider.id}: provider has no capabilities`);
     if (!provider.connectionKinds.length) errors.push(`${provider.id}: provider has no connection kinds`);
   }
+
+  errors.push(...validateRecipes());
+  errors.push(...validateAgentRouting(catalog.filter((candidate) => candidate.kind === "agent").map((candidate) => candidate.id)));
 
   if (catalog.length < 140) errors.push(`mega-registry has too few candidates: ${catalog.length}`);
   if (categoryNames.length < 35) errors.push(`mega-registry has too few categories: ${categoryNames.length}`);
