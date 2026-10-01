@@ -1,85 +1,92 @@
 # DockyardOS Current Checkpoint
 
-This file is the durable human-readable continuation checkpoint for DockyardOS. Before starting new work, verify `main` still contains the recorded verified code state, then inspect newer commits/PRs and continue from the newest verified production milestone instead of replaying completed work.
+This file is the durable human-readable continuation checkpoint for DockyardOS. Before starting new work, verify `main` still contains the recorded verified code state, inspect newer commits/PRs/CI, and continue from the newest verified production milestone instead of replaying completed work.
 
-For the complete cross-agent continuation, parallel-work, verification, documentation, safety, and implementation contract, read [`AGENT_CONTINUATION_GUIDE.md`](AGENT_CONTINUATION_GUIDE.md) before making changes.
+For the complete continuation contract, read [`AGENT_CONTINUATION_GUIDE.md`](AGENT_CONTINUATION_GUIDE.md).
 
 ## Checkpoint identity
 
 - Checkpoint date: 2026-10-02
 - Repository: `cassielxyz/DockyardOS`
-- Verified completed code state: `67416f90d2ddc923b48506d4d04f8f3679c31d48`
-- Checkpoint PR: `#53`
-- Last completed milestone: **P37 — Connections Center + creative UI orchestration**
-- Previous completed milestone: **P36 — verified host/MCP connection readiness**
-- Next continuation milestone: **P38 — first guarded live VS Code Marketplace publication**
-- P38 status: **externally gated; do not publish without explicit production approval and required publisher/token/tag setup**
+- Verified completed code state: `0467a1900a93b79764f5d57c6c062382255e4f42`
+- Checkpoint PR: `#55`
+- Last completed milestone: **P38 — universal DockyardOS control center and README rebuild**
+- Previous completed milestone: **P37 — Connections Center + creative UI orchestration**
+- Next continuation milestone: **P39 — first guarded live VS Code Marketplace publication**
+- P39 status: **externally gated; do not publish without explicit production approval and required publisher/token/tag setup**
 
-The verified code-state SHA is the milestone anchor. A later documentation-only checkpoint commit/merge is expected and does not make the checkpoint stale by itself.
+The verified code-state SHA is the production anchor. Later checkpoint-only documentation or test-reliability commits do not make the production checkpoint stale by themselves.
 
-## Completed state through P37
+## Completed state through P38
 
-P0–P37 are already implemented/merged. Do not restart them unless current repository evidence shows a regression.
+P0–P38 are implemented/merged. Do not restart them unless current repository evidence shows a regression.
 
-### P36 — verified host/MCP connection readiness
+### P38 — universal Control Center
 
-Merged through PR `#50` as `6adb94e6ba714cf5e1457c2258fe0e5ec226031b`.
+Merged through PR `#54` as `0467a1900a93b79764f5d57c6c062382255e4f42` from exact verified head `7ebc685c19f6174768cdb75a1c41e23e1d10ef39`.
 
-P36 established active-host/session MCP connection evidence while preserving the existing fail-closed provider/MCP readiness and approval model. Configured/installed metadata is not treated as current-session connectivity, evidence is process/host scoped, credentials are not persisted, and connection evidence never grants mutation approval.
+P38 changed the VS Code extension from a mostly command-driven surface into a UI-first universal control center:
 
-### P37 — Connections Center + creative UI orchestration
+- Dashboard / Project / Agents / Skills / Connections / Memory / Workflows / Security / Community / Settings navigation;
+- shared Dockyard dark graffiti-inspired design system across the new dashboard, Connections Center and Community Hub;
+- repository-owned fixed background asset under `integrations/vscode/assets/dockyard-graffiti-bg.svg`;
+- one-click **Auto Initialize** that can initialize project state, plan/install the selected default host integration, run Doctor and refresh state;
+- automatic initialization remains opt-in and requires a trusted workspace;
+- the Control Center opens on trusted-workspace startup by default but can be disabled in Settings;
+- UI-backed settings for default host, default Safe/Balanced/Autonomous mode, Auto Initialize behavior, host scope, startup behavior and safe community update options;
+- dashboard action and setting messages are allowlisted; Dockyard Core process execution stays `shell:false`;
+- the production Connections/Community trust boundaries remain intact;
+- a new focused `P38 Universal Control Center` workflow packages a prebuilt preview VSIX and verifies dashboard/theme/background files are inside it;
+- the guarded official VS Code release workflow now also asserts the universal UI files before producing a release VSIX;
+- the root README was completely rebuilt as a product guide rather than a milestone/status list;
+- custom README SVG assets now explain architecture, continuity, workflow, capability stack, connections, creative UI, verification/refactor and cross-host behavior.
 
-Merged through PR `#52` as `67416f90d2ddc923b48506d4d04f8f3679c31d48` from exact verified head `2666a31bfd6d08ef772fddbcb5b38e7179461b4f`.
+## P38 verification evidence
 
-P37 adds the missing production user-facing connector/setup surface and the creative web-design intelligence layer:
+Exact verified P38 PR head: `7ebc685c19f6174768cdb75a1c41e23e1d10ef39`.
 
-- VS Code now exposes `DockyardOS: Connections` through a composed extension entrypoint;
-- the initial Connections view is local-only and reuses existing provider readiness probes;
-- `Verify connections` performs the existing bounded read-only live provider checks;
-- provider setup/login actions resolve from extension-owned allowlists rather than accepting commands or URLs from webview messages;
-- supported login actions open a visible provider CLI terminal only after modal user confirmation;
-- provider passwords, OAuth tokens, API keys, and MCP credentials are not captured or written into Dockyard project/checkpoint state;
-- missing CLIs show setup guidance instead of a misleading login action;
-- MCP setup metadata is not called connected; P36 host-session evidence remains the authority for current-session connection truth;
-- `inspo-mcp` is a first-class low-risk, read-only/no-login design-reference MCP backed by `https://inspomcp.dev/mcp`;
-- `taste-skill` (`Leonxlnx/taste-skill`) and `awesome-design-skills` (`bergside/awesome-design-skills`) are first-class creative capability entries with explicit provenance/trust metadata;
-- natural-language inference recognizes design inspiration, visual references, premium/creative UI, anti-slop/design-taste intent, and generic-AI-look avoidance;
-- the `creative-web-ui` recipe routes relevant work through Inspo/Taste/Awesome Design plus UI UX Pro Max, Vercel Web Design Guidelines, shadcn/ui, Playwright, accessibility, performance, and independent QA review;
-- the root README and VS Code README now include normal-user VSIX installation, Connections setup, Antigravity host integration, and current pre-Marketplace vs post-Marketplace installation paths;
-- the focused P37 workflow builds Core, runs deterministic P37 tests, verifies real capability selection, checks extension JavaScript, packages a VSIX, and asserts the new UI/creative runtime files are present inside the package.
+Real GitHub-hosted runner evidence on that exact head:
 
-## P37 verification evidence
+- **CI** — run `36924832259` — success; full repository tests plus provider/security/community/host/VSIX smoke checks passed.
+- **P37 Connections and Creative UI** — run `36924832204` — success; previous Connections/creative-routing regressions stayed green after the UI rebuild.
+- **P38 Universal Control Center** — run `36924832447` — success; Core build, focused P37/P38 tests, extension JavaScript checks, universal preview VSIX packaging/content assertions and artifact upload passed.
 
-Exact verified P37 PR head: `2666a31bfd6d08ef772fddbcb5b38e7179461b4f`.
+Produced preview artifact:
 
-The following GitHub Actions runs passed on that exact head and executed real steps:
+- artifact: `dockyardos-universal-preview-vsix`
+- artifact id: `11193271894`
+- GitHub digest: `sha256:9ffa31eebf6a4861dc01e35c97c530ed9792753bc97bf1ee02c57adc16d13407`
+- retention expiry reported by GitHub: `2026-12-30T20:53:07Z`
 
-- CI — run `36919036448` — **success**; the complete repository test/build/security/provider/host/VSIX regression suite passed.
-- P37 Connections and Creative UI — run `36919036348` — **success**; Core build, deterministic P37 tests, registry validation, creative recommendation smoke, extension syntax checks, VSIX packaging, and package-content assertions all passed.
+PR `#54` had no submitted reviews or unresolved review threads at the final merge check.
 
-Earlier P37 focused run `36918844913` failed in `actions/setup-node` before any project code executed because npm caching was enabled while the repository intentionally has no root lockfile. This was classified as a **workflow-definition failure**, not a code/test failure and not a runner-allocation failure. The workflow was aligned with the repository's existing `npm install --ignore-scripts` strategy and reran successfully.
+### Checkpoint validation flake found and repaired
 
-PR `#52` had no submitted reviews or unresolved review threads at the final merge check. `main` remained at the expected P36 checkpoint commit before the exact-head merge.
+The first CI attempt on checkpoint PR `#55` (run `36925314926`) failed one unrelated ad-control tamper test while 295/296 tests passed. The exact rerun passed the full test step, which isolated the problem as test nondeterminism rather than a P38 production regression.
 
-## P37 safety/truthfulness invariants
+The test had been mutating the final Base64URL signature character. Because the final character can contain unused trailing encoding bits, some different final characters can decode to the same signature bytes. The checkpoint branch now mutates the first significant signature character instead, making the tamper test deterministic. This is a test-reliability fix, not a change to the verified P38 production feature state.
 
-Future changes must preserve all of the following:
+## P38 safety/truthfulness invariants
 
-- the Connections Center is not a credential vault;
-- local provider inspection remains free of remote account calls;
-- live verification remains read-only and never implies authorization to mutate an external service;
-- provider login/setup commands and setup URLs come only from trusted extension-side definitions, not webview-supplied strings;
-- credentials/tokens are never written into project/checkpoint metadata;
-- configured/installed MCP metadata is not treated as verified connected state;
-- P36 launcher-bound host-session MCP evidence remains authoritative for current-session MCP readiness;
-- a no-login MCP such as Inspo may be ready to configure without being falsely reported as connected;
-- third-party skill catalogue presence does not bypass Dockyard package/readiness/trust policy;
-- design references are inputs for original synthesis, not authorization to clone a reference site;
-- connection readiness never grants deployment, database, DNS, Git, destructive, or production approval.
+Future changes must preserve these rules:
 
-## P38 continuation target — first guarded Marketplace publication
+- the Universal Control Center is a UI over the existing Dockyard state/policy engine, not a second source of truth;
+- Auto Initialize requires workspace trust;
+- automatic workspace initialization stays explicit opt-in;
+- interactive Auto Initialize confirms host integration changes before applying them;
+- dashboard webview actions and settings remain allowlisted;
+- webview messages must not become arbitrary shell commands, URLs or configuration keys;
+- Dockyard Core child processes remain `shell:false`;
+- the fixed visual background remains local/repository-owned rather than a remote runtime dependency;
+- provider credentials and MCP secrets are not written into project/checkpoint state;
+- installed/configured MCP metadata is not treated as active-session connectivity;
+- provider/MCP readiness never grants mutation approval;
+- Community Hub quarantine/signature/immutable-revision/hash/approval boundaries remain enforced;
+- Creative UI reference use remains original synthesis, not permission to clone another site.
 
-The next explicit production gate is the first live Visual Studio Marketplace listing/publication using the already-implemented guarded release path.
+## P39 continuation target — first guarded Marketplace publication
+
+The next explicit production gate is the first live Visual Studio Marketplace listing/publication through the already-implemented guarded release path.
 
 Current release facts:
 
@@ -87,34 +94,35 @@ Current release facts:
 - publisher: `cassielxyz`;
 - current extension version: `0.1.0`;
 - expected release tag: `v0.1.0`;
-- Marketplace publication exists only on manual `workflow_dispatch`;
+- Marketplace publication is manual `workflow_dispatch` only;
 - publication requires `publish_marketplace=true`;
 - `release_tag` must exactly equal `v<extension version>`;
-- the checked-out publication commit must actually be pointed to by that exact tag;
-- repository Actions must contain a valid `VSCE_PAT` secret authorized for the Marketplace publisher;
-- the token must remain outside source, checkpoints, issue/PR bodies, logs, and project metadata.
+- the checked-out publication commit must actually be pointed to by the exact tag;
+- repository Actions must contain a valid `VSCE_PAT` authorized for the Marketplace publisher;
+- the token must remain outside source, checkpoints, issues/PR text, logs and project metadata.
 
-P38 is a **production external mutation**. Do not create the release tag or dispatch Marketplace publication merely because the extension is packaged and CI is green. Before live publication, perform read-only preflight, verify the exact intended publication commit/version, verify required external publisher/token setup without exposing secrets, and obtain explicit production publication approval.
+P39 is a production external mutation. Do not create the release tag or dispatch Marketplace publication merely because the universal VSIX is packaged and green. Perform read-only preflight first and require explicit production publication approval for the exact release version/commit.
 
-If those prerequisites or explicit approval are unavailable, preserve P38 as externally blocked rather than weakening the release workflow or fabricating success.
+If the external publisher/token/tag requirements or approval are unavailable, preserve P39 as blocked rather than weakening the release workflow or claiming publication succeeded.
 
 ## Resume procedure
 
 When the user says `continue`:
 
-1. inspect `main`, recent commits, open PRs, branches, roadmap and CI;
-2. verify `67416f90d2ddc923b48506d4d04f8f3679c31d48` is still in current `main` ancestry;
-3. inspect any production commits after that anchor before choosing the next milestone;
-4. ignore checkpoint-only documentation commits when deciding whether production work advanced;
-5. do not recreate P37 Connections/creative-UI work unless regression evidence requires it;
-6. if Marketplace publication already occurred, verify the exact tag, commit, workflow and public listing before marking P38 complete;
-7. if P38 is not published, perform only safe read-only preflight until all external setup and explicit production approval are present;
-8. keep runner-allocation failures (`runner_id: 0`, zero steps), workflow-definition failures, external-provider failures, and real code/test failures as separate classifications;
-9. after the next merged or externally completed production milestone, update both this file and `docs/checkpoints/latest.json` immediately.
+1. inspect `main`, recent commits, open PRs, branches, roadmap, checkpoint and CI;
+2. verify `0467a1900a93b79764f5d57c6c062382255e4f42` remains in current `main` ancestry;
+3. inspect production commits after that anchor before choosing work;
+4. ignore checkpoint-only documentation/test-reliability commits when deciding whether production work advanced;
+5. do not recreate P38 dashboard/README/Auto Initialize work unless regression evidence requires it;
+6. preserve the new universal UI and VSIX package assertions;
+7. if Marketplace publication already occurred, verify exact tag/commit/workflow/listing evidence before marking P39 complete;
+8. if P39 is not published, perform only safe read-only preflight until external setup and explicit approval are present;
+9. distinguish runner-allocation, workflow-definition, flaky-test, external-provider and real code/test failures;
+10. update both this file and `docs/checkpoints/latest.json` after the next completed production milestone.
 
 ## Checkpoint maintenance rule
 
-Every completed production milestone must update the durable checkpoint in the same continuation cycle. A chat summary is not sufficient. The repo-level checkpoint must record at minimum:
+Every completed production milestone must record at least:
 
 - verified completed code-state SHA;
 - last completed milestone;
