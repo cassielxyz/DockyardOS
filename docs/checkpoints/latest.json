@@ -2,7 +2,8 @@
   "schemaVersion": 1,
   "repository": "cassielxyz/DockyardOS",
   "checkpointDate": "2026-10-01",
-  "mainSha": "a35bd6b4725f9cc29eb1c3fe0ad75dd7f15d8c3a",
+  "verifiedCodeSha": "a35bd6b4725f9cc29eb1c3fe0ad75dd7f15d8c3a",
+  "checkpointPr": 48,
   "lastCompletedMilestone": {
     "id": "P35",
     "title": "runtime connection readiness",
@@ -39,7 +40,8 @@
   },
   "resumeRules": [
     "inspect main, branches, pull requests, roadmap and CI before continuing",
-    "newer verified repository state overrides this checkpoint",
+    "treat verifiedCodeSha as the completed code-state anchor; checkpoint-only documentation commits after it do not make the checkpoint stale",
+    "if newer production code milestones exist, they override this checkpoint and the checkpoint must be repaired before continuing",
     "do not replay P0-P35 unless regression evidence requires it",
     "update this checkpoint immediately after the next merged production milestone"
   ]
