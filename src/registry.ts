@@ -1,26 +1,62 @@
 import type { Candidate, ProviderDefinition, UpdateChannel } from "./types.js";
-import { catalog, categoryNames } from "./catalog.js";
+import { catalog as baseCatalog } from "./catalog.js";
+import { expandedCatalog } from "./catalog-expanded.js";
+import { connectorCatalog } from "./catalog-connectors.js";
+import { expandedProviders } from "./providers-expanded.js";
 
-export { catalog, categoryNames };
+function mergeCandidates(layers: Array<{ name: string; candidates: Candidate[] }>): Candidate[] {
+  const merged: Candidate[] = [];
+  const seen = new Map<string, string>();
+  for (const layer of layers) {
+    for (const candidate of layer.candidates) {
+      const prior = seen.get(candidate.id);
+      if (prior) throw new Error(`DockyardOS mega-registry candidate id collision: ${candidate.id} (${prior} vs ${layer.name})`);
+      seen.set(candidate.id, layer.name);
+      merged.push(candidate);
+    }
+  }
+  return merged;
+}
+
+function mergeProviders(base: ProviderDefinition[], extra: ProviderDefinition[]): ProviderDefinition[] {
+  const merged: ProviderDefinition[] = [];
+  const seen = new Set<string>();
+  for (const provider of [...base, ...extra]) {
+    if (seen.has(provider.id)) throw new Error(`DockyardOS provider id collision: ${provider.id}`);
+    seen.add(provider.id);
+    merged.push(provider);
+  }
+  return merged;
+}
+
+export const catalog: Candidate[] = mergeCandidates([
+  { name: "base", candidates: baseCatalog },
+  { name: "expanded-official-and-agents", candidates: expandedCatalog },
+  { name: "connectors-and-tools", candidates: connectorCatalog },
+]);
+
+export const categoryNames = [...new Set(catalog.map((candidate) => candidate.category))].sort();
 export const candidates = catalog;
 
-export const providers: ProviderDefinition[] = [
+const baseProviders: ProviderDefinition[] = [
   { id: "github", displayName: "GitHub", capabilities: ["source", "issues", "pull-requests", "ci", "releases"], connectionKinds: ["mcp", "api", "cli"], tags: ["git", "automation"], requiresLiveAvailabilityCheck: false },
   { id: "vercel", displayName: "Vercel", capabilities: ["web-hosting", "preview-deployments", "serverless", "domains"], connectionKinds: ["mcp", "api", "cli"], tags: ["web", "nextjs"], requiresLiveAvailabilityCheck: true },
   { id: "cloudflare", displayName: "Cloudflare", capabilities: ["dns", "cdn", "waf", "ddos", "edge-functions", "web-hosting", "object-storage", "edge-database", "database"], connectionKinds: ["api", "cli", "mcp"], tags: ["security", "edge", "web"], requiresLiveAvailabilityCheck: true },
   { id: "supabase", displayName: "Supabase", capabilities: ["postgres", "auth", "object-storage", "realtime", "edge-functions", "database"], connectionKinds: ["mcp", "api", "cli", "sdk"], tags: ["baas", "postgres"], requiresLiveAvailabilityCheck: true },
-  { id: "neon", displayName: "Neon", capabilities: ["postgres", "serverless-postgres", "database"], connectionKinds: ["api", "cli", "sdk"], tags: ["database", "postgres"], requiresLiveAvailabilityCheck: true },
+  { id: "neon", displayName: "Neon", capabilities: ["postgres", "serverless-postgres", "database"], connectionKinds: ["mcp", "api", "cli", "sdk"], tags: ["database", "postgres"], requiresLiveAvailabilityCheck: true },
   { id: "firebase", displayName: "Firebase", capabilities: ["auth", "document-database", "database", "object-storage", "functions", "web-hosting", "realtime"], connectionKinds: ["api", "cli", "sdk"], tags: ["baas", "google", "web"], requiresLiveAvailabilityCheck: true },
   { id: "appwrite", displayName: "Appwrite", capabilities: ["auth", "database", "object-storage", "functions", "realtime"], connectionKinds: ["api", "sdk", "cli"], tags: ["baas", "self-hostable"], requiresLiveAvailabilityCheck: true },
   { id: "pocketbase", displayName: "PocketBase", capabilities: ["auth", "database", "object-storage", "realtime", "sqlite"], connectionKinds: ["api", "sdk", "cli"], tags: ["self-hostable", "lightweight"], requiresLiveAvailabilityCheck: true },
   { id: "render", displayName: "Render", capabilities: ["web-hosting", "services", "postgres", "database", "cron"], connectionKinds: ["api", "cli"], tags: ["hosting", "backend"], requiresLiveAvailabilityCheck: true },
   { id: "railway", displayName: "Railway", capabilities: ["web-hosting", "services", "databases", "database", "postgres"], connectionKinds: ["api", "cli"], tags: ["hosting", "backend"], requiresLiveAvailabilityCheck: true },
   { id: "turso", displayName: "Turso", capabilities: ["sqlite", "edge-database", "database"], connectionKinds: ["api", "cli", "sdk"], tags: ["database", "edge"], requiresLiveAvailabilityCheck: true },
-  { id: "sentry", displayName: "Sentry", capabilities: ["errors", "performance", "tracing"], connectionKinds: ["api", "sdk"], tags: ["observability"], requiresLiveAvailabilityCheck: true },
+  { id: "sentry", displayName: "Sentry", capabilities: ["errors", "performance", "tracing", "observability"], connectionKinds: ["api", "sdk"], tags: ["observability"], requiresLiveAvailabilityCheck: true },
   { id: "flyio", displayName: "Fly.io", capabilities: ["web-hosting", "services", "containers", "edge-deployments"], connectionKinds: ["api", "cli"], tags: ["hosting", "containers"], requiresLiveAvailabilityCheck: true },
   { id: "cloud-run", displayName: "Google Cloud Run", capabilities: ["containers", "services", "serverless", "functions"], connectionKinds: ["api", "cli", "sdk"], tags: ["google", "containers"], requiresLiveAvailabilityCheck: true },
-  { id: "github-pages", displayName: "GitHub Pages", capabilities: ["static-hosting"], connectionKinds: ["api", "cli"], tags: ["github", "static"], requiresLiveAvailabilityCheck: true }
+  { id: "github-pages", displayName: "GitHub Pages", capabilities: ["static-hosting"], connectionKinds: ["api", "cli"], tags: ["github", "static"], requiresLiveAvailabilityCheck: true },
 ];
+
+export const providers: ProviderDefinition[] = mergeProviders(baseProviders, expandedProviders);
 
 const CHANNEL_RANK: Record<UpdateChannel, number> = { stable: 0, recommended: 1, edge: 2, dev: 3 };
 
@@ -64,9 +100,22 @@ export function validateCatalog(): string[] {
     if (!candidate.category) errors.push(`${candidate.id}: missing category`);
     if (!candidate.capabilities.length) errors.push(`${candidate.id}: no capabilities`);
     if (!candidate.source.locator) errors.push(`${candidate.id}: missing source locator`);
+    if (!candidate.hosts.length) errors.push(`${candidate.id}: no supported hosts`);
     if (candidate.maturity < 0 || candidate.maturity > 100) errors.push(`${candidate.id}: maturity out of range`);
     if (candidate.maintenance < 0 || candidate.maintenance > 100) errors.push(`${candidate.id}: maintenance out of range`);
+    if (candidate.source.revisionStrategy === "pin-on-install" && candidate.source.type === "website") errors.push(`${candidate.id}: website source cannot use pin-on-install`);
   }
-  if (categoryNames.length < 20) errors.push(`catalog has too few categories: ${categoryNames.length}`);
+
+  const providerIds = new Set<string>();
+  for (const provider of providers) {
+    if (providerIds.has(provider.id)) errors.push(`duplicate provider id: ${provider.id}`);
+    providerIds.add(provider.id);
+    if (!provider.capabilities.length) errors.push(`${provider.id}: provider has no capabilities`);
+    if (!provider.connectionKinds.length) errors.push(`${provider.id}: provider has no connection kinds`);
+  }
+
+  if (catalog.length < 140) errors.push(`mega-registry has too few candidates: ${catalog.length}`);
+  if (categoryNames.length < 35) errors.push(`mega-registry has too few categories: ${categoryNames.length}`);
+  if (providers.length < 40) errors.push(`provider registry has too few providers: ${providers.length}`);
   return errors;
 }
