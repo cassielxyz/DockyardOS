@@ -69,8 +69,8 @@ test("P32 readiness now treats curated skills as package-backed installable cand
 
 test("unmaterialized discovery sources remain discovery-only", async () => {
   const { root } = await setup();
-  const plan = await dockyard.planCapabilityFulfillmentForIds(root, ["agent-reach"]);
-  const entry = plan.entries.find((item) => item.candidateId === "agent-reach");
+  const plan = await dockyard.planCapabilityFulfillmentForIds(root, ["skills-sh-directory"]);
+  const entry = plan.entries.find((item) => item.candidateId === "skills-sh-directory");
   assert.equal(entry?.status, "discovery-only");
   assert.equal(entry?.automaticAction, "none");
 });

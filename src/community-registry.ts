@@ -5,12 +5,15 @@ import type { CommunityPackageManifest, CommunityRegistryIndex } from "./communi
 const ID = /^[a-z0-9][a-z0-9._-]{1,79}$/;
 const REPOSITORY = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const GIT_REF = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$/;
+const EXECUTABLE = /^[A-Za-z0-9._+-]{1,80}$/;
 const HOSTS = new Set(["antigravity", "gemini-cli", "codex", "claude-code", "cursor", "opencode", "universal"]);
 const PERMISSIONS = new Set(["filesystem-read", "filesystem-write", "shell", "network", "browser", "git-write", "secrets", "database-read", "database-write", "deployment", "dns"]);
 const KINDS = new Set(["skill", "tool", "agent", "mcp", "provider", "workflow"]);
 const TRUST = new Set(["official", "maintainer", "community", "dockyard"]);
 const RISK = new Set(["low", "medium", "high"]);
 const CHANNEL = new Set(["stable", "recommended", "edge", "dev"]);
+const DEFAULT_REGISTRY_URL = new URL("../registry/community.json", import.meta.url);
+const CURATED_OVERLAY_URL = new URL("../registry/curated-packages.json", import.meta.url);
 
 function safeRelativePath(value: string): boolean {
   if (!value || value.includes("\\") || value.startsWith("/") || value.startsWith("~")) return false;
@@ -51,6 +54,19 @@ export function validateCommunityPackage(pkg: CommunityPackageManifest): string[
   }
   for (const permission of pkg.permissions) if (!PERMISSIONS.has(permission)) errors.push(`${pkg.id}: unknown permission ${permission}`);
   for (const host of pkg.hosts) if (!HOSTS.has(host)) errors.push(`${pkg.id}: unknown host ${host}`);
+  if (pkg.runtimeRequirements) {
+    const executables = pkg.runtimeRequirements.executables ?? [];
+    if (executables.length > 16) errors.push(`${pkg.id}: runtime executable requirement count exceeds 16`);
+    const seen = new Set<string>();
+    for (const executable of executables) {
+      if (!EXECUTABLE.test(executable)) errors.push(`${pkg.id}: invalid runtime executable ${executable}`);
+      if (seen.has(executable)) errors.push(`${pkg.id}: duplicate runtime executable ${executable}`);
+      seen.add(executable);
+    }
+    for (const note of pkg.runtimeRequirements.notes ?? []) {
+      if (!note.trim() || note.length > 1000 || /[\u0000-\u001f\u007f]/.test(note)) errors.push(`${pkg.id}: invalid runtime requirement note`);
+    }
+  }
   if ((pkg.maxFiles ?? 1000) < 1 || (pkg.maxFiles ?? 1000) > 5000) errors.push(`${pkg.id}: maxFiles must be between 1 and 5000`);
   if ((pkg.maxBytes ?? 20 * 1024 * 1024) < 1024 || (pkg.maxBytes ?? 20 * 1024 * 1024) > 100 * 1024 * 1024) errors.push(`${pkg.id}: maxBytes must be between 1 KiB and 100 MiB`);
   if (pkg.signature) {
@@ -82,9 +98,36 @@ export function validateCommunityRegistry(index: CommunityRegistryIndex): string
   return errors;
 }
 
+async function readRegistry(target: string): Promise<CommunityRegistryIndex> {
+  return JSON.parse(await readFile(target, "utf8")) as CommunityRegistryIndex;
+}
+
+function mergeBundledRegistries(base: CommunityRegistryIndex, overlay: CommunityRegistryIndex): CommunityRegistryIndex {
+  const updatedAt = Date.parse(overlay.updatedAt) > Date.parse(base.updatedAt) ? overlay.updatedAt : base.updatedAt;
+  return {
+    schemaVersion: 1,
+    updatedAt,
+    packages: [...base.packages, ...overlay.packages],
+    discoverySources: [...base.discoverySources, ...overlay.discoverySources],
+  };
+}
+
 export async function loadCommunityRegistry(path?: string): Promise<CommunityRegistryIndex> {
-  const target = path ?? fileURLToPath(new URL("../registry/community.json", import.meta.url));
-  const parsed = JSON.parse(await readFile(target, "utf8")) as CommunityRegistryIndex;
+  if (path) {
+    const parsed = await readRegistry(path);
+    const errors = validateCommunityRegistry(parsed);
+    if (errors.length) throw new Error(`Invalid DockyardOS community registry: ${errors.join("; ")}`);
+    return parsed;
+  }
+
+  const base = await readRegistry(fileURLToPath(DEFAULT_REGISTRY_URL));
+  let parsed = base;
+  try {
+    const curated = await readRegistry(fileURLToPath(CURATED_OVERLAY_URL));
+    parsed = mergeBundledRegistries(base, curated);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
   const errors = validateCommunityRegistry(parsed);
   if (errors.length) throw new Error(`Invalid DockyardOS community registry: ${errors.join("; ")}`);
   return parsed;

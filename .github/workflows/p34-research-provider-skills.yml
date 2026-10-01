@@ -1,0 +1,57 @@
+name: P34 Research and Provider Skill Assessment
+
+on:
+  pull_request:
+    paths:
+      - "registry/curated-packages.json"
+      - "src/community-registry.ts"
+      - "src/community-types.ts"
+      - "src/capability-fulfillment.ts"
+      - "test/p34-research-provider-skills.test.mjs"
+      - ".github/workflows/p34-research-provider-skills.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  assess:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --ignore-scripts
+      - run: npm run build
+      - name: Run focused P34 regression tests
+        run: node --test test/p34-research-provider-skills.test.mjs
+      - name: Resolve and statically assess P34 curated bundles
+        shell: bash
+        run: |
+          export DOCKYARD_HOME="$(mktemp -d)"
+          node --input-type=module <<'NODE'
+          import { resolveAssessEffectiveCommunityPackage } from './dist/index.js';
+
+          const ids = ['agent-reach', 'supabase-skill', 'cloudflare-skill'];
+          for (const id of ids) {
+            const resolved = await resolveAssessEffectiveCommunityPackage(id);
+            const { decision, scan, permissionExpansion, reasons } = resolved.assessment;
+            console.log(JSON.stringify({
+              id,
+              revision: resolved.resolution.revision,
+              contentSha256: resolved.resolution.contentSha256,
+              decision,
+              files: resolved.resolution.files,
+              bytes: resolved.resolution.bytes,
+              canary: scan.canary.status,
+              missingEntrypoints: scan.entrypointsMissing,
+              permissionExpansion,
+              reasons,
+            }));
+            if (decision !== 'approval-required') throw new Error(`${id}: expected approval-required, got ${decision}`);
+            if (scan.entrypointsMissing.length) throw new Error(`${id}: missing entrypoints: ${scan.entrypointsMissing.join(', ')}`);
+            if (permissionExpansion.length) throw new Error(`${id}: inferred permissions exceed manifest: ${permissionExpansion.join(', ')}`);
+          }
+          NODE

@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-10-01T16:40:00.000Z",
+  "packages": [
+    {
+      "schemaVersion": 1,
+      "id": "agent-reach",
+      "displayName": "Agent Reach",
+      "version": "rolling-main",
+      "kind": "skill",
+      "description": "Multi-platform internet research router for web, social, video, jobs, GitHub, RSS, and other read-oriented sources.",
+      "source": { "type": "github", "repository": "Panniantong/Agent-Reach", "ref": "main", "subdirectory": "agent_reach/skill" },
+      "publisher": { "id": "panniantong", "name": "Agent Reach", "signatureRequired": false },
+      "license": "MIT",
+      "trust": "maintainer",
+      "risk": "high",
+      "permissions": ["filesystem-read", "filesystem-write", "shell", "network", "browser", "secrets"],
+      "capabilities": ["research", "web-search", "social-research", "github-research", "jobs-research", "video-research"],
+      "tags": ["research", "internet", "multi-platform", "read-only-routing"],
+      "hosts": ["antigravity", "gemini-cli", "codex", "claude-code", "cursor", "opencode", "universal"],
+      "channel": "recommended",
+      "entrypoints": [{ "type": "skill", "path": "SKILL_en.md" }],
+      "runtimeRequirements": {
+        "executables": ["agent-reach"],
+        "notes": ["Platform-specific backends and login state are discovered by `agent-reach doctor --json`; package activation alone does not prove those optional channels are usable."]
+      },
+      "maxFiles": 128,
+      "maxBytes": 4194304
+    },
+    {
+      "schemaVersion": 1,
+      "id": "supabase-skill",
+      "displayName": "Supabase Agent Skill",
+      "version": "rolling-main",
+      "kind": "skill",
+      "description": "Official Supabase guidance for Database, Auth, Storage, Edge Functions, Realtime, RLS, migrations, CLI, MCP, and debugging.",
+      "source": { "type": "github", "repository": "supabase/agent-skills", "ref": "main", "subdirectory": "skills/supabase" },
+      "publisher": { "id": "supabase", "name": "Supabase", "signatureRequired": false },
+      "license": "MIT",
+      "trust": "official",
+      "risk": "high",
+      "permissions": ["filesystem-read", "filesystem-write", "shell", "network", "browser", "secrets", "database-read", "database-write"],
+      "capabilities": ["supabase", "auth", "database", "storage", "edge-functions", "realtime", "rls", "migrations", "debugging"],
+      "tags": ["supabase", "postgres", "backend", "auth", "mcp"],
+      "hosts": ["antigravity", "gemini-cli", "codex", "claude-code", "cursor", "opencode", "universal"],
+      "channel": "recommended",
+      "entrypoints": [{ "type": "skill", "path": "SKILL.md" }],
+      "runtimeRequirements": {
+        "notes": ["Some workflows require Supabase CLI or an authenticated Supabase MCP connection; readiness of those external tools/connections must be verified separately for the selected task."]
+      },
+      "maxFiles": 400,
+      "maxBytes": 6291456
+    },
+    {
+      "schemaVersion": 1,
+      "id": "cloudflare-skill",
+      "displayName": "Cloudflare Platform",
+      "version": "rolling-main",
+      "kind": "skill",
+      "description": "Official Cloudflare platform-selection and implementation guidance across Workers, storage, networking, security, DNS, AI, and deployment products.",
+      "source": { "type": "github", "repository": "cloudflare/skills", "ref": "main", "subdirectory": "skills/cloudflare" },
+      "publisher": { "id": "cloudflare", "name": "Cloudflare", "signatureRequired": false },
+      "license": "Apache-2.0",
+      "trust": "official",
+      "risk": "high",
+      "permissions": ["filesystem-read", "filesystem-write", "shell", "network", "secrets", "deployment", "dns"],
+      "capabilities": ["cloudflare", "workers", "storage", "edge", "security", "dns", "provider-selection", "deployment"],
+      "tags": ["cloudflare", "workers", "edge", "security", "hosting"],
+      "hosts": ["antigravity", "gemini-cli", "codex", "claude-code", "cursor", "opencode", "universal"],
+      "channel": "recommended",
+      "entrypoints": [{ "type": "skill", "path": "SKILL.md" }],
+      "runtimeRequirements": {
+        "notes": ["Implementation paths may require the current Cloudflare `cf` CLI or Wrangler plus authenticated provider access. The skill package alone does not prove deployment/DNS authority."]
+      },
+      "maxFiles": 1200,
+      "maxBytes": 16777216
+    }
+  ],
+  "discoverySources": []
+}

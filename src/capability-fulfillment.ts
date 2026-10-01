@@ -2,6 +2,7 @@ import { access } from "node:fs/promises";
 import { resolve } from "node:path";
 import { activeCommunityPackages } from "./community-runtime.js";
 import { loadEffectiveCommunityRegistry } from "./community-effective-registry.js";
+import type { CommunityPackageManifest } from "./community-types.js";
 import { writeJsonAtomic } from "./fs-utils.js";
 import { commandExists } from "./process.js";
 import { projectDirectory, projectIdForRoot } from "./project.js";
@@ -44,9 +45,6 @@ export interface CapabilityFulfillmentPlan {
   warnings: string[];
 }
 
-// Catalogue ids and installable package ids are intentionally separate namespaces.
-// Aliases must be explicit so a similarly named remote package can never silently
-// become executable just because the selector chose a catalogue candidate.
 const COMMUNITY_PACKAGE_ALIASES: Record<string, string> = {
   superpowers: "superpowers-core-skills",
 };
@@ -104,6 +102,14 @@ async function localExecutable(root: string, executable: string): Promise<boolea
   return false;
 }
 
+async function missingPackageRuntime(root: string, manifest: CommunityPackageManifest): Promise<string[]> {
+  const missing: string[] = [];
+  for (const executable of manifest.runtimeRequirements?.executables ?? []) {
+    if (!await localExecutable(root, executable)) missing.push(executable);
+  }
+  return missing;
+}
+
 function packageIdFor(candidate: Candidate, effectiveIds: Set<string>): string | undefined {
   const explicit = COMMUNITY_PACKAGE_ALIASES[candidate.id];
   if (explicit) return effectiveIds.has(explicit) ? explicit : undefined;
@@ -123,6 +129,7 @@ function baseEntry(candidate: Candidate): Omit<CapabilityFulfillmentEntry, "stat
 async function planForCandidates(root: string, candidates: Candidate[], warnings: string[] = []): Promise<CapabilityFulfillmentPlan> {
   const registry = await loadEffectiveCommunityRegistry();
   const effectiveIds = new Set(registry.packages.map((item) => item.manifest.id));
+  const manifestById = new Map(registry.packages.map((item) => [item.manifest.id, item.manifest]));
   const conflictIds = new Set(registry.conflicts.filter((item) => item.kind === "package").map((item) => item.id));
   let active = [] as Awaited<ReturnType<typeof activeCommunityPackages>>;
   try {
@@ -145,14 +152,28 @@ async function planForCandidates(root: string, candidates: Candidate[], warnings
     if (packageId) {
       const activePackage = activeById.get(packageId);
       if (activePackage) {
-        entries.push({
-          ...base,
-          packageId,
-          activeRevision: activePackage.revision,
-          status: "ready",
-          reason: "A verified immutable community-package revision is active and passed runtime integrity verification.",
-          automaticAction: "none",
-        });
+        const manifest = manifestById.get(packageId);
+        const missingRuntime = manifest ? await missingPackageRuntime(root, manifest) : [];
+        if (missingRuntime.length) {
+          entries.push({
+            ...base,
+            packageId,
+            activeRevision: activePackage.revision,
+            executable: missingRuntime[0],
+            status: "missing-runtime",
+            reason: `The package revision is installed and integrity-verified, but required runtime executable(s) are unavailable: ${missingRuntime.join(", ")}.`,
+            automaticAction: "none",
+          });
+        } else {
+          entries.push({
+            ...base,
+            packageId,
+            activeRevision: activePackage.revision,
+            status: "ready",
+            reason: "A verified immutable community-package revision is active, passed runtime integrity verification, and all declared runtime executables are available.",
+            automaticAction: "none",
+          });
+        }
       } else if (conflictIds.has(packageId)) {
         entries.push({ ...base, packageId, status: "blocked", reason: "The installable package id is ambiguous/conflicted in the effective registry and cannot be activated.", automaticAction: "none" });
       } else {
@@ -160,7 +181,7 @@ async function planForCandidates(root: string, candidates: Candidate[], warnings
           ...base,
           packageId,
           status: "installable-unassessed",
-          reason: "A collision-safe package manifest exists, but the exact upstream revision still needs quarantine assessment before activation.",
+          reason: "A collision-safe package manifest exists, but the exact upstream revision still needs quarantine assessment before activation. Runtime prerequisites are rechecked after activation.",
           automaticAction: "assess-install",
         });
       }
