@@ -3,7 +3,7 @@
   "repository": "cassielxyz/DockyardOS",
   "checkpointDate": "2026-10-02",
   "verifiedCodeSha": "67416f90d2ddc923b48506d4d04f8f3679c31d48",
-  "checkpointPr": null,
+  "checkpointPr": 53,
   "lastCompletedMilestone": {
     "id": "P37",
     "title": "Connections Center + creative UI orchestration",
