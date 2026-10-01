@@ -12,6 +12,8 @@ const KINDS = new Set(["skill", "tool", "agent", "mcp", "provider", "workflow"])
 const TRUST = new Set(["official", "maintainer", "community", "dockyard"]);
 const RISK = new Set(["low", "medium", "high"]);
 const CHANNEL = new Set(["stable", "recommended", "edge", "dev"]);
+const CONNECTION_KINDS = new Set(["provider", "mcp"]);
+const PROVIDER_MINIMUM_READINESS = new Set(["configured", "authenticated", "linked"]);
 const DEFAULT_REGISTRY_URL = new URL("../registry/community.json", import.meta.url);
 const CURATED_OVERLAY_URL = new URL("../registry/curated-packages.json", import.meta.url);
 
@@ -57,12 +59,40 @@ export function validateCommunityPackage(pkg: CommunityPackageManifest): string[
   if (pkg.runtimeRequirements) {
     const executables = pkg.runtimeRequirements.executables ?? [];
     if (executables.length > 16) errors.push(`${pkg.id}: runtime executable requirement count exceeds 16`);
-    const seen = new Set<string>();
+    const seenExecutables = new Set<string>();
     for (const executable of executables) {
       if (!EXECUTABLE.test(executable)) errors.push(`${pkg.id}: invalid runtime executable ${executable}`);
-      if (seen.has(executable)) errors.push(`${pkg.id}: duplicate runtime executable ${executable}`);
-      seen.add(executable);
+      if (seenExecutables.has(executable)) errors.push(`${pkg.id}: duplicate runtime executable ${executable}`);
+      seenExecutables.add(executable);
     }
+
+    const connections = pkg.runtimeRequirements.connections ?? [];
+    if (connections.length > 16) errors.push(`${pkg.id}: runtime connection requirement count exceeds 16`);
+    const seenConnections = new Set<string>();
+    for (const connection of connections) {
+      const kind = (connection as { kind?: unknown }).kind;
+      const id = (connection as { id?: unknown }).id;
+      const required = (connection as { required?: unknown }).required;
+      if (typeof kind !== "string" || !CONNECTION_KINDS.has(kind)) {
+        errors.push(`${pkg.id}: invalid runtime connection kind ${String(kind)}`);
+        continue;
+      }
+      if (typeof id !== "string" || !ID.test(id)) errors.push(`${pkg.id}: invalid runtime connection id ${String(id)}`);
+      if (typeof required !== "boolean") errors.push(`${pkg.id}: runtime connection ${String(id)} must declare required=true|false`);
+      const key = `${kind}:${String(id)}`;
+      if (seenConnections.has(key)) errors.push(`${pkg.id}: duplicate runtime connection ${key}`);
+      seenConnections.add(key);
+
+      if (kind === "provider") {
+        const minimum = (connection as { minimumReadiness?: unknown }).minimumReadiness;
+        if (typeof minimum !== "string" || !PROVIDER_MINIMUM_READINESS.has(minimum)) {
+          errors.push(`${pkg.id}: provider runtime connection ${String(id)} must use minimumReadiness configured|authenticated|linked`);
+        }
+      } else if ("minimumReadiness" in (connection as object)) {
+        errors.push(`${pkg.id}: MCP runtime connection ${String(id)} must not declare provider minimumReadiness`);
+      }
+    }
+
     for (const note of pkg.runtimeRequirements.notes ?? []) {
       if (!note.trim() || note.length > 1000 || /[\u0000-\u001f\u007f]/.test(note)) errors.push(`${pkg.id}: invalid runtime requirement note`);
     }
