@@ -3,9 +3,9 @@ const PROVIDER_DEFINITIONS = Object.freeze({
   vercel: { setupUrl: "https://vercel.com/docs/cli", loginCommand: "vercel login" },
   cloudflare: { setupUrl: "https://developers.cloudflare.com/workers/wrangler/install-and-update/", loginCommand: "wrangler login" },
   supabase: { setupUrl: "https://supabase.com/docs/guides/local-development/cli/getting-started", loginCommand: "supabase login" },
-  neon: { setupUrl: "https://neon.com/docs/reference/neon-cli", loginCommand: "neon auth" },
+  neon: { setupUrl: "https://neon.com/docs/reference/neon-cli" },
   firebase: { setupUrl: "https://firebase.google.com/docs/cli", loginCommand: "firebase login" },
-  appwrite: { setupUrl: "https://appwrite.io/docs/tooling/command-line/installation", loginCommand: "appwrite login" },
+  appwrite: { setupUrl: "https://appwrite.io/docs/tooling/command-line/installation" },
   render: { setupUrl: "https://render.com/docs/cli" },
   railway: { setupUrl: "https://docs.railway.com/guides/cli", loginCommand: "railway login" },
   flyio: { setupUrl: "https://fly.io/docs/flyctl/install/", loginCommand: "fly auth login" },
@@ -62,12 +62,13 @@ function normalizeConnections(providerProbeValue, options = {}) {
     const id = String(probe?.providerId || "");
     const definition = PROVIDER_DEFINITIONS[id] || {};
     const status = providerStatus(probe);
+    const installed = probe?.installed === true;
     return {
       id,
       name: String(probe?.displayName || id || "Unknown provider"),
       kind: "provider",
       status,
-      installed: probe?.installed === true,
+      installed,
       configured: probe?.configured === true,
       authenticated: probe?.authenticated === true,
       linked: probe?.linked === true,
@@ -78,8 +79,8 @@ function normalizeConnections(providerProbeValue, options = {}) {
         detail: String(signal?.detail || ""),
       })),
       setupUrl: definition.setupUrl || null,
-      canLogin: Boolean(definition.loginCommand),
-      loginCommand: definition.loginCommand || null,
+      canLogin: Boolean(installed && definition.loginCommand),
+      loginCommand: installed && definition.loginCommand ? definition.loginCommand : null,
     };
   }).filter((item) => item.id);
 
