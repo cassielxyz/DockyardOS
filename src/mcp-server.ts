@@ -28,6 +28,16 @@ function mcpHost(value: typeof HOSTS[number]): HostId {
   return value === "vscode" ? "universal" : value;
 }
 
+function launcherHost(): HostId {
+  const index = process.argv.indexOf("--host");
+  if (index < 0) return "universal";
+  const value = process.argv[index + 1];
+  if (!value || !HOSTS.includes(value as typeof HOSTS[number])) {
+    throw new Error(`dockyard-mcp --host must be one of: ${HOSTS.join(", ")}.`);
+  }
+  return mcpHost(value as typeof HOSTS[number]);
+}
+
 function result(value: unknown) {
   return { content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }] };
 }
@@ -67,6 +77,7 @@ async function publicGate(value?: string) {
 
 serveStdio(() => {
   const server = new McpServer({ name: "dockyardos", version: "0.1.0" });
+  const activeHost = launcherHost();
   const sessionConnections = new HostSessionConnectionRegistry();
 
   server.registerTool(
@@ -97,20 +108,20 @@ serveStdio(() => {
   server.registerTool(
     "dockyard_connection_attest",
     {
-      description: "Record process-scoped evidence that the active host successfully used a specific MCP connection in this session. Call this only after a successful target-MCP tool/resource interaction. It stores no credentials, expires when this dockyard-mcp process exits, and never grants mutation or production approval.",
+      description: "Record process-scoped evidence that this launcher-bound active host successfully used a specific MCP connection in this session. Call this only after a successful target-MCP tool/resource interaction. It stores no credentials, expires when this dockyard-mcp process exits, and never grants mutation or production approval.",
       inputSchema: z.object({
-        host: z.enum(HOSTS).default("universal"),
         mcpId: mcpConnectionId,
         observation: z.enum(["tool-call-success", "resource-read-success", "prompt-use-success"]),
         workspace,
       }),
     },
-    async ({ host, mcpId, observation, workspace: value }) => {
+    async ({ mcpId, observation, workspace: value }) => {
       const gated = await publicGate(value);
       if (gated.blocked) return gated.blocked;
       await requireProject(gated.root);
-      const evidence = sessionConnections.attestMcp(mcpHost(host), mcpId, observation);
+      const evidence = sessionConnections.attestMcp(activeHost, mcpId, observation);
       return result({
+        host: activeHost,
         evidence,
         persistence: "memory-only",
         expires: "dockyard-mcp-process-exit",
@@ -123,23 +134,21 @@ serveStdio(() => {
   server.registerTool(
     "dockyard_fulfillment",
     {
-      description: "Evaluate selected capability readiness for the active host session. Installed/configured state alone is insufficient for MCP readiness; only MCP ids explicitly attested after successful use in this dockyard-mcp process are treated as session-verified. Provider readiness still uses DockyardOS read-only/live probes and no result grants mutation approval.",
+      description: "Evaluate selected capability readiness for this launcher-bound active host session. Installed/configured state alone is insufficient for MCP readiness; only MCP ids explicitly attested after successful use in this dockyard-mcp process are treated as session-verified. Provider readiness still uses DockyardOS read-only/live probes and no result grants mutation approval.",
       inputSchema: z.object({
         capabilityIds: z.array(z.string().min(1).max(128)).min(1).max(64),
-        host: z.enum(HOSTS).default("universal"),
         workspace,
       }),
     },
-    async ({ capabilityIds, host, workspace: value }) => {
+    async ({ capabilityIds, workspace: value }) => {
       const gated = await publicGate(value);
       if (gated.blocked) return gated.blocked;
       await requireProject(gated.root);
-      const normalizedHost = mcpHost(host);
       const base = await planCapabilityFulfillmentForIds(gated.root, capabilityIds);
-      const evidence = sessionConnections.listMcp(normalizedHost);
-      const plan = applyHostSessionConnectionEvidence(base, normalizedHost, evidence);
+      const evidence = sessionConnections.listMcp(activeHost);
+      const plan = applyHostSessionConnectionEvidence(base, activeHost, evidence);
       return result({
-        host: normalizedHost,
+        host: activeHost,
         connectionEvidence: evidence,
         fulfillment: fulfillmentSummary(plan),
         grantsMutationApproval: false,
