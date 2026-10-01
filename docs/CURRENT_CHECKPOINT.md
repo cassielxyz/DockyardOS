@@ -9,7 +9,7 @@ For the complete continuation contract, read [`AGENT_CONTINUATION_GUIDE.md`](AGE
 - Checkpoint date: 2026-10-02
 - Repository: `cassielxyz/DockyardOS`
 - Verified completed code state: `0467a1900a93b79764f5d57c6c062382255e4f42`
-- Checkpoint PR: pending durable-checkpoint PR
+- Checkpoint PR: `#55`
 - Last completed milestone: **P38 — universal DockyardOS control center and README rebuild**
 - Previous completed milestone: **P37 — Connections Center + creative UI orchestration**
 - Next continuation milestone: **P39 — first guarded live VS Code Marketplace publication**
