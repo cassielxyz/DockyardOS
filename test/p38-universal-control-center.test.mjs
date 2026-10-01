@@ -9,7 +9,9 @@ const { dockyardThemeCss } = require("../integrations/vscode/ui-theme.js");
 
 const packageUrl = new URL("../integrations/vscode/package.json", import.meta.url);
 const dashboardControllerUrl = new URL("../integrations/vscode/dashboard-controller.js", import.meta.url);
+const extensionMainUrl = new URL("../integrations/vscode/main.js", import.meta.url);
 const backgroundUrl = new URL("../integrations/vscode/assets/dockyard-graffiti-bg.svg", import.meta.url);
+const activityIconUrl = new URL("../integrations/vscode/assets/dockyard-activity.svg", import.meta.url);
 
 function sampleModel() {
   return {
@@ -45,11 +47,14 @@ test("P38 VS Code package exposes the universal dashboard and Auto Initialize", 
   const pkg = JSON.parse(await readFile(packageUrl, "utf8"));
   assert.ok(pkg.activationEvents.includes("onCommand:dockyardOS.dashboard"));
   assert.ok(pkg.activationEvents.includes("onCommand:dockyardOS.autoInitialize"));
+  assert.ok(pkg.activationEvents.includes("onView:dockyardOS.overview"));
   assert.ok(pkg.contributes.commands.some((x) => x.command === "dockyardOS.dashboard"));
   assert.ok(pkg.contributes.commands.some((x) => x.command === "dockyardOS.autoInitialize"));
   assert.equal(pkg.contributes.configuration.properties["dockyardOS.autoInitialize.enabled"].default, false);
   assert.equal(pkg.contributes.configuration.properties["dockyardOS.autoInitialize.installHostIntegration"].default, true);
   assert.equal(pkg.contributes.configuration.properties["dockyardOS.defaultMode"].default, "balanced");
+  assert.ok(pkg.contributes.viewsContainers?.activitybar?.some((x) => x.id === "dockyardOS" && x.icon === "assets/dockyard-activity.svg"));
+  assert.ok(pkg.contributes.views?.dockyardOS?.some((x) => x.id === "dockyardOS.overview"));
   assert.match(pkg.scripts.check, /dashboard-controller\.js/);
   assert.match(pkg.scripts.check, /dashboard-view\.js/);
   assert.match(pkg.scripts.check, /ui-theme\.js/);
@@ -91,8 +96,19 @@ test("P38 dashboard controller keeps settings and command actions allowlisted", 
   assert.match(source, /shell: false/);
   assert.match(source, /showInformationMessage/);
   assert.match(source, /Auto Initialize/);
+  assert.match(source, /--no-host-integration/);
   assert.doesNotMatch(source, /eval\s*\(/);
   assert.doesNotMatch(source, /new Function\s*\(/);
+});
+
+
+test("P38 extension registers a visible DockyardOS Activity Bar home", async () => {
+  const source = await readFile(extensionMainUrl, "utf8");
+  assert.match(source, /registerTreeDataProvider\("dockyardOS\.overview"/);
+  await access(activityIconUrl);
+  const svg = await readFile(activityIconUrl, "utf8");
+  assert.match(svg, /<svg/);
+  assert.match(svg, /currentColor/);
 });
 
 test("P38 graffiti background asset is packaged as repository-owned SVG", async () => {

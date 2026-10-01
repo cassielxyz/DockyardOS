@@ -190,13 +190,18 @@ async function performAutoInitialize(context, options = {}) {
   let status;
   try { status = parseJson(await runDockyard(context, ["status", "--json"])); } catch {}
   const initialized = Boolean(status?.project);
-  if (!initialized) await runDockyard(context, ["init", "--mode", mode]);
+  if (!initialized) await runDockyard(context, ["init", "--mode", mode, "--no-host-integration"]);
 
   let hostResult = "not requested";
   if (installHost) {
     await runDockyard(context, ["host", "plan", "--host", host, "--scope", scope, "--json"]);
-    await runDockyard(context, ["host", "install", "--host", host, "--scope", scope, "--json"]);
-    hostResult = `${host} · ${scope}`;
+    const installed = parseJson(await runDockyard(context, ["host", "install", "--host", host, "--scope", scope, "--json"]));
+    const fallback = Array.isArray(installed?.results)
+      ? installed.results.find((item) => item?.method === "antigravity-ide-global-plugin-directory")
+      : undefined;
+    hostResult = fallback
+      ? `${host} · ${scope} · IDE plugin fallback`
+      : `${host} · ${scope}`;
   }
 
   let doctor = "completed";

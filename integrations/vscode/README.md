@@ -38,6 +38,9 @@ After confirmation it can:
 
 Automatic initialization on project open is separately opt-in through `dockyardOS.autoInitialize.enabled` and remains disabled by default.
 
+
+For **Antigravity**, Auto Initialize does not require the optional `agy` launcher to exist on PATH. If the verified CLI plugin install route is unavailable, DockyardOS falls back to Antigravity's IDE-global plugin directory and reports that method in the resulting host state. A missing `agy` executable is therefore a host-readiness warning, not a reason to lose project initialization.
+
 The Control Center itself opens on trusted-workspace startup by default. Users can disable that behavior in the Settings page or through `dockyardOS.dashboard.openOnStartup`.
 
 ## Settings UI
@@ -132,6 +135,17 @@ It supports:
 - separately disclosed partner offers that do not affect technical ranking.
 
 Discovery is still different from execution. A discovery source never becomes trusted code merely because it appears in the UI.
+
+
+## Finding DockyardOS after installing a VSIX
+
+A GitHub prerelease installed from a VSIX is a **local installed extension**, not a Marketplace listing.
+
+- Use the **DockyardOS icon in the Activity Bar** to open the extension's quick actions.
+- In the Extensions view, search with `@installed DockyardOS` to find the locally installed package.
+- A normal Marketplace search will not show DockyardOS until the guarded Marketplace publication is completed.
+
+This distinction is expected VS Code behavior; the extension does not self-register into Marketplace search.
 
 ## Install for normal users
 
