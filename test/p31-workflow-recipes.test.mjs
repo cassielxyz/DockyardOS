@@ -23,8 +23,14 @@ function phase(team, id) {
   return team.phases.find((item) => item.id === id);
 }
 
+function selectedRecipe(task) {
+  const request = dockyard.defaultSelectionRequest({ task, host: "antigravity" });
+  return dockyard.selectCapabilities(request).recipe?.id;
+}
+
 test("P31 expanded recipes are broad and reference valid registered candidates", () => {
   assert.equal(dockyard.validateRecipes().length, 0, dockyard.validateRecipes().join("\n"));
+  assert.equal(dockyard.validateCatalog().length, 0, dockyard.validateCatalog().join("\n"));
   assert.ok(dockyard.recipes.length >= 35, `expected at least 35 recipes, got ${dockyard.recipes.length}`);
   const expected = [
     "enterprise-b2b-saas",
@@ -40,6 +46,23 @@ test("P31 expanded recipes are broad and reference valid registered candidates",
     "document-automation",
   ];
   for (const id of expected) assert.ok(dockyard.recipeById(id), `missing practical recipe: ${id}`);
+});
+
+test("natural-language requests select concrete practical recipes", () => {
+  const cases = [
+    ["Build a RAG knowledge assistant with embeddings and vector search in Python", "rag-knowledge-system"],
+    ["Create a realtime collaborative editor with WebSockets and presence", "realtime-collaboration"],
+    ["Add Stripe subscriptions and billing to the app", "payments-billing-feature"],
+    ["Build an enterprise B2B SaaS with SSO and organizations", "enterprise-b2b-saas"],
+    ["Create a production Kubernetes platform with Helm", "kubernetes-platform"],
+    ["Build an MCP server that exposes safe tools", "mcp-server-development"],
+    ["Create a VS Code extension for our developer workflow", "ide-extension"],
+    ["Build a Chrome browser extension using Manifest V3", "browser-extension"],
+    ["Clean up this monorepo and its workspace dependency graph", "monorepo-platform"],
+    ["Investigate a production outage and find the root cause", "incident-response"],
+    ["Generate and edit PDF and spreadsheet documents automatically", "document-automation"],
+  ];
+  for (const [task, expected] of cases) assert.equal(selectedRecipe(task), expected, task);
 });
 
 test("every registered agent has explicit data-driven phase routing", () => {
