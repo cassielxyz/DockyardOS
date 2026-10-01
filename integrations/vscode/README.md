@@ -210,10 +210,10 @@ User scope is preferred when the host supports it because it installs once acros
 From the repository root with Node.js 20+:
 
 ```bash
-npm ci
+npm install --ignore-scripts
 npm test
 cd integrations/vscode
-npm ci
+npm install --ignore-scripts
 npm run package
 ```
 

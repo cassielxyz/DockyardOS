@@ -2,51 +2,51 @@
   "schemaVersion": 1,
   "repository": "cassielxyz/DockyardOS",
   "checkpointDate": "2026-10-02",
-  "verifiedCodeSha": "6adb94e6ba714cf5e1457c2258fe0e5ec226031b",
-  "checkpointPr": 51,
+  "verifiedCodeSha": "67416f90d2ddc923b48506d4d04f8f3679c31d48",
+  "checkpointPr": 53,
   "lastCompletedMilestone": {
+    "id": "P37",
+    "title": "Connections Center + creative UI orchestration",
+    "mergedSha": "67416f90d2ddc923b48506d4d04f8f3679c31d48",
+    "pr": 52,
+    "verifiedHeadSha": "2666a31bfd6d08ef772fddbcb5b38e7179461b4f"
+  },
+  "previousMilestone": {
     "id": "P36",
     "title": "verified host/MCP connection readiness",
     "mergedSha": "6adb94e6ba714cf5e1457c2258fe0e5ec226031b",
     "pr": 50,
     "verifiedHeadSha": "6952144a3bc93ab23466c317fdc3146e5ea1bdc0"
   },
-  "previousMilestone": {
-    "id": "P35",
-    "title": "runtime connection readiness",
-    "mergedSha": "a35bd6b4725f9cc29eb1c3fe0ad75dd7f15d8c3a",
-    "pr": 47,
-    "verifiedHeadSha": "7e736abf6acb70756b8c42b13586a13d825c5a18"
-  },
   "verification": [
-    { "name": "CI", "runId": 36910235776, "conclusion": "success" },
-    { "name": "P36 Host MCP Connection Readiness", "runId": 36910235604, "conclusion": "success" },
-    { "name": "P21 Provider Action Plans", "runId": 36910236146, "conclusion": "success" },
-    { "name": "P22 Provider Pricing Evidence", "runId": 36910235745, "conclusion": "success" },
-    { "name": "P23 Provider Migration Plans", "runId": 36910235682, "conclusion": "success" }
+    { "name": "CI", "runId": 36919036448, "conclusion": "success" },
+    { "name": "P37 Connections and Creative UI", "runId": 36919036348, "conclusion": "success" }
   ],
   "developmentFailureEvidence": [
     {
-      "headSha": "5af59ee4bc63a07e56616a595994716e07bd8c0b",
-      "classification": "real-code-test-failure",
-      "detail": "A P36 regression test exposed uppercase MCP id normalization; strict lowercase validation fixed it. This was not a runner-allocation failure."
+      "runId": 36918844913,
+      "classification": "workflow-definition-failure",
+      "detail": "The first focused P37 run failed in actions/setup-node before project code executed because npm cache discovery requires a root lockfile. The workflow was aligned to the repository's existing npm install --ignore-scripts strategy and reran green. This was neither a code/test failure nor a runner-allocation failure."
     }
   ],
   "safetyInvariants": [
+    "the Connections Center is not a credential vault and never persists provider passwords, OAuth tokens, API keys or MCP credentials into project/checkpoint state",
+    "local provider inspection makes no remote account calls; explicit live verification remains bounded and read-only",
+    "provider login/setup commands and setup URLs come only from extension-side allowlisted definitions, never caller-supplied webview strings",
     "configured or installed MCP metadata is not treated as verified current-session connectivity",
-    "P36 MCP evidence is process-scoped, launcher-host-bound and never persisted in project/checkpoint state",
-    "P36 evidence stores no connector credentials or tokens",
-    "MCP evidence cannot override unresolved required provider readiness",
-    "connection verification never grants production, destructive or other external mutation approval",
-    "runtime requirements remain bound to the immutable active installed-manifest snapshot"
+    "P36 launcher-bound host-session evidence remains authoritative for active MCP connection truth",
+    "no-login MCP readiness does not imply a connected state",
+    "connection verification never grants deployment, database, DNS, Git, destructive or production mutation approval",
+    "third-party creative skill selection remains subject to Dockyard trust/readiness/fulfillment boundaries",
+    "design references are used for original synthesis rather than reference-site cloning"
   ],
   "nextMilestone": {
-    "id": "P37",
+    "id": "P38",
     "title": "first guarded live VS Code Marketplace publication",
     "status": "externally-gated",
     "branch": null,
     "goals": [
-      "perform read-only release preflight against the exact version and candidate commit",
+      "perform read-only release preflight against the exact version and intended publication commit",
       "verify Marketplace publisher setup and repository VSCE_PAT availability without exposing token material",
       "require the exact v<extension version> tag to point at the intended publication commit",
       "require explicit production publication approval before dispatching publish_marketplace=true",
@@ -65,9 +65,9 @@
     "inspect main, branches, pull requests, roadmap and CI before continuing",
     "treat verifiedCodeSha as the completed code-state anchor; checkpoint-only documentation commits after it do not make the checkpoint stale",
     "if newer production code milestones exist, they override this checkpoint and the checkpoint must be repaired before continuing",
-    "do not replay P0-P36 unless regression evidence requires it",
-    "keep runner_id: 0 / zero-step infrastructure failures distinct from real build, test, or publication failures",
-    "do not perform the live P37 Marketplace mutation without all external gates and explicit production approval",
+    "do not replay P0-P37 unless regression evidence requires it",
+    "keep runner_id: 0 / zero-step infrastructure failures, workflow-definition failures, external-provider failures and real code/test failures distinct",
+    "do not perform the live P38 Marketplace mutation without all external gates and explicit production approval",
     "update this checkpoint immediately after the next completed production milestone"
   ]
 }
