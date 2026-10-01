@@ -1,0 +1,109 @@
+name: Release DockyardOS v0.1.1 Preview 2
+
+on:
+  push:
+    branches:
+      - "release/v0.1.1-preview.2"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-v0.1.1-preview-2
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      RELEASE_SHA: 897b87ecfef7236dbd53e0dd5abee984be6475fc
+      RELEASE_TAG: v0.1.1-preview.2
+      RELEASE_VERSION: 0.1.1
+    steps:
+      - name: Checkout exact release commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_SHA }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Verify release identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$RELEASE_SHA"
+          test "$(node -p "require('./integrations/vscode/package.json').version")" = "$RELEASE_VERSION"
+          node -e "const p=require('./registry/public-release.json'); if(p.edition!=='source-development'||p.adEnforcement!=='development'||p.controlPlaneUrl!==null) process.exit(1)"
+          if git ls-remote --exit-code --tags origin "refs/tags/$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Tag $RELEASE_TAG already exists; refusing to overwrite." >&2
+            exit 1
+          fi
+
+      - name: Build and test Core
+        run: |
+          npm install --ignore-scripts
+          npm test
+
+      - name: Package fixed universal preview VSIX
+        working-directory: integrations/vscode
+        env:
+          DOCKYARD_PARTNER_VERCEL_URL: ${{ secrets.DOCKYARD_PARTNER_VERCEL_URL }}
+          DOCKYARD_PARTNER_DIGITALOCEAN_URL: ${{ secrets.DOCKYARD_PARTNER_DIGITALOCEAN_URL }}
+          DOCKYARD_PARTNER_NAMECHEAP_URL: ${{ secrets.DOCKYARD_PARTNER_NAMECHEAP_URL }}
+          DOCKYARD_PARTNER_HOSTINGER_URL: ${{ secrets.DOCKYARD_PARTNER_HOSTINGER_URL }}
+        run: |
+          set -euo pipefail
+          npm install --ignore-scripts
+          npm run check
+          npm run package -- --out dockyardos-vscode.vsix
+          test -s dockyardos-vscode.vsix
+          unzip -p dockyardos-vscode.vsix extension/package.json > /tmp/vsix-package.json
+          node -e "const p=require('/tmp/vsix-package.json'); if(p.name!=='dockyardos-vscode'||p.publisher!=='cassielxyz'||p.version!==process.env.RELEASE_VERSION) process.exit(1); if(!p.contributes?.viewsContainers?.activitybar?.some(x=>x.id==='dockyardOS')) process.exit(1)"
+          unzip -l dockyardos-vscode.vsix | grep -q 'extension/main.js'
+          unzip -l dockyardos-vscode.vsix | grep -q 'extension/dashboard-controller.js'
+          unzip -l dockyardos-vscode.vsix | grep -q 'extension/assets/dockyard-graffiti-bg.svg'
+          unzip -l dockyardos-vscode.vsix | grep -q 'extension/assets/dockyard-activity.svg'
+          unzip -l dockyardos-vscode.vsix | grep -q 'extension/connections-controller.js'
+          unzip -p dockyardos-vscode.vsix extension/core/registry/public-release.json > /tmp/vsix-public-release.json
+          node -e "const p=require('/tmp/vsix-public-release.json'); if(p.edition!=='source-development'||p.adEnforcement!=='development'||p.controlPlaneUrl!==null) process.exit(1)"
+          sha256sum dockyardos-vscode.vsix | tee dockyardos-vscode.vsix.sha256
+
+      - name: Create immutable prerelease tag and GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$RELEASE_TAG" "$RELEASE_SHA" -m "DockyardOS $RELEASE_TAG"
+          git push origin "$RELEASE_TAG"
+          cat > /tmp/release-notes.md <<'EOF'
+          # DockyardOS v0.1.1 Preview 2
+
+          Recommended replacement for Preview 1.
+
+          Fixes:
+          - Auto Initialize no longer fails when the optional `agy` launcher is absent.
+          - Antigravity user-scope setup falls back to the verified IDE-global plugin directory.
+          - Dockyard Host Doctor recognizes the fallback after installation.
+          - Auto Initialize no longer performs a duplicate host-integration install.
+          - Adds a DockyardOS Activity Bar home for Control Center, Auto Initialize, Connections and Community.
+          - Version is bumped to 0.1.1 so VS Code recognizes this package as newer than Preview 1.
+
+          Install:
+          1. Download `dockyardos-vscode.vsix`.
+          2. In VS Code/Antigravity open Extensions → … → Install from VSIX…
+          3. Select this VSIX and reload.
+          4. Open the DockyardOS Activity Bar icon.
+          5. Run **Auto Initialize**.
+
+          Note: GitHub prerelease VSIX builds appear under locally installed extensions (`@installed DockyardOS`), not normal Marketplace search. Marketplace visibility requires the later guarded Marketplace publication.
+
+          Verify the VSIX with the attached SHA-256 file.
+          EOF
+          gh release create "$RELEASE_TAG"             integrations/vscode/dockyardos-vscode.vsix             integrations/vscode/dockyardos-vscode.vsix.sha256             --repo "$GITHUB_REPOSITORY"             --target "$RELEASE_SHA"             --title "DockyardOS v0.1.1 Preview 2"             --notes-file /tmp/release-notes.md             --prerelease
