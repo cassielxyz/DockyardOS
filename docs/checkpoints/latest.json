@@ -3,7 +3,7 @@
   "repository": "cassielxyz/DockyardOS",
   "checkpointDate": "2026-10-02",
   "verifiedCodeSha": "6adb94e6ba714cf5e1457c2258fe0e5ec226031b",
-  "checkpointPr": null,
+  "checkpointPr": 51,
   "lastCompletedMilestone": {
     "id": "P36",
     "title": "verified host/MCP connection readiness",
