@@ -62,6 +62,30 @@ test("project-scope Antigravity install writes the full workspace plugin idempot
   assert.equal(restored.name, "dockyardos");
 });
 
+test("user-scope Antigravity install falls back to the IDE-global plugin when agy is unavailable", async () => {
+  const root = await mkdtemp(join(tmpdir(), "dockyard-host-antigravity-user-"));
+  const configRoot = join(root, "antigravity-config");
+  await dockyard.initProject(root, { name: "host-antigravity-user", mode: "balanced" });
+  const previousPath = process.env.PATH;
+  const previousConfigRoot = process.env.DOCKYARD_ANTIGRAVITY_CONFIG_ROOT;
+  process.env.PATH = join(root, "no-command-path");
+  process.env.DOCKYARD_ANTIGRAVITY_CONFIG_ROOT = configRoot;
+  try {
+    const result = await dockyard.executeHostInstall(root, "antigravity", "user");
+    const fallback = result.results.find((item) => item.method === "antigravity-ide-global-plugin-directory");
+    assert.ok(fallback, "expected IDE-global Antigravity fallback result");
+    assert.equal(fallback.fallbackFor, "agy");
+    assert.match(String(fallback.primaryInstallError), /agy is not installed or not on PATH/i);
+    const plugin = JSON.parse(await readFile(join(configRoot, "plugins", "dockyardos", "plugin.json"), "utf8"));
+    assert.equal(plugin.name, "dockyardos");
+  } finally {
+    if (previousPath === undefined) delete process.env.PATH;
+    else process.env.PATH = previousPath;
+    if (previousConfigRoot === undefined) delete process.env.DOCKYARD_ANTIGRAVITY_CONFIG_ROOT;
+    else process.env.DOCKYARD_ANTIGRAVITY_CONFIG_ROOT = previousConfigRoot;
+  }
+});
+
 test("project-scope host install refuses symlinked integration parents", async () => {
   const root = await mkdtemp(join(tmpdir(), "dockyard-host-symlink-root-"));
   const outside = await mkdtemp(join(tmpdir(), "dockyard-host-symlink-outside-"));
