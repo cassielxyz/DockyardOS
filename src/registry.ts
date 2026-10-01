@@ -12,6 +12,16 @@ function unique<T>(values: T[]): T[] {
   return [...new Set(values)];
 }
 
+function normalizeCandidate(candidate: Candidate): Candidate {
+  if (candidate.source.type === "website" && candidate.source.revisionStrategy === "pin-on-install") {
+    return {
+      ...candidate,
+      source: { ...candidate.source, revisionStrategy: "live-metadata-only" },
+    };
+  }
+  return candidate;
+}
+
 function higherRisk(a: Candidate["risk"], b: Candidate["risk"]): Candidate["risk"] {
   return RISK_RANK[a] >= RISK_RANK[b] ? a : b;
 }
@@ -24,7 +34,9 @@ function moreRestrictiveChannel(a: UpdateChannel, b: UpdateChannel): UpdateChann
   return CHANNEL_RANK[a] >= CHANNEL_RANK[b] ? a : b;
 }
 
-function mergeCompatibleCandidate(existing: Candidate, incoming: Candidate, priorLayer: string, incomingLayer: string): Candidate {
+function mergeCompatibleCandidate(existingInput: Candidate, incomingInput: Candidate, priorLayer: string, incomingLayer: string): Candidate {
+  const existing = normalizeCandidate(existingInput);
+  const incoming = normalizeCandidate(incomingInput);
   const sameIdentity = existing.kind === incoming.kind
     && existing.trust === incoming.trust
     && existing.source.type === incoming.source.type
@@ -63,7 +75,8 @@ function mergeCandidates(layers: Array<{ name: string; candidates: Candidate[] }
   const merged: Candidate[] = [];
   const locations = new Map<string, { index: number; layer: string }>();
   for (const layer of layers) {
-    for (const candidate of layer.candidates) {
+    for (const rawCandidate of layer.candidates) {
+      const candidate = normalizeCandidate(rawCandidate);
       const prior = locations.get(candidate.id);
       if (!prior) {
         locations.set(candidate.id, { index: merged.length, layer: layer.name });
