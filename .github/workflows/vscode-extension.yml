@@ -64,7 +64,7 @@ jobs:
           test -n "${DOCKYARD_PUBLIC_CONTROL_URL:-}" || { echo "Repository variable DOCKYARD_PUBLIC_CONTROL_URL is required for public release packaging" >&2; exit 1; }
           node scripts/stamp-public-release.mjs
           node -e "const p=require('./registry/public-release.json'); if(p.edition!=='official-public'||p.adEnforcement!=='required'||!String(p.controlPlaneUrl||'').startsWith('https://')) process.exit(1)"
-      - name: Package VSIX with bundled Core, required public gate, and partner manifest
+      - name: Package VSIX with bundled Core, universal UI, required public gate, and partner manifest
         working-directory: integrations/vscode
         env:
           DOCKYARD_PARTNER_VERCEL_URL: ${{ secrets.DOCKYARD_PARTNER_VERCEL_URL }}
@@ -78,6 +78,12 @@ jobs:
           test -s dockyardos-vscode.vsix
           unzip -p dockyardos-vscode.vsix extension/package.json > /tmp/vsix-package.json
           node -e "const p=require('/tmp/vsix-package.json'); if(p.name!=='dockyardos-vscode'||p.publisher!=='cassielxyz'||p.version!==process.env.extension_version) process.exit(1)"
+          unzip -l dockyardos-vscode.vsix | grep -q 'extension/dashboard-controller.js'
+          unzip -l dockyardos-vscode.vsix | grep -q 'extension/dashboard-view.js'
+          unzip -l dockyardos-vscode.vsix | grep -q 'extension/ui-theme.js'
+          unzip -l dockyardos-vscode.vsix | grep -q 'extension/assets/dockyard-graffiti-bg.svg'
+          unzip -l dockyardos-vscode.vsix | grep -q 'extension/connections-controller.js'
+          unzip -l dockyardos-vscode.vsix | grep -q 'extension/community-hub-view.js'
           unzip -l dockyardos-vscode.vsix | grep -q 'extension/community-update-scheduler.js'
           unzip -l dockyardos-vscode.vsix | grep -q 'extension/partner-offers.js'
           unzip -l dockyardos-vscode.vsix | grep -q 'extension/partner-offers.json'
