@@ -11,6 +11,7 @@ export * from "./registry-lock.js";
 export * from "./recipes.js";
 export * from "./capability-inference.js";
 export * from "./selection.js";
+export * from "./capability-fulfillment.js";
 export * from "./request-mediation.js";
 export * from "./public-ad-gate.js";
 export * from "./provider-adapters.js";
