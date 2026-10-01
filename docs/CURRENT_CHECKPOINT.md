@@ -9,7 +9,7 @@ For the complete cross-agent continuation, parallel-work, verification, document
 - Checkpoint date: 2026-10-02
 - Repository: `cassielxyz/DockyardOS`
 - Verified completed code state: `6adb94e6ba714cf5e1457c2258fe0e5ec226031b`
-- Checkpoint PR: pending assignment for `docs/p36-checkpoint`
+- Checkpoint PR: `#51`
 - Last completed milestone: **P36 — verified host/MCP connection readiness**
 - Previous completed milestone: **P35 — runtime connection readiness**
 - Next continuation milestone: **P37 — first guarded live VS Code Marketplace publication**
