@@ -15,7 +15,7 @@ For the complete continuation contract, read [`AGENT_CONTINUATION_GUIDE.md`](AGE
 - Next continuation milestone: **P39 — first guarded live VS Code Marketplace publication**
 - P39 status: **externally gated; do not publish without explicit production approval and required publisher/token/tag setup**
 
-The verified code-state SHA is the production anchor. Later checkpoint-only documentation commits do not make the checkpoint stale by themselves.
+The verified code-state SHA is the production anchor. Later checkpoint-only documentation or test-reliability commits do not make the production checkpoint stale by themselves.
 
 ## Completed state through P38
 
@@ -59,6 +59,12 @@ Produced preview artifact:
 - retention expiry reported by GitHub: `2026-12-30T20:53:07Z`
 
 PR `#54` had no submitted reviews or unresolved review threads at the final merge check.
+
+### Checkpoint validation flake found and repaired
+
+The first CI attempt on checkpoint PR `#55` (run `36925314926`) failed one unrelated ad-control tamper test while 295/296 tests passed. The exact rerun passed the full test step, which isolated the problem as test nondeterminism rather than a P38 production regression.
+
+The test had been mutating the final Base64URL signature character. Because the final character can contain unused trailing encoding bits, some different final characters can decode to the same signature bytes. The checkpoint branch now mutates the first significant signature character instead, making the tamper test deterministic. This is a test-reliability fix, not a change to the verified P38 production feature state.
 
 ## P38 safety/truthfulness invariants
 
@@ -106,12 +112,12 @@ When the user says `continue`:
 1. inspect `main`, recent commits, open PRs, branches, roadmap, checkpoint and CI;
 2. verify `0467a1900a93b79764f5d57c6c062382255e4f42` remains in current `main` ancestry;
 3. inspect production commits after that anchor before choosing work;
-4. ignore checkpoint-only documentation commits when deciding whether production work advanced;
+4. ignore checkpoint-only documentation/test-reliability commits when deciding whether production work advanced;
 5. do not recreate P38 dashboard/README/Auto Initialize work unless regression evidence requires it;
 6. preserve the new universal UI and VSIX package assertions;
 7. if Marketplace publication already occurred, verify exact tag/commit/workflow/listing evidence before marking P39 complete;
 8. if P39 is not published, perform only safe read-only preflight until external setup and explicit approval are present;
-9. distinguish runner-allocation, workflow-definition, external-provider and real code/test failures;
+9. distinguish runner-allocation, workflow-definition, flaky-test, external-provider and real code/test failures;
 10. update both this file and `docs/checkpoints/latest.json` after the next completed production milestone.
 
 ## Checkpoint maintenance rule
