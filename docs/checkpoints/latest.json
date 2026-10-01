@@ -3,7 +3,7 @@
   "repository": "cassielxyz/DockyardOS",
   "checkpointDate": "2026-10-02",
   "verifiedCodeSha": "0467a1900a93b79764f5d57c6c062382255e4f42",
-  "checkpointPr": null,
+  "checkpointPr": 55,
   "lastCompletedMilestone": {
     "id": "P38",
     "title": "universal DockyardOS control center and README rebuild",
