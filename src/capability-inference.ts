@@ -20,11 +20,14 @@ const RULES: SignalRule[] = [
   { pattern: /\bfigma\b|figjam/i, capabilities: ["figma", "design-context", "design-tokens"], stacks: ["web"] },
   { pattern: /\bshadcn(?:\/ui)?\b/i, capabilities: ["shadcn", "ui-components"], stacks: ["web", "react"] },
   { pattern: /\bui\b|\bux\b|user interface|user experience|design system|design tokens/i, capabilities: ["ui-ux", "design-system"] },
+  { pattern: /\binspo\b|inspiration|reference (?:site|sites|website|websites|design|designs)|design reference|visual reference/i, capabilities: ["design-inspiration", "visual-reference", "macrostructure"], stacks: ["web"] },
+  { pattern: /anti[- ]?slop|ai[- ]generated look|ai[- ]looking|generic ai|not look ai|premium (?:ui|website|web|landing)|creative (?:ui|website|web|landing)|design taste|taste skill/i, capabilities: ["anti-slop", "visual-direction", "design-taste", "ui-design"], stacks: ["web"] },
   { pattern: /playwright|browser qa|browser test|e2e|end[- ]to[- ]end|screenshot test|visual regression/i, capabilities: ["browser-automation", "e2e", "screenshots"] },
   { pattern: /accessibilit|\ba11y\b|\bwcag\b/i, capabilities: ["accessibility", "wcag"] },
   { pattern: /lighthouse|core web vitals|web performance/i, capabilities: ["performance", "lighthouse", "core-web-vitals"] },
 
   // Common web and mobile stacks.
+  { pattern: /website|web app|webpage|landing page|marketing page|portfolio/i, stacks: ["web"] },
   { pattern: /next\.?js|\bnextjs\b/i, stacks: ["web", "react", "nextjs"] },
   { pattern: /\breact\b/i, stacks: ["web", "react"] },
   { pattern: /\bvue(?:\.js)?\b/i, stacks: ["web", "vue"] },
