@@ -29,6 +29,7 @@ export interface ActiveCommunityPackage {
   tags: string[];
   hosts: CommunityPackageManifest["hosts"];
   entrypoints: CommunityPackageManifest["entrypoints"];
+  runtimeRequirements?: CommunityPackageManifest["runtimeRequirements"];
   origin: EffectiveRegistryOrigin;
   integrity: "verified";
 }
@@ -110,6 +111,7 @@ export async function activeCommunityPackages(): Promise<ActiveCommunityPackage[
       tags: manifest.tags,
       hosts: manifest.hosts,
       entrypoints: manifest.entrypoints,
+      ...(manifest.runtimeRequirements ? { runtimeRequirements: manifest.runtimeRequirements } : {}),
       origin,
       integrity: "verified",
     });

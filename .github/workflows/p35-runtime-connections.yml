@@ -1,0 +1,47 @@
+name: P35 Runtime Connection Readiness
+
+on:
+  pull_request:
+    paths:
+      - "registry/curated-packages.json"
+      - "src/community-types.ts"
+      - "src/community-registry.ts"
+      - "src/community-runtime.ts"
+      - "src/capability-fulfillment.ts"
+      - "test/p35-runtime-connection-readiness.test.mjs"
+      - ".github/workflows/p35-runtime-connections.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --ignore-scripts
+      - run: npm run build
+      - name: Run P35 deterministic runtime-readiness tests
+        run: node --test test/p35-runtime-connection-readiness.test.mjs
+      - name: Verify curated connection metadata without provider authentication
+        shell: bash
+        run: |
+          export DOCKYARD_HOME="$(mktemp -d)"
+          node --input-type=module <<'NODE'
+          import { loadCommunityRegistry, validateCommunityRegistry } from './dist/index.js';
+          const registry = await loadCommunityRegistry();
+          const errors = validateCommunityRegistry(registry);
+          if (errors.length) throw new Error(errors.join('; '));
+          for (const [id, provider] of [['supabase-skill', 'supabase'], ['cloudflare-skill', 'cloudflare']]) {
+            const manifest = registry.packages.find((item) => item.id === id);
+            const connection = manifest?.runtimeRequirements?.connections?.find((item) => item.kind === 'provider' && item.id === provider);
+            if (!connection || connection.required !== false || connection.minimumReadiness !== 'authenticated') {
+              throw new Error(`${id}: expected optional authenticated provider connection metadata`);
+            }
+          }
+          NODE

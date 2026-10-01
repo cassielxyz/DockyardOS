@@ -1,8 +1,8 @@
 # Curated Skill Materialization
 
-P33 converts selected high-value DockyardOS catalogue entries from discovery metadata into explicit installable package manifests. P34 extends that model to broader research/provider skills and adds runtime-prerequisite truthfulness.
+P33 converts selected high-value DockyardOS catalogue entries from discovery metadata into explicit installable package manifests. P34 extends that model to broader research/provider skills. P35 makes runtime readiness truthful across both local executables and external provider/MCP connections.
 
-Selection still does **not** imply readiness. P32 remains the runtime authority:
+Selection still does **not** imply readiness. P32/P35 remain the runtime authority:
 
 ```text
 selected
@@ -12,7 +12,8 @@ selected
   -> verify entrypoint + declared/inferred permissions
   -> automatic | approval-required | quarantine
   -> exact revision + content SHA-256 activation
-  -> verify declared runtime prerequisites
+  -> load immutable installed-manifest snapshot
+  -> verify declared executables + required connections
   -> ready | missing-runtime | needs-connection
 ```
 
@@ -38,16 +39,16 @@ P34 materializes three previously metadata-only/high-value capabilities using th
 | Candidate/package ID | Upstream package path | Runtime prerequisite | Expected assessment |
 | --- | --- | --- | --- |
 | `agent-reach` | `Panniantong/Agent-Reach/agent_reach/skill` | `agent-reach` executable | approval-required |
-| `supabase-skill` | `supabase/agent-skills/skills/supabase` | task-dependent Supabase CLI/MCP/auth noted, not assumed | approval-required |
-| `cloudflare-skill` | `cloudflare/skills/skills/cloudflare` | task-dependent `cf`/Wrangler/auth noted, not assumed | approval-required |
+| `supabase-skill` | `supabase/agent-skills/skills/supabase` | optional provider authentication metadata | approval-required |
+| `cloudflare-skill` | `cloudflare/skills/skills/cloudflare` | optional provider authentication metadata | approval-required |
 
 These are intentionally high-impact manifests. Agent Reach can invoke local/platform backends and read authenticated/browser-backed sources. The Supabase skill spans database/auth/storage/Edge Function workflows. The Cloudflare platform skill can lead to deployment, secrets, DNS, and network-affecting operations. P34 therefore does not make any of them unattended automatic installs.
 
-### Runtime prerequisites
+## Runtime prerequisites — P34/P35
 
-A package can now declare bounded runtime executable requirements in its manifest. An integrity-verified installed package is **not** reported as ready merely because its files are present. DockyardOS rechecks required executables against PATH and the project's `node_modules/.bin` at fulfillment time.
+A package can declare bounded executable and connection requirements in its manifest. An integrity-verified installed package is **not** reported as ready merely because its files are present.
 
-For example:
+Executable requirements are checked against PATH and the project's `node_modules/.bin`:
 
 ```text
 agent-reach package installed + hash verified
@@ -59,7 +60,28 @@ agent-reach package installed + hash verified
   => ready
 ```
 
-Human-readable connection/tool requirements that are task-dependent remain manifest notes and must still be verified through the existing provider/MCP readiness layers before a workflow claims external authority. A skill package never grants credentials, provider authorization, or production approval by itself.
+Connection requirements can be `provider` or `mcp` entries. Each is explicitly marked `required: true|false`.
+
+- Required provider connections gate readiness. DockyardOS uses its existing read-only provider detection/auth/status probes and never accepts credentials through the package manifest.
+- `configured`, `authenticated`, and `linked` are explicit provider minimum-readiness levels. A link marker is not treated as authenticated when the provider exposes a separate auth probe.
+- Required MCP connections fail closed until the active host/connector verifies connectivity. Package installation alone never proves an MCP connection or account authorization.
+- Optional connections are advisory. They never block architecture/code guidance and never grant provider authority.
+
+The P34 Supabase and Cloudflare skills use optional authenticated-provider metadata because their documentation/guidance is useful without account access, while deployment/account-specific actions still require the existing provider approval and authentication boundaries.
+
+### Immutable runtime metadata
+
+P35 evaluates runtime prerequisites from the manifest snapshot stored with the exact installed immutable revision. A later registry edit cannot silently change an already-installed package from `missing-runtime` to `ready`, or vice versa, without an explicit package update/activation path.
+
+```text
+installed revision
+  -> stored manifest snapshot
+  -> integrity verification
+  -> snapshot runtime requirements
+  -> readiness evaluation
+```
+
+This preserves the same revision/content trust boundary used by community activation.
 
 ## Live drift verification
 
@@ -71,7 +93,9 @@ Human-readable connection/tool requirements that are task-dependent remain manif
 - runtime-prerequisite schema validation remains fail-closed;
 - fetched upstream code is statically assessed, not executed.
 
-If upstream content changes enough to alter those decisions, the focused workflow fails. DockyardOS maintainers must then review the new content/permissions instead of silently broadening trust.
+`.github/workflows/p35-runtime-connections.yml` is credential-free and verifies connection-schema validation, required/optional readiness semantics, immutable installed-manifest behavior, and the curated optional provider metadata. It does not log into Supabase, Cloudflare, or any MCP service.
+
+If upstream content changes enough to alter trust decisions, the focused workflow fails. DockyardOS maintainers must then review the new content/permissions instead of silently broadening trust.
 
 ## Discovery stays broad
 
