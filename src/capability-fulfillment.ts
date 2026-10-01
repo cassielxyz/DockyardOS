@@ -154,7 +154,10 @@ async function defaultConnectionProbe(
     };
   }
 
-  const live = requirement.minimumReadiness === "authenticated" || requirement.minimumReadiness === "linked";
+  // Optional provider metadata must not introduce account/network latency into normal
+  // request mediation. Only a required authenticated/linked prerequisite is live-probed.
+  const live = requirement.required
+    && (requirement.minimumReadiness === "authenticated" || requirement.minimumReadiness === "linked");
   const probe = await probeProvider(adapter, root, { live });
   let ready = false;
   if (requirement.minimumReadiness === "configured") {
@@ -174,7 +177,9 @@ async function defaultConnectionProbe(
     ready,
     detail: ready
       ? `${adapter.displayName} satisfies required ${requirement.minimumReadiness} readiness (${probe.safeSummary ?? probe.readiness}).`
-      : `${adapter.displayName} does not currently satisfy ${requirement.minimumReadiness} readiness (${probe.safeSummary ?? probe.readiness}).`,
+      : requirement.required
+        ? `${adapter.displayName} does not currently satisfy ${requirement.minimumReadiness} readiness (${probe.safeSummary ?? probe.readiness}).`
+        : `${adapter.displayName} optional ${requirement.minimumReadiness} readiness was not assumed; local detection only (${probe.safeSummary ?? probe.readiness}).`,
   };
 }
 
