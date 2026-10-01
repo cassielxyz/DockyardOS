@@ -1,4 +1,4 @@
-name: Release DockyardOS v0.1.0
+name: Release DockyardOS v0.1.0 Preview 1
 
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: release-v0.1.0
+  group: release-v0.1.0-preview-1
   cancel-in-progress: false
 
 jobs:
@@ -18,7 +18,7 @@ jobs:
     timeout-minutes: 30
     env:
       RELEASE_SHA: 0baf28bff5a810eb1499ca7cb6a61c1d4cf93b06
-      RELEASE_TAG: v0.1.0
+      RELEASE_TAG: v0.1.0-preview.1
       RELEASE_VERSION: 0.1.0
     steps:
       - name: Checkout exact release commit
@@ -37,6 +37,7 @@ jobs:
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$RELEASE_SHA"
           test "$(node -p "require('./integrations/vscode/package.json').version")" = "$RELEASE_VERSION"
+          node -e "const p=require('./registry/public-release.json'); if(p.edition!=='source-development'||p.adEnforcement!=='development'||p.controlPlaneUrl!==null) process.exit(1)"
           if git ls-remote --exit-code --tags origin "refs/tags/$RELEASE_TAG" >/dev/null 2>&1; then
             echo "Tag $RELEASE_TAG already exists; refusing to overwrite." >&2
             exit 1
@@ -47,16 +48,7 @@ jobs:
           npm install --ignore-scripts
           npm test
 
-      - name: Stamp official public edition
-        env:
-          DOCKYARD_PUBLIC_CONTROL_URL: ${{ vars.DOCKYARD_PUBLIC_CONTROL_URL }}
-        run: |
-          set -euo pipefail
-          test -n "${DOCKYARD_PUBLIC_CONTROL_URL:-}" || { echo "Repository variable DOCKYARD_PUBLIC_CONTROL_URL is required." >&2; exit 1; }
-          node scripts/stamp-public-release.mjs
-          node -e "const p=require('./registry/public-release.json'); if(p.edition!=='official-public'||p.adEnforcement!=='required'||!String(p.controlPlaneUrl||'').startsWith('https://')) process.exit(1)"
-
-      - name: Package universal VSIX
+      - name: Package universal preview VSIX
         working-directory: integrations/vscode
         env:
           DOCKYARD_PARTNER_VERCEL_URL: ${{ secrets.DOCKYARD_PARTNER_VERCEL_URL }}
@@ -78,10 +70,10 @@ jobs:
           unzip -l dockyardos-vscode.vsix | grep -q 'extension/connections-controller.js'
           unzip -l dockyardos-vscode.vsix | grep -q 'extension/community-hub-view.js'
           unzip -p dockyardos-vscode.vsix extension/core/registry/public-release.json > /tmp/vsix-public-release.json
-          node -e "const p=require('/tmp/vsix-public-release.json'); if(p.edition!=='official-public'||p.adEnforcement!=='required'||!p.controlPlaneUrl) process.exit(1)"
+          node -e "const p=require('/tmp/vsix-public-release.json'); if(p.edition!=='source-development'||p.adEnforcement!=='development'||p.controlPlaneUrl!==null) process.exit(1)"
           sha256sum dockyardos-vscode.vsix | tee dockyardos-vscode.vsix.sha256
 
-      - name: Create immutable tag and GitHub Release
+      - name: Create immutable prerelease tag and GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -92,9 +84,9 @@ jobs:
           git tag -a "$RELEASE_TAG" "$RELEASE_SHA" -m "DockyardOS $RELEASE_TAG"
           git push origin "$RELEASE_TAG"
           cat > /tmp/release-notes.md <<'EOF'
-          # DockyardOS v0.1.0
+          # DockyardOS v0.1.0 Preview 1
 
-          First public DockyardOS VSIX release.
+          First downloadable DockyardOS VSIX release, built from the P38 Universal Control Center milestone.
 
           Highlights:
           - Universal DockyardOS Control Center
@@ -108,11 +100,13 @@ jobs:
 
           Install:
           1. Download `dockyardos-vscode.vsix`.
-          2. In VS Code/compatible editor, open Extensions.
+          2. Open Extensions in VS Code or a compatible editor.
           3. Choose **Install from VSIX...**.
-          4. Open your project and use **DockyardOS: Open Control Center**.
+          4. Open a project and run **DockyardOS: Open Control Center**.
           5. Press **Auto Initialize**.
 
-          The attached `.sha256` file can be used to verify the VSIX download.
+          This preview is the source-development edition. The stable official-public v0.1.0 release remains gated on a configured DockyardOS public control-plane origin.
+
+          Verify the download with the attached SHA-256 file.
           EOF
-          gh release create "$RELEASE_TAG"             integrations/vscode/dockyardos-vscode.vsix             integrations/vscode/dockyardos-vscode.vsix.sha256             --repo "$GITHUB_REPOSITORY"             --target "$RELEASE_SHA"             --title "DockyardOS v0.1.0"             --notes-file /tmp/release-notes.md
+          gh release create "$RELEASE_TAG"             integrations/vscode/dockyardos-vscode.vsix             integrations/vscode/dockyardos-vscode.vsix.sha256             --repo "$GITHUB_REPOSITORY"             --target "$RELEASE_SHA"             --title "DockyardOS v0.1.0 Preview 1"             --notes-file /tmp/release-notes.md             --prerelease
