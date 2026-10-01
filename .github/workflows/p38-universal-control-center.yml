@@ -45,6 +45,7 @@ jobs:
           unzip -l /tmp/dockyardos-universal-preview.vsix | grep -q 'extension/dashboard-view.js'
           unzip -l /tmp/dockyardos-universal-preview.vsix | grep -q 'extension/ui-theme.js'
           unzip -l /tmp/dockyardos-universal-preview.vsix | grep -q 'extension/assets/dockyard-graffiti-bg.svg'
+          unzip -l /tmp/dockyardos-universal-preview.vsix | grep -q 'extension/assets/dockyard-activity.svg'
           unzip -l /tmp/dockyardos-universal-preview.vsix | grep -q 'extension/connections-controller.js'
           unzip -l /tmp/dockyardos-universal-preview.vsix | grep -q 'extension/community-hub-view.js'
           unzip -l /tmp/dockyardos-universal-preview.vsix | grep -q 'extension/core/dist/main.js'
