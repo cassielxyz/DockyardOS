@@ -18,9 +18,9 @@ export class HostSessionConnectionRegistry {
   private readonly mcpEvidence = new Map<string, HostSessionMcpEvidence>();
 
   attestMcp(host: HostId, id: string, observation: string, now = new Date()): HostSessionMcpEvidence {
-    const normalizedId = id.trim().toLowerCase();
+    const normalizedId = id.trim();
     const normalizedObservation = observation.trim();
-    if (!MCP_ID.test(normalizedId)) {
+    if (normalizedId !== normalizedId.toLowerCase() || !MCP_ID.test(normalizedId)) {
       throw new Error("MCP connection id must be a lowercase path-safe identifier between 1 and 128 characters.");
     }
     if (!normalizedObservation || normalizedObservation.length > MAX_OBSERVATION_LENGTH) {
@@ -46,7 +46,9 @@ export class HostSessionConnectionRegistry {
   }
 
   hasMcp(host: HostId, id: string): boolean {
-    return this.mcpEvidence.has(`${host}:${id.trim().toLowerCase()}`);
+    const normalizedId = id.trim();
+    if (normalizedId !== normalizedId.toLowerCase() || !MCP_ID.test(normalizedId)) return false;
+    return this.mcpEvidence.has(`${host}:${normalizedId}`);
   }
 }
 
