@@ -8,11 +8,11 @@ For the complete continuation contract, read [`AGENT_CONTINUATION_GUIDE.md`](AGE
 
 - Checkpoint date: 2026-10-02
 - Repository: `cassielxyz/DockyardOS`
-- Verified completed code state: `0467a1900a93b79764f5d57c6c062382255e4f42`
+- Verified completed code state: `897b87ecfef7236dbd53e0dd5abee984be6475fc`
 - Checkpoint PR: `#55`
-- Last completed milestone: **P38 — universal DockyardOS control center and README rebuild**
-- Previous completed milestone: **P37 — Connections Center + creative UI orchestration**
-- Next continuation milestone: **P39 — stable official-public v0.1.0 and first guarded live VS Code Marketplace publication**
+- Last completed milestone: **P38.1 — Auto Initialize / Antigravity fallback hotfix and visible Activity Bar home**
+- Previous completed milestone: **P38 — universal DockyardOS control center and README rebuild**
+- Next continuation milestone: **P39 — stable official-public v0.1.1 and first guarded live VS Code Marketplace publication**
 - P39 status: **preview release published; stable/Marketplace path remains externally gated by the real public control-plane origin, publisher/token/tag setup, and explicit production approval**
 
 The verified code-state SHA is the production anchor. Later checkpoint-only documentation or test-reliability commits do not make the production checkpoint stale by themselves.
@@ -86,6 +86,38 @@ The first CI attempt on checkpoint PR `#55` (run `36925314926`) failed one unrel
 
 The test had been mutating the final Base64URL signature character. Because the final character can contain unused trailing encoding bits, some different final characters can decode to the same signature bytes. The checkpoint branch now mutates the first significant signature character instead, making the tamper test deterministic. This is a test-reliability fix, not a change to the verified P38 production feature state.
 
+## P38.1 hotfix — Preview 2
+
+Merged through PR `#57` as `897b87ecfef7236dbd53e0dd5abee984be6475fc` from exact verified head `97c12118e3c079296d7fb59627061410f9ef526f`.
+
+This hotfix addresses the first installed-VSIX feedback:
+
+- Auto Initialize no longer performs a duplicate host integration install;
+- Antigravity user-scope installation falls back to the verified IDE-global plugin directory when `agy` is missing or the CLI plugin install fails;
+- host inspection recognizes the fallback afterward, so Doctor does not contradict a successful installation;
+- a DockyardOS Activity Bar home exposes Control Center, Auto Initialize, Connections and Community;
+- the Core and VS Code extension version are now `0.1.1`;
+- local VSIX visibility is documented explicitly: `@installed DockyardOS` / Activity Bar before Marketplace publication.
+
+Verification evidence on exact PR head:
+
+- CI `36942643163` — success;
+- P37 Connections and Creative UI `36942643129` — success;
+- P38 Universal Control Center `36942643188` — success;
+- post-merge main CI `36942734070` — success.
+
+The fixed downloadable release is GitHub prerelease `v0.1.1-preview.2`:
+
+- release id `401438751`;
+- release workflow `36942826997` — success;
+- tag resolves to `897b87ecfef7236dbd53e0dd5abee984be6475fc`;
+- VSIX asset id `604379402`;
+- VSIX size `3907864` bytes;
+- VSIX SHA-256 `3a544d9b5484264b40b7fbf3d7ad35bd762763c9af6e5d8d9e34b6b7e454856c`;
+- checksum asset id `604379404`.
+
+Preview 1 is superseded for normal installs.
+
 ## P38 safety/truthfulness invariants
 
 Future changes must preserve these rules:
@@ -112,9 +144,9 @@ Current release facts:
 
 - extension: `integrations/vscode` / `dockyardos-vscode`;
 - publisher: `cassielxyz`;
-- current extension version: `0.1.0`;
+- current extension version: `0.1.1`;
 - published preview tag: `v0.1.0-preview.1` (source-development prerelease);
-- expected stable release tag: `v0.1.0`;
+- expected stable release tag: `v0.1.1`;
 - stable packaging first requires a real credential-free HTTPS `DOCKYARD_PUBLIC_CONTROL_URL` for the operational public control plane;
 - Marketplace publication is manual `workflow_dispatch` only;
 - publication requires `publish_marketplace=true`;
@@ -132,10 +164,10 @@ If the control-plane origin, external publisher/token/tag requirements, or appro
 When the user says `continue`:
 
 1. inspect `main`, recent commits, open PRs, branches, roadmap, checkpoint and CI;
-2. verify `0467a1900a93b79764f5d57c6c062382255e4f42` remains in current `main` ancestry;
+2. verify `897b87ecfef7236dbd53e0dd5abee984be6475fc` remains in current `main` ancestry;
 3. inspect production commits after that anchor before choosing work;
 4. ignore checkpoint-only documentation/test-reliability commits when deciding whether production work advanced;
-5. do not recreate P38 dashboard/README/Auto Initialize work unless regression evidence requires it;
+5. do not recreate P38/P38.1 dashboard, README, Activity Bar or Auto Initialize fallback work unless regression evidence requires it;
 6. preserve the new universal UI and VSIX package assertions;
 7. if Marketplace publication already occurred, verify exact tag/commit/workflow/listing evidence before marking P39 complete;
 8. if P39 is not published, perform only safe read-only preflight until external setup and explicit approval are present;

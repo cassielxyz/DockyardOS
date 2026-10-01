@@ -2,36 +2,41 @@
   "schemaVersion": 1,
   "repository": "cassielxyz/DockyardOS",
   "checkpointDate": "2026-10-02",
-  "verifiedCodeSha": "0467a1900a93b79764f5d57c6c062382255e4f42",
+  "verifiedCodeSha": "897b87ecfef7236dbd53e0dd5abee984be6475fc",
   "checkpointPr": 55,
   "lastCompletedMilestone": {
+    "id": "P38.1",
+    "title": "Auto Initialize / Antigravity fallback hotfix and visible Activity Bar home",
+    "mergedSha": "897b87ecfef7236dbd53e0dd5abee984be6475fc",
+    "pr": 57,
+    "verifiedHeadSha": "97c12118e3c079296d7fb59627061410f9ef526f"
+  },
+  "previousMilestone": {
     "id": "P38",
     "title": "universal DockyardOS control center and README rebuild",
     "mergedSha": "0467a1900a93b79764f5d57c6c062382255e4f42",
     "pr": 54,
     "verifiedHeadSha": "7ebc685c19f6174768cdb75a1c41e23e1d10ef39"
   },
-  "previousMilestone": {
-    "id": "P37",
-    "title": "Connections Center + creative UI orchestration",
-    "mergedSha": "67416f90d2ddc923b48506d4d04f8f3679c31d48",
-    "pr": 52,
-    "verifiedHeadSha": "2666a31bfd6d08ef772fddbcb5b38e7179461b4f"
-  },
   "verification": [
     {
       "name": "CI",
-      "runId": 36924832259,
+      "runId": 36942643163,
       "conclusion": "success"
     },
     {
       "name": "P37 Connections and Creative UI",
-      "runId": 36924832204,
+      "runId": 36942643129,
       "conclusion": "success"
     },
     {
       "name": "P38 Universal Control Center",
-      "runId": 36924832447,
+      "runId": 36942643188,
+      "conclusion": "success"
+    },
+    {
+      "name": "post-merge main CI",
+      "runId": 36942734070,
       "conclusion": "success"
     }
   ],
@@ -65,7 +70,7 @@
   ],
   "nextMilestone": {
     "id": "P39",
-    "title": "stable official-public v0.1.0 and first guarded live VS Code Marketplace publication",
+    "title": "stable official-public v0.1.1 and first guarded live VS Code Marketplace publication",
     "status": "externally-gated",
     "branch": null,
     "goals": [
@@ -77,8 +82,8 @@
       "require explicit production publication approval before dispatching publish_marketplace=true",
       "preserve workflow, GitHub release, asset digest and Marketplace listing evidence after a successful stable publication"
     ],
-    "currentVersion": "0.1.0",
-    "expectedTag": "v0.1.0",
+    "currentVersion": "0.1.1",
+    "expectedTag": "v0.1.1",
     "externalGates": [
       "a real operational DockyardOS public control-plane HTTPS origin must be deployed and DOCKYARD_PUBLIC_CONTROL_URL configured",
       "Marketplace publisher cassielxyz must exist and be authorized",
@@ -91,7 +96,7 @@
     "inspect main, branches, pull requests, roadmap, checkpoint and CI before continuing",
     "treat verifiedCodeSha as the completed code-state anchor; checkpoint-only documentation/test-reliability commits after it do not make the production checkpoint stale",
     "if newer production code milestones exist, they override this checkpoint and the checkpoint must be repaired before continuing",
-    "do not replay P0-P38 unless regression evidence requires it",
+    "do not replay P0-P38.1 unless regression evidence requires it",
     "preserve the universal dashboard, Auto Initialize safety gates, shared UI design system and VSIX package assertions",
     "keep runner-allocation failures, workflow-definition failures, flaky-test failures, external-provider failures and real code/test failures distinct",
     "do not treat Preview 1 as stable P39 completion; do not perform the stable official-public/Marketplace mutation without the real control-plane origin, all external gates and explicit production approval",
@@ -99,17 +104,17 @@
   ],
   "releaseEvidence": {
     "preview": {
-      "tag": "v0.1.0-preview.1",
+      "tag": "v0.1.1-preview.2",
       "prerelease": true,
       "edition": "source-development",
-      "targetCommit": "0baf28bff5a810eb1499ca7cb6a61c1d4cf93b06",
-      "releaseId": 401432695,
-      "workflowRunId": 36941461041,
+      "targetCommit": "897b87ecfef7236dbd53e0dd5abee984be6475fc",
+      "releaseId": 401438751,
+      "workflowRunId": 36942826997,
       "conclusion": "success",
-      "vsixAssetId": 604356680,
-      "vsixSizeBytes": 3905750,
-      "vsixSha256": "62989a2855e53abbadcfe0a96cbb1284e7a902ec1d011aa77be26ea93e923866",
-      "checksumAssetId": 604356682
+      "vsixAssetId": 604379402,
+      "vsixSizeBytes": 3907864,
+      "vsixSha256": "3a544d9b5484264b40b7fbf3d7ad35bd762763c9af6e5d8d9e34b6b7e454856c",
+      "checksumAssetId": 604379404
     },
     "stableAttempt": {
       "workflowRunId": 36941254160,
