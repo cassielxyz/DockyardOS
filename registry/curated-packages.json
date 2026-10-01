@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-10-01T16:40:00.000Z",
+  "updatedAt": "2026-10-01T18:05:00.000Z",
   "packages": [
     {
       "schemaVersion": 1,
@@ -46,7 +46,8 @@
       "channel": "recommended",
       "entrypoints": [{ "type": "skill", "path": "SKILL.md" }],
       "runtimeRequirements": {
-        "notes": ["Some workflows require Supabase CLI or an authenticated Supabase MCP connection; readiness of those external tools/connections must be verified separately for the selected task."]
+        "connections": [{ "kind": "provider", "id": "supabase", "required": false, "minimumReadiness": "authenticated" }],
+        "notes": ["Supabase architecture/code guidance remains usable without account access. Remote project operations require separately verified Supabase authentication or an authenticated Supabase MCP connection for that task."]
       },
       "maxFiles": 400,
       "maxBytes": 6291456
@@ -70,7 +71,8 @@
       "channel": "recommended",
       "entrypoints": [{ "type": "skill", "path": "SKILL.md" }],
       "runtimeRequirements": {
-        "notes": ["Implementation paths may require the current Cloudflare `cf` CLI or Wrangler plus authenticated provider access. The skill package alone does not prove deployment/DNS authority."]
+        "connections": [{ "kind": "provider", "id": "cloudflare", "required": false, "minimumReadiness": "authenticated" }],
+        "notes": ["Cloudflare architecture/product guidance remains usable without account access. Deployment, DNS, and account-specific operations require separately verified provider authentication for that task."]
       },
       "maxFiles": 1200,
       "maxBytes": 16777216
