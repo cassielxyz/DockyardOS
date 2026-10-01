@@ -23,8 +23,11 @@ function intersection(a: string[], b: string[]): string[] {
 export function inferTaskType(text: string): string {
   const prompt = text.toLowerCase();
 
-  // Specific practical archetypes must win before broad words such as server, feature, cleanup, or deploy.
+  // Explicit operational/failure intent wins over domain words such as login, server, or storage.
   if (/production incident|service incident|production outage|\boutage\b|incident response|root cause/.test(prompt)) return "incident";
+  if (/bug|error|crash|broken|fix issue|debug/.test(prompt)) return "bug-fix";
+
+  // Specific practical archetypes must win before broad words such as server, feature, cleanup, or deploy.
   if (/\brag\b|retrieval[- ]augmented|knowledge assistant|knowledge base assistant/.test(prompt)) return "rag";
   if (/\bmcp\b.*(?:server|connector|tool)|model context protocol/.test(prompt)) return "mcp";
   if (/vs ?code extension|visual studio code extension|ide extension|editor extension/.test(prompt)) return "ide-extension";
@@ -49,7 +52,6 @@ export function inferTaskType(text: string): string {
   if (/multiplayer game|game backend|game server/.test(prompt)) return "game";
 
   if (/vulnerab|security|pentest|hardening|owasp|exploit/.test(prompt)) return "security";
-  if (/bug|error|crash|broken|fix issue|debug/.test(prompt)) return "bug-fix";
   if (/refactor|cleanup|clean up|tech debt|dead code/.test(prompt)) return "refactor";
   if (/release|production deploy|ship to prod|publish/.test(prompt)) return "release";
   if (/migration|migrate|move database|move provider/.test(prompt)) return "migration";
