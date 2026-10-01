@@ -34,6 +34,7 @@ export * from "./security-sarif.js";
 export * from "./security-sarif-upload.js";
 export * from "./threat-model.js";
 export * from "./team-types.js";
+export * from "./team-agent-routing.js";
 export * from "./team-composer.js";
 export * from "./team-state.js";
 export * from "./team-routing.js";

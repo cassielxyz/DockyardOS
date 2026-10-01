@@ -1,6 +1,8 @@
 import type { TeamRecipe } from "./types.js";
+import { getCandidate } from "./registry.js";
+import { expandedRecipes } from "./recipes-expanded.js";
 
-export const recipes: TeamRecipe[] = [
+const baseRecipes: TeamRecipe[] = [
   {
     id: "saas-web",
     displayName: "Production SaaS Web App",
@@ -183,6 +185,36 @@ export const recipes: TeamRecipe[] = [
   },
 ];
 
+export const recipes: TeamRecipe[] = [...baseRecipes, ...expandedRecipes];
+
 export function recipeById(id: string): TeamRecipe | undefined {
   return recipes.find((recipe) => recipe.id === id);
+}
+
+export function validateRecipes(): string[] {
+  const errors: string[] = [];
+  const ids = new Set<string>();
+  for (const recipe of recipes) {
+    if (ids.has(recipe.id)) errors.push(`duplicate recipe id: ${recipe.id}`);
+    ids.add(recipe.id);
+    if (!recipe.displayName.trim()) errors.push(`${recipe.id}: missing display name`);
+    if (!recipe.taskTypes.length) errors.push(`${recipe.id}: no task types`);
+    if (!recipe.capabilities.length) errors.push(`${recipe.id}: no capabilities`);
+    if (recipe.agents.length > 12) errors.push(`${recipe.id}: too many specialist agents`);
+
+    for (const id of recipe.required) {
+      const candidate = getCandidate(id);
+      if (!candidate) errors.push(`${recipe.id}: required capability does not exist: ${id}`);
+    }
+    for (const id of recipe.preferred) {
+      const candidate = getCandidate(id);
+      if (!candidate) errors.push(`${recipe.id}: preferred capability does not exist: ${id}`);
+    }
+    for (const id of recipe.agents) {
+      const candidate = getCandidate(id);
+      if (!candidate) errors.push(`${recipe.id}: agent does not exist: ${id}`);
+      else if (candidate.kind !== "agent") errors.push(`${recipe.id}: recipe agent is not an agent candidate: ${id}`);
+    }
+  }
+  return errors;
 }
