@@ -704,6 +704,9 @@ Use an OWASP-aligned profile with Gitleaks, OSV, Semgrep and optional Strix, the
 
 ## Install DockyardOS
 
+> **Installed the VSIX but cannot find DockyardOS in Marketplace search?** GitHub prerelease VSIX builds are local installed extensions. Use the new **DockyardOS Activity Bar icon** or search the Extensions view with `@installed DockyardOS`. Marketplace search visibility starts only after the guarded Marketplace publication.
+
+
 ### Normal users — GitHub prerelease
 
 The first downloadable DockyardOS extension release is **v0.1.0 Preview 1**:
