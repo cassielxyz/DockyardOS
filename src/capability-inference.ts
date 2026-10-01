@@ -66,7 +66,7 @@ const RULES: SignalRule[] = [
   { pattern: /\bappwrite\b/i, capabilities: ["auth", "database", "object-storage"], stacks: ["appwrite"] },
   { pattern: /\bpocketbase\b/i, capabilities: ["auth", "database", "object-storage"], stacks: ["pocketbase"] },
   { pattern: /\bvercel\b/i, capabilities: ["vercel", "deployments", "web-hosting"], stacks: ["vercel", "web"] },
-  { pattern: /cloudflare|workers\b|pages\b/i, capabilities: ["cloudflare", "edge-functions", "web-hosting"], stacks: ["cloudflare", "web"] },
+  { pattern: /\bcloudflare\b|cloudflare workers|cloudflare pages|\bwrangler\b/i, capabilities: ["cloudflare", "edge-functions", "web-hosting"], stacks: ["cloudflare", "web"] },
   { pattern: /github|pull request|\bpr\b|github actions/i, capabilities: ["repositories", "pull-requests", "ci"], stacks: ["github"] },
 
   // Collaboration and knowledge systems.
