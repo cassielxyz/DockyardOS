@@ -2,7 +2,7 @@
   "name": "dockyardos-vscode",
   "displayName": "DockyardOS",
   "description": "Universal control center for persistent AI development orchestration, memory, connectors, skills, verification and safe automation.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "cassielxyz",
   "license": "MIT",
   "repository": {
@@ -27,7 +27,11 @@
   "engines": {
     "vscode": "^1.95.0"
   },
-  "categories": ["Other", "Programming Languages", "Testing"],
+  "categories": [
+    "Other",
+    "Programming Languages",
+    "Testing"
+  ],
   "activationEvents": [
     "onStartupFinished",
     "onCommand:dockyardOS.dashboard",
@@ -43,25 +47,82 @@
     "onCommand:dockyardOS.connections",
     "onCommand:dockyardOS.communityBrowse",
     "onCommand:dockyardOS.communityStatus",
-    "onCommand:dockyardOS.communityUpdatesCheck"
+    "onCommand:dockyardOS.communityUpdatesCheck",
+    "onView:dockyardOS.overview"
   ],
   "main": "./main.js",
   "contributes": {
     "commands": [
-      { "command": "dockyardOS.dashboard", "title": "DockyardOS: Open Control Center", "category": "DockyardOS" },
-      { "command": "dockyardOS.autoInitialize", "title": "DockyardOS: Auto Initialize Project", "category": "DockyardOS" },
-      { "command": "dockyardOS.initialize", "title": "DockyardOS: Initialize Project", "category": "DockyardOS" },
-      { "command": "dockyardOS.doctor", "title": "DockyardOS: Run Doctor", "category": "DockyardOS" },
-      { "command": "dockyardOS.status", "title": "DockyardOS: Project Status", "category": "DockyardOS" },
-      { "command": "dockyardOS.resume", "title": "DockyardOS: Resume Context", "category": "DockyardOS" },
-      { "command": "dockyardOS.teamStart", "title": "DockyardOS: Start Project Team", "category": "DockyardOS" },
-      { "command": "dockyardOS.teamStatus", "title": "DockyardOS: Team Status", "category": "DockyardOS" },
-      { "command": "dockyardOS.hostDoctor", "title": "DockyardOS: Check Agent Host", "category": "DockyardOS" },
-      { "command": "dockyardOS.hostInstall", "title": "DockyardOS: Install/Update Agent Host Integration", "category": "DockyardOS" },
-      { "command": "dockyardOS.connections", "title": "DockyardOS: Connections", "category": "DockyardOS" },
-      { "command": "dockyardOS.communityBrowse", "title": "DockyardOS: Open Community Hub", "category": "DockyardOS" },
-      { "command": "dockyardOS.communityStatus", "title": "DockyardOS: Community Package Status", "category": "DockyardOS" },
-      { "command": "dockyardOS.communityUpdatesCheck", "title": "DockyardOS: Check Community Updates Now", "category": "DockyardOS" }
+      {
+        "command": "dockyardOS.dashboard",
+        "title": "DockyardOS: Open Control Center",
+        "category": "DockyardOS"
+      },
+      {
+        "command": "dockyardOS.autoInitialize",
+        "title": "DockyardOS: Auto Initialize Project",
+        "category": "DockyardOS"
+      },
+      {
+        "command": "dockyardOS.initialize",
+        "title": "DockyardOS: Initialize Project",
+        "category": "DockyardOS"
+      },
+      {
+        "command": "dockyardOS.doctor",
+        "title": "DockyardOS: Run Doctor",
+        "category": "DockyardOS"
+      },
+      {
+        "command": "dockyardOS.status",
+        "title": "DockyardOS: Project Status",
+        "category": "DockyardOS"
+      },
+      {
+        "command": "dockyardOS.resume",
+        "title": "DockyardOS: Resume Context",
+        "category": "DockyardOS"
+      },
+      {
+        "command": "dockyardOS.teamStart",
+        "title": "DockyardOS: Start Project Team",
+        "category": "DockyardOS"
+      },
+      {
+        "command": "dockyardOS.teamStatus",
+        "title": "DockyardOS: Team Status",
+        "category": "DockyardOS"
+      },
+      {
+        "command": "dockyardOS.hostDoctor",
+        "title": "DockyardOS: Check Agent Host",
+        "category": "DockyardOS"
+      },
+      {
+        "command": "dockyardOS.hostInstall",
+        "title": "DockyardOS: Install/Update Agent Host Integration",
+        "category": "DockyardOS"
+      },
+      {
+        "command": "dockyardOS.connections",
+        "title": "DockyardOS: Connections",
+        "category": "DockyardOS"
+      },
+      {
+        "command": "dockyardOS.communityBrowse",
+        "title": "DockyardOS: Open Community Hub",
+        "category": "DockyardOS"
+      },
+      {
+        "command": "dockyardOS.communityStatus",
+        "title": "DockyardOS: Community Package Status",
+        "category": "DockyardOS"
+      },
+      {
+        "command": "dockyardOS.communityUpdatesCheck",
+        "title": "DockyardOS: Check Community Updates Now",
+        "category": "DockyardOS"
+      }
     ],
     "configuration": {
       "title": "DockyardOS",
@@ -73,13 +134,24 @@
         },
         "dockyardOS.defaultHost": {
           "type": "string",
-          "enum": ["antigravity", "gemini-cli", "codex", "claude-code", "cursor", "opencode"],
+          "enum": [
+            "antigravity",
+            "gemini-cli",
+            "codex",
+            "claude-code",
+            "cursor",
+            "opencode"
+          ],
           "default": "antigravity",
           "description": "Default coding-agent host for one-click initialization and host checks."
         },
         "dockyardOS.defaultMode": {
           "type": "string",
-          "enum": ["safe", "balanced", "autonomous"],
+          "enum": [
+            "safe",
+            "balanced",
+            "autonomous"
+          ],
           "default": "balanced",
           "description": "Default DockyardOS operating mode used by Auto Initialize."
         },
@@ -95,7 +167,10 @@
         },
         "dockyardOS.autoInitialize.hostScope": {
           "type": "string",
-          "enum": ["user", "project"],
+          "enum": [
+            "user",
+            "project"
+          ],
           "default": "user",
           "description": "Default host-integration scope used by Auto Initialize. User scope is normally the easiest universal setup."
         },
@@ -127,6 +202,23 @@
           "description": "Show a VS Code notification when a scheduled update check finds everything up to date."
         }
       }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "dockyardOS",
+          "title": "DockyardOS",
+          "icon": "assets/dockyard-activity.svg"
+        }
+      ]
+    },
+    "views": {
+      "dockyardOS": [
+        {
+          "id": "dockyardOS.overview",
+          "name": "Control Center"
+        }
+      ]
     }
   },
   "scripts": {
