@@ -24,6 +24,13 @@ export interface CommunityPublisher {
   signatureRequired?: boolean;
 }
 
+export interface CommunityRuntimeRequirements {
+  /** Every listed executable must exist before an installed package can be called runtime-ready. */
+  executables?: string[];
+  /** Human-readable prerequisites that cannot yet be machine-verified by DockyardOS. */
+  notes?: string[];
+}
+
 export interface CommunityPackageManifest {
   schemaVersion: 1;
   id: string;
@@ -42,6 +49,7 @@ export interface CommunityPackageManifest {
   hosts: HostId[];
   channel: UpdateChannel;
   entrypoints: CommunityEntrypoint[];
+  runtimeRequirements?: CommunityRuntimeRequirements;
   maxFiles?: number;
   maxBytes?: number;
   signature?: {
