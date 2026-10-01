@@ -6,6 +6,11 @@ on:
       - "src/host-session-readiness.ts"
       - "src/mcp-server.ts"
       - "src/index.ts"
+      - "integrations/native/gemini-cli/gemini-extension.json"
+      - "integrations/native/codex/.mcp.json"
+      - "integrations/native/claude-code/.mcp.json"
+      - "integrations/native/cursor/.cursor/mcp.json"
+      - "integrations/native/opencode/opencode.jsonc"
       - "test/p36-host-mcp-readiness.test.mjs"
       - ".github/workflows/p36-host-mcp-readiness.yml"
   workflow_dispatch:
@@ -26,7 +31,7 @@ jobs:
       - run: npm run build
       - name: Run P36 deterministic host-session readiness tests
         run: node --test test/p36-host-mcp-readiness.test.mjs
-      - name: Verify MCP session readiness remains non-persistent and approval-neutral
+      - name: Verify MCP session readiness remains launcher-bound, non-persistent and approval-neutral
         shell: bash
         run: |
           node --input-type=module <<'NODE'
@@ -34,6 +39,9 @@ jobs:
           const source = await readFile('src/mcp-server.ts', 'utf8');
           for (const tool of ['dockyard_connection_attest', 'dockyard_fulfillment']) {
             if (!source.includes(`"${tool}"`)) throw new Error(`missing ${tool}`);
+          }
+          if (!source.includes('const activeHost = launcherHost()')) {
+            throw new Error('active MCP host must be bound by the dockyard-mcp launcher');
           }
           if (!source.includes('const sessionConnections = new HostSessionConnectionRegistry()')) {
             throw new Error('session connection registry must stay process-local to dockyard-mcp');
