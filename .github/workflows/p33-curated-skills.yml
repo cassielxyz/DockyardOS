@@ -1,0 +1,63 @@
+name: P33 Curated Skill Assessment
+
+on:
+  pull_request:
+    paths:
+      - "registry/community.json"
+      - "src/community-*.ts"
+      - "src/capability-fulfillment*.ts"
+      - "test/curated-skill-materialization.test.mjs"
+      - ".github/workflows/p33-curated-skills.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  assess:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --ignore-scripts
+      - run: npm run build
+      - name: Resolve and statically assess curated skill bundles
+        shell: bash
+        run: |
+          export DOCKYARD_HOME="$(mktemp -d)"
+          node --input-type=module <<'NODE'
+          import { resolveAssessEffectiveCommunityPackage } from './dist/index.js';
+
+          const expectations = new Map([
+            ['vercel-react-best-practices', 'automatic'],
+            ['vercel-composition-patterns', 'automatic'],
+            ['supabase-postgres-best-practices', 'automatic'],
+            ['vercel-web-design-guidelines', 'approval-required'],
+            ['ui-ux-pro-max', 'approval-required'],
+            ['shadcn', 'approval-required'],
+          ]);
+
+          for (const [id, expected] of expectations) {
+            const resolved = await resolveAssessEffectiveCommunityPackage(id);
+            const decision = resolved.assessment.decision;
+            const missing = resolved.assessment.scan.entrypointsMissing;
+            const expansion = resolved.assessment.permissionExpansion;
+            console.log(JSON.stringify({
+              id,
+              revision: resolved.resolution.revision,
+              contentSha256: resolved.resolution.contentSha256,
+              decision,
+              files: resolved.resolution.files,
+              bytes: resolved.resolution.bytes,
+              scriptFiles: resolved.assessment.scan.scriptFiles.length,
+              canary: resolved.assessment.scan.canary.status,
+              reasons: resolved.assessment.reasons,
+            }));
+            if (decision !== expected) throw new Error(`${id}: expected ${expected}, got ${decision}`);
+            if (missing.length) throw new Error(`${id}: missing entrypoints: ${missing.join(', ')}`);
+            if (expansion.length) throw new Error(`${id}: inferred permissions exceed manifest: ${expansion.join(', ')}`);
+          }
+          NODE

@@ -44,16 +44,19 @@ test("truthful readiness distinguishes bundled, package-backed, MCP, discovery-o
     "superpowers",
     "mcp-registry",
     "ui-ux-pro-max",
+    "agent-reach",
     "definitely-unknown-capability",
   ]);
 
   assert.ok(plan.ready.includes("owasp"));
   assert.ok(plan.ready.includes("requirements-agent"));
   assert.ok(plan.installable.includes("superpowers"));
+  assert.ok(plan.installable.includes("ui-ux-pro-max"));
   assert.ok(plan.needsConnection.includes("mcp-registry"));
-  assert.ok(plan.discoveryOnly.includes("ui-ux-pro-max"));
+  assert.ok(plan.discoveryOnly.includes("agent-reach"));
   assert.ok(plan.warnings.some((warning) => warning.includes("definitely-unknown-capability")));
-  assert.equal(plan.entries.find((entry) => entry.candidateId === "ui-ux-pro-max")?.status, "discovery-only");
+  assert.equal(plan.entries.find((entry) => entry.candidateId === "ui-ux-pro-max")?.status, "installable-unassessed");
+  assert.equal(plan.entries.find((entry) => entry.candidateId === "agent-reach")?.status, "discovery-only");
 });
 
 test("continuation fulfillment uses the active team phase instead of rerunning/global mediation selections", () => {
@@ -134,9 +137,10 @@ test("approval-required or quarantined assessments remain inactive", async () =>
 
 test("agent-facing readiness never describes unresolved capabilities as active", async () => {
   const { root } = await setup();
-  const plan = await dockyard.planCapabilityFulfillmentForIds(root, ["ui-ux-pro-max", "mcp-registry"]);
+  const plan = await dockyard.planCapabilityFulfillmentForIds(root, ["ui-ux-pro-max", "agent-reach", "mcp-registry"]);
   const text = dockyard.capabilityFulfillmentAgentText(plan).join("\n");
-  assert.match(text, /Known but discovery-only: ui-ux-pro-max/);
+  assert.match(text, /Installable but not yet assessed\/activated: ui-ux-pro-max/);
+  assert.match(text, /Known but discovery-only: agent-reach/);
   assert.match(text, /Needs host\/account connection verification: mcp-registry/);
   assert.match(text, /Do not claim an unresolved capability is installed, connected, loaded, or active/);
 });
