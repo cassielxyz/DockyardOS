@@ -33,6 +33,7 @@ function runDockyard(context, args) {
     });
     let stdout = "";
     let stderr = "";
+    let settled = false;
     const append = (current, chunk) => {
       const next = current + chunk.toString("utf8");
       if (Buffer.byteLength(next, "utf8") <= MAX_OUTPUT_BYTES) return next;
@@ -41,10 +42,14 @@ function runDockyard(context, args) {
     child.stdout.on("data", (chunk) => { stdout = append(stdout, chunk); });
     child.stderr.on("data", (chunk) => { stderr = append(stderr, chunk); });
     child.on("error", (error) => {
+      if (settled) return;
+      settled = true;
       if (error.code === "ENOENT") reject(new Error("DockyardOS Core is unavailable. Reinstall the extension or configure dockyardOS.cliPath."));
       else reject(error);
     });
     child.on("close", (code) => {
+      if (settled) return;
+      settled = true;
       if (code === 0) resolve(stdout.trim());
       else reject(new Error((stderr || stdout || `DockyardOS exited with code ${code}`).trim()));
     });
