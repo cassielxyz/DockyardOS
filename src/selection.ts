@@ -1,4 +1,5 @@
 import type { Candidate, HostId, ScoredCandidate, SecurityLevel, SelectionRequest, SelectionResult, TeamRecipe, UpdateChannel } from "./types.js";
+import { inferSelectionSignals } from "./capability-inference.js";
 import { catalog, getCandidate, providers } from "./registry.js";
 import { recipes } from "./recipes.js";
 
@@ -8,6 +9,10 @@ const CONTEXT_PENALTY: Record<Candidate["contextCost"], number> = { tiny: 0, sma
 
 function normalized(values: string[]): string[] {
   return values.map((value) => value.trim().toLowerCase()).filter(Boolean);
+}
+
+function uniqueNormalized(values: string[]): string[] {
+  return [...new Set(normalized(values))];
 }
 
 function intersection(a: string[], b: string[]): string[] {
@@ -44,10 +49,12 @@ export function defaultSelectionRequest(input: {
   preferred?: string[];
   excluded?: string[];
 }): SelectionRequest {
+  const task = input.task ?? "feature";
+  const inferred = inferSelectionSignals(task);
   return {
-    taskType: input.taskType ?? inferTaskType(input.task ?? "feature"),
-    stack: normalized(input.stack ?? []),
-    capabilities: normalized(input.capabilities ?? []),
+    taskType: input.taskType ?? inferTaskType(task),
+    stack: uniqueNormalized([...(input.stack ?? []), ...inferred.stacks]),
+    capabilities: uniqueNormalized([...(input.capabilities ?? []), ...inferred.capabilities]),
     security: input.security ?? "standard",
     host: input.host ?? "antigravity",
     channel: input.channel ?? "recommended",
