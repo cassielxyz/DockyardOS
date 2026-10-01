@@ -2,7 +2,7 @@ import { access, cp, lstat, mkdir, readFile, readdir, rm, writeFile } from "node
 import { homedir } from "node:os";
 import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { installAntigravityIdeGlobalPlugin } from "./antigravity-ide-install.js";
+import { antigravityIdeGlobalPluginPath, installAntigravityIdeGlobalPlugin } from "./antigravity-ide-install.js";
 import { commandExists, run } from "./process.js";
 import { dockyardHome } from "./project.js";
 import { hostAdapter, hostAdapters } from "./host-adapters.js";
@@ -71,6 +71,13 @@ export async function inspectHost(workspaceRoot: string, host: HostId): Promise<
     ...adapter.projectInstructionFiles,
   ];
   const globalPaths = adapter.preferredSkillLocations.filter((item) => item.scope === "user" && item.path).map((item) => item.path!);
+  if (host === "antigravity") {
+    globalPaths.push(antigravityIdeGlobalPluginPath(
+      process.env.DOCKYARD_ANTIGRAVITY_CONFIG_ROOT
+        ? resolve(process.env.DOCKYARD_ANTIGRAVITY_CONFIG_ROOT)
+        : undefined,
+    ));
+  }
   return {
     host,
     displayName: adapter.displayName,
@@ -131,7 +138,8 @@ export function planHostInstall(workspaceRoot: string, host: HostId, scope: Host
   if (adapter.nativeBundle && adapter.nativeBundle.install === "cli" && host !== "antigravity") {
     warnings.push(`A richer native ${adapter.nativeBundle.mode} bundle is available at ${adapter.nativeBundle.path}; the portable skill remains the default install until the host-native install is explicitly selected.`);
   }
-  if (scope === "project") warnings.push("Project-scope host integration files may be committed to the application repository. Use user scope when you want one DockyardOS install across projects.");
+  if (host === "antigravity" && scope === "user") warnings.push("If the agy launcher is unavailable or its plugin install command fails, DockyardOS falls back to Antigravity's verified IDE-global plugin directory.");
+    if (scope === "project") warnings.push("Project-scope host integration files may be committed to the application repository. Use user scope when you want one DockyardOS install across projects.");
   if (!adapter.supportsDockyardHooks) warnings.push(`${adapter.displayName} does not currently expose the same DockyardOS hook surface as Antigravity; durable resume still works through the shared CLI/state, but approval/context injection may require the host's own integration mechanism.`);
   return { host, workspaceRoot, actions, sharedState: { dockyardHome: dockyardHome(), projectStateIsHostIndependent: true }, warnings };
 }
