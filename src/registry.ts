@@ -4,15 +4,74 @@ import { expandedCatalog } from "./catalog-expanded.js";
 import { connectorCatalog } from "./catalog-connectors.js";
 import { expandedProviders } from "./providers-expanded.js";
 
+const RISK_RANK: Record<Candidate["risk"], number> = { low: 0, medium: 1, high: 2 };
+const CONTEXT_RANK: Record<Candidate["contextCost"], number> = { tiny: 0, small: 1, medium: 2, large: 3 };
+const CHANNEL_RANK: Record<UpdateChannel, number> = { stable: 0, recommended: 1, edge: 2, dev: 3 };
+
+function unique<T>(values: T[]): T[] {
+  return [...new Set(values)];
+}
+
+function higherRisk(a: Candidate["risk"], b: Candidate["risk"]): Candidate["risk"] {
+  return RISK_RANK[a] >= RISK_RANK[b] ? a : b;
+}
+
+function higherContextCost(a: Candidate["contextCost"], b: Candidate["contextCost"]): Candidate["contextCost"] {
+  return CONTEXT_RANK[a] >= CONTEXT_RANK[b] ? a : b;
+}
+
+function moreRestrictiveChannel(a: UpdateChannel, b: UpdateChannel): UpdateChannel {
+  return CHANNEL_RANK[a] >= CHANNEL_RANK[b] ? a : b;
+}
+
+function mergeCompatibleCandidate(existing: Candidate, incoming: Candidate, priorLayer: string, incomingLayer: string): Candidate {
+  const sameIdentity = existing.kind === incoming.kind
+    && existing.trust === incoming.trust
+    && existing.source.type === incoming.source.type
+    && existing.source.locator === incoming.source.locator
+    && existing.source.revisionStrategy === incoming.source.revisionStrategy;
+  if (!sameIdentity) {
+    throw new Error(`DockyardOS mega-registry candidate id collision: ${incoming.id} (${priorLayer} vs ${incomingLayer})`);
+  }
+
+  const conflictsWith = unique([...(existing.conflictsWith ?? []), ...(incoming.conflictsWith ?? [])]);
+  const requires = unique([...(existing.requires ?? []), ...(incoming.requires ?? [])]);
+  return {
+    ...existing,
+    ...incoming,
+    capabilities: unique([...existing.capabilities, ...incoming.capabilities]),
+    tags: unique([...existing.tags, ...incoming.tags]),
+    stacks: unique([...existing.stacks, ...incoming.stacks]),
+    hosts: unique([...existing.hosts, ...incoming.hosts]),
+    permissions: unique([...existing.permissions, ...incoming.permissions]),
+    risk: higherRisk(existing.risk, incoming.risk),
+    contextCost: higherContextCost(existing.contextCost, incoming.contextCost),
+    maturity: Math.max(existing.maturity, incoming.maturity),
+    maintenance: Math.max(existing.maintenance, incoming.maintenance),
+    defaultChannel: moreRestrictiveChannel(existing.defaultChannel, incoming.defaultChannel),
+    source: {
+      ...existing.source,
+      ...incoming.source,
+      ...(incoming.source.license ?? existing.source.license ? { license: incoming.source.license ?? existing.source.license } : {}),
+    },
+    ...(conflictsWith.length ? { conflictsWith } : {}),
+    ...(requires.length ? { requires } : {}),
+  };
+}
+
 function mergeCandidates(layers: Array<{ name: string; candidates: Candidate[] }>): Candidate[] {
   const merged: Candidate[] = [];
-  const seen = new Map<string, string>();
+  const locations = new Map<string, { index: number; layer: string }>();
   for (const layer of layers) {
     for (const candidate of layer.candidates) {
-      const prior = seen.get(candidate.id);
-      if (prior) throw new Error(`DockyardOS mega-registry candidate id collision: ${candidate.id} (${prior} vs ${layer.name})`);
-      seen.set(candidate.id, layer.name);
-      merged.push(candidate);
+      const prior = locations.get(candidate.id);
+      if (!prior) {
+        locations.set(candidate.id, { index: merged.length, layer: layer.name });
+        merged.push(candidate);
+        continue;
+      }
+      merged[prior.index] = mergeCompatibleCandidate(merged[prior.index]!, candidate, prior.layer, layer.name);
+      locations.set(candidate.id, { index: prior.index, layer: `${prior.layer}+${layer.name}` });
     }
   }
   return merged;
@@ -57,8 +116,6 @@ const baseProviders: ProviderDefinition[] = [
 ];
 
 export const providers: ProviderDefinition[] = mergeProviders(baseProviders, expandedProviders);
-
-const CHANNEL_RANK: Record<UpdateChannel, number> = { stable: 0, recommended: 1, edge: 2, dev: 3 };
 
 export function getCandidate(id: string): Candidate | undefined {
   return catalog.find((candidate) => candidate.id === id);
