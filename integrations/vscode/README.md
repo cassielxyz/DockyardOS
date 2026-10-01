@@ -1,6 +1,24 @@
 # DockyardOS for VS Code
 
-The DockyardOS VS Code extension is a thin control surface over one shared DockyardOS runtime/state model. Install the extension once; initialize each project once.
+The DockyardOS VS Code extension is the normal user control surface over one shared DockyardOS runtime/state model. Install the extension once; initialize each project once.
+
+## Install for normal users
+
+The guarded Marketplace publication has not happened yet, so the current normal-user install is the verified VSIX artifact:
+
+1. Open the repository's **Actions** page.
+2. Open a successful **VS Code Extension** workflow run for the version you want.
+3. Download the `dockyardos-vscode-<version>` artifact and extract the `.vsix` if GitHub downloaded a ZIP.
+4. In VS Code open **Extensions → ... → Install from VSIX...**.
+5. Select the DockyardOS `.vsix` and reload VS Code.
+6. Open your project folder.
+7. Run `DockyardOS: Initialize Project` and choose `balanced` unless you intentionally need another policy mode.
+8. Run `DockyardOS: Connections` to inspect provider/MCP setup.
+9. Run `DockyardOS: Install/Update Agent Host Integration`; for Google Antigravity, `user` scope is normally the easiest one-time setup.
+10. Run `DockyardOS: Run Doctor` and `DockyardOS: Check Agent Host`.
+11. Give your task to the coding agent normally. DockyardOS handles project restoration, bounded capability selection, workflow/team state, verification and checkpoints.
+
+After the first guarded Marketplace publication, users can install **DockyardOS** by publisher `cassielxyz` directly from the VS Code Extensions view and then continue from step 6.
 
 ## What the VSIX contains
 
@@ -11,7 +29,8 @@ The bundled Core includes:
 - DockyardOS CLI/runtime
 - local `dockyard-mcp` runtime and production dependencies
 - portable/native host integration assets
-- community package registry metadata
+- capability and community package registry metadata
+- creative UI routing metadata such as Inspo MCP, Taste Skill, and Awesome Design Skills
 - trusted publisher-key registry
 
 For development or when intentionally using a newer external CLI, set `dockyardOS.cliPath` to an executable path. If left blank, the bundled Core is preferred.
@@ -28,11 +47,72 @@ Open the Command Palette and use:
 - `DockyardOS: Team Status`
 - `DockyardOS: Check Agent Host`
 - `DockyardOS: Install/Update Agent Host Integration`
+- `DockyardOS: Connections`
 - `DockyardOS: Open Community Hub`
 - `DockyardOS: Community Package Status`
 - `DockyardOS: Check Community Updates Now`
 
 The status bar shows whether the project is uninitialized, ready, or currently in a DockyardOS team phase. In an untrusted workspace it stays locked and DockyardOS does not run project commands automatically.
+
+## Connections Center
+
+`DockyardOS: Connections` is a local extension webview over the existing DockyardOS provider-readiness and MCP connection model. It is **not a credential store**.
+
+The first view uses local-only readiness checks. It can show whether known provider CLIs/config/link markers are present without making remote account calls. Press **Verify connections** only when you want DockyardOS to run the existing bounded read-only identity/status probes.
+
+Provider account actions follow these rules:
+
+- only provider IDs registered by the extension are accepted;
+- the webview cannot supply a URL or shell command;
+- setup pages come from fixed HTTPS definitions in the extension;
+- supported login actions open the provider's own CLI login flow in a visible terminal only after a modal confirmation;
+- provider passwords, OAuth tokens, API keys and secret values are not captured or written into DockyardOS project/checkpoint state;
+- a missing provider CLI shows setup guidance instead of pretending a login can run;
+- live authentication/readiness never grants permission for a deployment, database mutation, DNS change, Git write, production action, or destructive action.
+
+MCP connector cards cover useful project systems such as GitHub, Vercel, Supabase, Neon, Cloudflare, Figma, Linear, Notion, Atlassian, MongoDB, Hugging Face, Sentry and Inspo.
+
+MCP status is deliberately conservative: setup metadata is not called “connected.” P36 connection truth is host-session scoped, so the active coding-agent host must successfully use/attest the MCP before DockyardOS can treat the current host session as connected.
+
+### Inspo MCP
+
+Inspo is registered as a low-risk, read-only design-reference MCP:
+
+```text
+https://inspomcp.dev/mcp
+```
+
+It currently requires no account login. The Connections Center can copy the endpoint, open the official setup page, or—after confirmation—open a terminal with the official installer:
+
+```bash
+npx -y inspo-mcp install
+```
+
+“No login required” means the service has no account-auth step; it does **not** mean DockyardOS fabricates a connected state before the host verifies actual MCP use.
+
+## Creative UI routing
+
+DockyardOS Core now has a dedicated `creative-web-ui` recipe. Natural-language requests that ask for real design inspiration, premium/creative interfaces, or explicitly reject a generic AI-generated look can add signals such as:
+
+- `design-inspiration`
+- `visual-reference`
+- `macrostructure`
+- `anti-slop`
+- `design-taste`
+- `visual-direction`
+
+The recipe prefers a bounded combination of:
+
+- Inspo MCP for real interface references and design-system context
+- Taste Skill for anti-slop frontend/design direction
+- Awesome Design Skills for design-style/system discovery
+- UI UX Pro Max
+- Vercel Web Design Guidelines
+- shadcn/ui
+- Playwright MCP / Playwright
+- independent browser QA, accessibility and performance review
+
+The workflow is reference synthesis, not site cloning. Third-party skill selection remains subject to DockyardOS trust/readiness/fulfillment rules.
 
 ## Community Hub
 
@@ -65,11 +145,9 @@ automatic | approval-required | quarantine
 install only with the assessed revision + content digest
 ```
 
-For `approval-required`, VS Code shows the policy reasons in a modal before it passes `--approve`. `quarantine` cannot be overridden from the Hub. Webview messages are limited to `refresh` plus the explicit `inspect`, `assess`, and `install` package actions, and package IDs are revalidated by the extension before any CLI call.
+For `approval-required`, VS Code shows the policy reasons in a modal before it passes `--approve`. `quarantine` cannot be overridden from the Hub. Webview messages are limited to explicit package actions, and package IDs are revalidated by the extension before any CLI call.
 
-The Hub uses a restrictive Content Security Policy with nonce-bound local scripts/styles. Registry strings are serialized with script-breaking characters escaped and rendered through DOM text nodes instead of HTML injection.
-
-Installed package versions remain under DockyardOS external state and can also be inspected through `Community Package Status`. Rollback stays exposed by the CLI so the exact target revision remains explicit.
+The Hub and Connections Center both use restrictive Content Security Policy headers with nonce-bound scripts/styles. Data strings are escaped and rendered through DOM text nodes instead of becoming arbitrary HTML.
 
 ## Scheduled safe community updates
 
@@ -88,15 +166,13 @@ With only `enabled` turned on, the extension runs the equivalent of:
 dockyard community updates check --json
 ```
 
-It reports automatic-safe candidates separately from packages that require approval, are quarantined, are unavailable/ambiguous, or returned errors. `DockyardOS: Check Community Updates Now` performs the same check manually and never auto-applies, even when scheduled safe apply is enabled.
-
 If `applySafeAutomatically` is also explicitly enabled, the background scheduler may run only:
 
 ```bash
 dockyard community updates apply-safe --json
 ```
 
-That command performs a fresh pinned assessment and calls the package activation boundary with `approve: false`. The scheduler never invokes `community install`, never passes `--approve`, and cannot turn an approval-required or quarantined candidate into an unattended update. Permission expansion, trust downgrade, risk increase, invalid signatures, registry ambiguity, missing manifests, and quarantine findings remain review/blocking states.
+The scheduler never invokes `community install`, never passes `--approve`, and cannot turn an approval-required or quarantined candidate into an unattended update. Permission expansion, trust downgrade, risk increase, invalid signatures, registry ambiguity, missing manifests, and quarantine findings remain review/blocking states.
 
 Additional scheduler safeguards:
 
@@ -106,8 +182,6 @@ Additional scheduler safeguards:
 - failed cycles are rescheduled at the bounded cadence rather than silently disabling future checks;
 - review-required/skipped/error results remain visible instead of being reported as successful updates;
 - notifications can open the Community Hub for inspection.
-
-The extension activates at VS Code startup so an explicitly enabled schedule can run, but when scheduling is disabled it does not run DockyardOS project commands just because VS Code started.
 
 ## Project separation
 
@@ -133,13 +207,13 @@ User scope is preferred when the host supports it because it installs once acros
 
 ## Build a VSIX locally
 
-From the repository root:
+From the repository root with Node.js 20+:
 
 ```bash
-npm install
-npm run build
+npm ci
+npm test
 cd integrations/vscode
-npm install
+npm ci
 npm run package
 ```
 
@@ -147,7 +221,7 @@ The packaging step copies the already-built DockyardOS runtime, registry metadat
 
 ## Marketplace release channel
 
-`.github/workflows/vscode-extension.yml` is the release workflow. Ordinary pull requests do not publish anything. Tag pushes and manual runs can package a VSIX, but **Marketplace publication happens only on an explicit manual dispatch** with all of these conditions satisfied:
+`.github/workflows/vscode-extension.yml` is the guarded release workflow. Ordinary pull requests do not publish anything. Tag pushes and manual runs can package a VSIX, but **Marketplace publication happens only on an explicit manual dispatch** with all of these conditions satisfied:
 
 1. `publish_marketplace=true` is selected manually.
 2. `release_tag` is supplied and exactly equals `v<integrations/vscode/package.json version>`.
@@ -155,9 +229,9 @@ The packaging step copies the already-built DockyardOS runtime, registry metadat
 4. The repository has a `VSCE_PAT` Actions secret for the `cassielxyz` Marketplace publisher.
 5. The full DockyardOS tests and VSIX manifest/package checks pass before `vsce publish` runs.
 
-For the current `0.1.0` extension version, the first publish therefore requires an existing `v0.1.0` tag on the intended release commit plus the configured publisher token. DockyardOS intentionally does not create tags or silently publish from a normal push.
+For the current `0.1.0` extension version, publication therefore requires an existing `v0.1.0` tag on the intended release commit plus the configured publisher token. DockyardOS intentionally does not create tags or silently publish from a normal push.
 
-The workflow always uploads the validated VSIX as a GitHub Actions artifact before the optional Marketplace mutation, so the exact package can be inspected independently.
+The workflow uploads the validated VSIX as a GitHub Actions artifact before the optional Marketplace mutation, so the exact package can be inspected independently.
 
 ## Opt-in real-host CI
 
@@ -167,7 +241,7 @@ The workflow always uploads the validated VSIX as a GitHub Actions artifact befo
 verify/real-host/**
 ```
 
-Normal pull requests, `main` pushes, and ordinary work branches do **not** start the expensive matrix. The verification-branch trigger exists so authenticated repository automation can request the same full matrix without weakening the opt-in boundary.
+Normal pull requests, `main` pushes, and ordinary work branches do **not** start the expensive matrix.
 
 The matrix currently covers:
 
@@ -178,33 +252,21 @@ The matrix currently covers:
 - Cursor CLI (`agent`)
 - OpenCode (`opencode`)
 
-For npm-distributed hosts, the workflow resolves the current registry version first and records that exact version before installation. For official installer-script hosts, it downloads the installer over HTTPS, records its SHA-256, and only then executes it. Each job records the executable path and reported version, then verifies DockyardOS `host inspect`, `host doctor`, and project-scope integration against that actually installed CLI. It does not send prompts to a model or require model/API credentials.
-
-Antigravity uses the verified official noninteractive installer surface and confirms `agy --version`. DockyardOS then installs and verifies the full project workspace plugin at `.agents/plugins/dockyardos`. Separately, the real Antigravity CLI imports the bundled plugin through `agy plugin install <path>` and `agy plugin list` must report DockyardOS. This keeps the workspace-plugin check distinct from Antigravity's CLI-managed imported-plugin list and does not invoke a model.
-
-### Verified six-host checkpoint
-
-Real Host Matrix run `#13` (`36425594147`) completed successfully on exact merged `main` SHA `854434f26e6c084dba6d6e532ff689db60ced77f`. Antigravity, Gemini CLI, Codex, Claude Code, Cursor, and OpenCode all passed executable discovery, DockyardOS integration/doctor checks, and evidence upload. The six artifact IDs and GitHub-reported SHA-256 digests are preserved in [`docs/REAL_HOST_MATRIX_EVIDENCE_2026-09-28.md`](../../docs/REAL_HOST_MATRIX_EVIDENCE_2026-09-28.md) so the checkpoint remains auditable after the 14-day Actions artifact retention period.
-
-With that compatibility gate complete, the first guarded VS Code Marketplace publication remains the explicit production release step.
+Real Host Matrix run `#13` (`36425594147`) completed successfully on exact merged `main` SHA `854434f26e6c084dba6d6e532ff689db60ced77f`. The six artifact IDs and GitHub-reported SHA-256 digests are preserved in [`docs/REAL_HOST_MATRIX_EVIDENCE_2026-09-28.md`](../../docs/REAL_HOST_MATRIX_EVIDENCE_2026-09-28.md).
 
 ## Verify
 
-Normal CI verifies:
+Normal CI plus the focused Connections/creative-UI lane verify:
 
-1. the root DockyardOS test suite,
-2. community registry and publisher-key JSON,
-3. extension JavaScript syntax,
-4. bundled Core staging,
-5. bundled Core CLI/community execution,
-6. actual VSIX packaging,
-7. required Core/community/MCP files inside the produced VSIX,
-8. cross-host install/doctor smoke tests using DockyardOS fixtures,
-9. Marketplace workflow guardrails and listing metadata,
-10. the opt-in real-host matrix definition, restricted verification-branch trigger, and supported install surfaces,
-11. Community Hub CSP/serialization/state normalization and pinned-install guardrails,
-12. scheduled-update opt-in defaults, cadence bounds, workspace-trust guard, no-approval safe-apply boundary, and scheduler file inclusion in the VSIX.
+1. the root DockyardOS build and test suite,
+2. capability registry structural validity and creative UI selection,
+3. Connections Center local/live state normalization without false connected states,
+4. allowlisted provider/MCP setup metadata and HTTPS destinations,
+5. Connections Center nonce CSP and model-string escaping,
+6. extension JavaScript syntax,
+7. bundled Core staging,
+8. actual VSIX packaging,
+9. inclusion of `main.js`, Connections Center files, creative catalog/recipe code, Core and MCP runtime inside the produced VSIX,
+10. existing community, security, provider, host, release, and checkpoint regression suites.
 
-The separate opt-in real-host workflow supplies evidence that the current external CLIs are still discoverable by DockyardOS. The first full six-host green checkpoint is recorded above; future release candidates can repeat the same opt-in matrix when host compatibility may have changed.
-
-After installing the VSIX, open a project and run `DockyardOS: Initialize Project`, then `DockyardOS: Run Doctor`. Close/reopen VS Code and use `DockyardOS: Project Status` or `Resume Context` to confirm persistent state recovery. Use `DockyardOS: Open Community Hub` to verify the searchable manifest-first community workflow, and use `DockyardOS: Check Community Updates Now` before enabling any recurring update policy.
+After installing the VSIX, open a project and run `DockyardOS: Initialize Project`, `DockyardOS: Connections`, then `DockyardOS: Run Doctor`. Close/reopen VS Code and use `DockyardOS: Project Status` or `Resume Context` to confirm persistent state recovery.
