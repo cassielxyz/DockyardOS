@@ -135,24 +135,26 @@ Discovery is still different from execution. A discovery source never becomes tr
 
 ## Install for normal users
 
-Until the guarded Marketplace publication is complete, install a VSIX from GitHub Actions.
+### GitHub prerelease
 
-### Universal Control Center preview build
+DockyardOS **v0.1.0 Preview 1** is available from GitHub Releases:
 
-1. Open the repository **Actions** page.
-2. Open a successful **P38 Universal Control Center** run.
-3. Download `dockyardos-universal-preview-vsix`.
-4. Extract the artifact ZIP if necessary.
-5. In VS Code use **Extensions → ... → Install from VSIX...**.
-6. Select `dockyardos-universal-preview.vsix` and reload.
-7. Open a trusted project and use the DockyardOS Control Center.
-8. Click **Auto Initialize** for one-click project/host setup.
+[Download DockyardOS v0.1.0 Preview 1](https://github.com/cassielxyz/DockyardOS/releases/tag/v0.1.0-preview.1)
 
-### Official release build
+1. Download `dockyardos-vscode.vsix`.
+2. Optionally verify it with the attached `dockyardos-vscode.vsix.sha256`.
+3. In VS Code use **Extensions → ... → Install from VSIX...**.
+4. Select the VSIX and reload.
+5. Open a trusted project and use the DockyardOS Control Center.
+6. Click **Auto Initialize** for one-click project/host setup.
 
-The guarded `.github/workflows/vscode-extension.yml` workflow is the versioned official packaging path. It tests Dockyard Core, stamps the required official-public release gate, packages the VSIX, asserts that the universal dashboard/theme/background and bundled Core are inside the package, and uploads the VSIX artifact before any optional Marketplace publication.
+Preview 1 is the source-development edition and does not pretend the stable public gate is configured.
 
-Marketplace publication remains a separate explicit production mutation.
+### Stable official-public release
+
+The guarded `.github/workflows/vscode-extension.yml` workflow remains the versioned stable packaging path. It tests Dockyard Core, stamps the required official-public release gate, packages the VSIX, asserts that the universal dashboard/theme/background and bundled Core are inside the package, and uploads the VSIX artifact before any optional Marketplace publication.
+
+Stable `v0.1.0` still requires a real `DOCKYARD_PUBLIC_CONTROL_URL` plus the existing Marketplace publisher/token/tag gates. Those requirements are deliberately not bypassed.
 
 ## Build locally
 
