@@ -78,6 +78,8 @@ test("user-scope Antigravity install falls back to the IDE-global plugin when ag
     assert.match(String(fallback.primaryInstallError), /agy is not installed or not on PATH/i);
     const plugin = JSON.parse(await readFile(join(configRoot, "plugins", "dockyardos", "plugin.json"), "utf8"));
     assert.equal(plugin.name, "dockyardos");
+    const inspection = await dockyard.inspectHost(root, "antigravity");
+    assert.ok(inspection.globalSignals.some((signal) => signal.path === join(configRoot, "plugins", "dockyardos") && signal.exists));
   } finally {
     if (previousPath === undefined) delete process.env.PATH;
     else process.env.PATH = previousPath;
