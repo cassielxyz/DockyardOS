@@ -2,7 +2,7 @@
 
 **Build. Orchestrate. Ship.**
 
-DockyardOS is a persistent autonomous-development layer for coding agents. It adds project memory, resumable checkpoints, approval policy, adaptive specialist teams, a curated capability/provider registry, security gates, testing, cross-host continuity, and safe community capability distribution around hosts such as Google Antigravity, Gemini CLI, Codex, Claude Code, Cursor, OpenCode, and VS Code.
+DockyardOS is a persistent autonomous-development layer for coding agents. It adds project memory, resumable checkpoints, approval policy, adaptive specialist teams, capability/provider routing, security gates, testing, cross-host continuity, and safe connector/community workflows around hosts such as Google Antigravity, Gemini CLI, Codex, Claude Code, Cursor, OpenCode, and VS Code.
 
 ## What works now
 
@@ -18,6 +18,8 @@ DockyardOS is a persistent autonomous-development layer for coding agents. It ad
 - isolated Git worktrees for parallel implementation writers
 - independent QA/security/release reviewers separated from implementation write roles
 - conservative team/agent outcome learning for future routing
+- VS Code **Connections Center** for provider readiness, read-only live verification, setup/login guidance, and MCP configuration without storing credentials in DockyardOS
+- first-class creative-UI routing with **Inspo MCP**, **Taste Skill**, **Awesome Design Skills**, UI UX Pro Max, Vercel Web Design Guidelines, shadcn/ui, Playwright, accessibility, and performance review
 - provider detection and capability-based fallback planning across Vercel, Cloudflare, Supabase and alternatives
 - approval-gated authenticated provider actions for GitHub, Vercel, Cloudflare, and Supabase
 - sequential verified preview provisioning across supported web/database/workflow providers
@@ -37,34 +39,47 @@ DockyardOS is a persistent autonomous-development layer for coding agents. It ad
 - clearly separated sponsored/affiliate partner offers that never influence technical ranking, security, provider choice, or agent decisions
 - one external DockyardOS state shared by every supported host
 
-## Verified real-host compatibility
+## Install for normal users
 
-On 2026-09-28, DockyardOS Real Host Matrix run `36425594147` passed all six installed-host lanes against exact merged `main` commit `854434f26e6c084dba6d6e532ff689db60ced77f`:
+The normal user-facing product is the **DockyardOS VS Code extension**. The packaged VSIX includes DockyardOS Core, so you do not need to install the Dockyard CLI globally for normal extension use.
 
-- Google Antigravity (`agy`)
-- Gemini CLI (`gemini`)
-- OpenAI Codex (`codex`)
-- Claude Code (`claude`)
-- Cursor (`agent`)
-- OpenCode (`opencode`)
+### Current install: VSIX
 
-The matrix installed the public host CLIs through their recorded installation mechanisms, verified each executable, and exercised DockyardOS host inspection/doctor/integration. The Antigravity lane also verified CLI-managed plugin discovery with `agy plugin install` followed by `agy plugin list`. The matrix did not authenticate to model providers, send prompts, or use model API keys.
+The first guarded Visual Studio Marketplace publication is still a separate release gate. Until that publication is completed, install the verified VSIX build directly:
 
-See [`docs/REAL_HOST_MATRIX_EVIDENCE_2026-09-28.md`](docs/REAL_HOST_MATRIX_EVIDENCE_2026-09-28.md) for the exact run, job IDs, retained artifact IDs, and SHA-256 digests.
+1. Open this repository's **Actions** page and open a successful **VS Code Extension** workflow run for the version you want.
+2. Download the `dockyardos-vscode-<version>` artifact and extract the `.vsix` file if GitHub downloaded it as a ZIP.
+3. In VS Code, open **Extensions**.
+4. Open the Extensions `...` menu and choose **Install from VSIX...**.
+5. Select `dockyardos-vscode.vsix` and reload VS Code when prompted.
+6. Open the project/repository you want DockyardOS to manage.
+7. Open the Command Palette and run **DockyardOS: Initialize Project**. `balanced` is the recommended default mode.
+8. Run **DockyardOS: Connections**. Review local provider readiness, use **Verify connections** when you want read-only account checks, and use the setup/login buttons only for the services you actually need.
+9. Run **DockyardOS: Install/Update Agent Host Integration**. For Google Antigravity, choose `antigravity` and normally use `user` scope so the integration works across projects.
+10. Run **DockyardOS: Run Doctor** and **DockyardOS: Check Agent Host**.
+11. Give your requirement to the coding agent in normal language. DockyardOS restores or creates the correct team/workflow, selects a bounded capability set, checkpoints progress, and can resume later from the same external project state.
 
-## Install once, use across projects
+After the guarded Marketplace publication is completed, the normal install becomes simply: search for **DockyardOS** by publisher `cassielxyz` in VS Code Extensions, install it, then continue from step 6 above.
 
-The normal user-facing setup is the VS Code extension. Release packaging puts DockyardOS Core inside the VSIX, so normal extension use does not require a separate global CLI.
+### Build the VSIX yourself
 
-After installing the VSIX:
+If you want the newest source build before a release artifact is available, install Node.js 20+ and Git, then run:
 
-1. Open a project folder.
-2. Run `DockyardOS: Initialize Project` once for that project.
-3. Run `DockyardOS: Install/Update Agent Host Integration` once for the agent host you use.
-4. Give your requirement to the agent in normal language.
-5. DockyardOS restores/creates the team workflow, selects bounded capabilities, checkpoints progress, and resumes later from the same external state.
+```bash
+git clone https://github.com/cassielxyz/DockyardOS.git
+cd DockyardOS
+npm ci
+npm test
+cd integrations/vscode
+npm ci
+npm run package
+```
 
-Project/team state lives under:
+Then install the generated `.vsix` through **Extensions → ... → Install from VSIX...**.
+
+### Where DockyardOS stores memory
+
+Project/team state lives outside the source repository:
 
 ```text
 ~/.dockyardos/projects/<project-id>/
@@ -82,9 +97,75 @@ Local signing keys live separately under:
 ~/.dockyardos/signing-keys/
 ```
 
-It is not duplicated into `.claude`, `.cursor`, `.opencode`, or another host directory. Switching agent hosts therefore does not fork the project's memory.
+DockyardOS does not copy that project memory into `.claude`, `.cursor`, `.opencode`, or another host directory. Switching agent hosts therefore does not fork the project's Dockyard memory.
 
-See [`integrations/vscode/README.md`](integrations/vscode/README.md) for VSIX behavior and [`docs/HOSTS.md`](docs/HOSTS.md) for the host matrix.
+See [`integrations/vscode/README.md`](integrations/vscode/README.md) for extension behavior and [`docs/HOSTS.md`](docs/HOSTS.md) for the host matrix.
+
+## Connections Center
+
+Run:
+
+```text
+DockyardOS: Connections
+```
+
+The Connections Center is intentionally different from a credential vault:
+
+- the first view is **local-only** and checks CLI/config/link markers without remote account calls;
+- **Verify connections** runs the existing bounded, read-only provider identity/status probes;
+- provider login actions open the provider's own CLI login flow in a visible terminal after confirmation;
+- passwords, OAuth tokens, API keys, and MCP credentials are never copied into DockyardOS checkpoints;
+- setup links are fixed HTTPS allowlisted documentation destinations, not URLs supplied by a webview message;
+- configured/installed MCP metadata is **not** reported as connected;
+- MCP connection truth stays bound to the active host session through the existing DockyardOS host/MCP readiness model;
+- connection readiness never grants deployment, production, destructive, database, DNS, or Git mutation approval.
+
+The center includes guidance for core providers and MCPs such as GitHub, Vercel, Supabase, Cloudflare, Neon, Firebase, Figma, Linear, Notion, Atlassian, MongoDB, Hugging Face, Sentry, and Inspo.
+
+**Inspo MCP** is treated as a read-only, no-login design-reference connector. DockyardOS can open its setup documentation, copy its hosted endpoint, or run its official setup command in a visible terminal after confirmation. A no-login connector is still not falsely labeled as connected until the active host has actually verified current-session use.
+
+## Creative UI workflow
+
+For requests such as “make this landing page premium,” “use real website inspiration,” or “do not make this look AI-generated,” DockyardOS can route into the dedicated `creative-web-ui` recipe.
+
+The intended flow is:
+
+```text
+Requirement / brand context
+        ↓
+Inspo MCP references + macrostructure
+        ↓
+Taste / anti-slop visual direction
+        ↓
+Awesome Design Skills + UI UX Pro Max
+        ↓
+Vercel Web Design Guidelines + shadcn/custom UI
+        ↓
+Implementation
+        ↓
+Playwright browser inspection
+        ↓
+Accessibility + Lighthouse/performance checks
+        ↓
+Independent QA review
+```
+
+DockyardOS uses reference material to understand hierarchy, layout, typography, color roles, spacing, components, and interaction patterns. It should synthesize an original design rather than copy a reference website. Selected skills still pass through normal DockyardOS readiness/trust rules; appearing in the capability catalogue is not permission to execute unverified third-party code.
+
+## Verified real-host compatibility
+
+On 2026-09-28, DockyardOS Real Host Matrix run `36425594147` passed all six installed-host lanes against exact merged `main` commit `854434f26e6c084dba6d6e532ff689db60ced77f`:
+
+- Google Antigravity (`agy`)
+- Gemini CLI (`gemini`)
+- OpenAI Codex (`codex`)
+- Claude Code (`claude`)
+- Cursor (`agent`)
+- OpenCode (`opencode`)
+
+The matrix installed the public host CLIs through their recorded installation mechanisms, verified each executable, and exercised DockyardOS host inspection/doctor/integration. The Antigravity lane also verified CLI-managed plugin discovery with `agy plugin install` followed by `agy plugin list`. The matrix did not authenticate to model providers, send prompts, or use model API keys.
+
+See [`docs/REAL_HOST_MATRIX_EVIDENCE_2026-09-28.md`](docs/REAL_HOST_MATRIX_EVIDENCE_2026-09-28.md) for the exact run, job IDs, retained artifact IDs, and SHA-256 digests.
 
 ## CLI development / advanced use
 
@@ -347,7 +428,7 @@ dockyard providers preview run \
   --approve
 ```
 
-Supported web targets are `vercel`, `cloudflare-pages`, and `cloudflare-worker`; optional `--database supabase` and `--workflow github` steps can be composed. Steps run sequentially and each provider mutation must pass post-action verification before the next one starts. The sequence stops on the first failure or unverifiable result instead of claiming a partially provisioned preview is healthy. Preview orchestration contains no production actions.
+Supported web targets are `vercel`, `cloudflare-pages`, and `cloudflare-worker`; optional `--database supabase` and `--workflow github` steps can be composed. Steps run sequentially and each provider mutation must pass post-action verification before the next step starts. The sequence stops on the first failure or unverifiable result instead of claiming a partially provisioned preview is healthy. Preview orchestration contains no production actions.
 
 See [`docs/PROVIDERS.md`](docs/PROVIDERS.md) for the action matrix, parameter boundaries, verification model, and production approval rules.
 
