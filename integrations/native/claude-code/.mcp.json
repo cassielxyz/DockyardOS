@@ -2,7 +2,7 @@
   "mcpServers": {
     "dockyardos": {
       "command": "dockyard-mcp",
-      "args": []
+      "args": ["--host", "claude-code"]
     }
   }
 }

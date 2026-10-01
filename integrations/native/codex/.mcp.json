@@ -3,7 +3,7 @@
     "dockyardos": {
       "type": "stdio",
       "command": "dockyard-mcp",
-      "args": []
+      "args": ["--host", "codex"]
     }
   }
 }

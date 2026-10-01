@@ -4,7 +4,7 @@
     "servers": {
       "dockyardos": {
         "type": "local",
-        "command": ["dockyard-mcp"],
+        "command": ["dockyard-mcp", "--host", "opencode"],
         "cwd": "."
       }
     }
