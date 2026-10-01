@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "repository": "cassielxyz/DockyardOS",
+  "checkpointDate": "2026-10-01",
+  "verifiedCodeSha": "a35bd6b4725f9cc29eb1c3fe0ad75dd7f15d8c3a",
+  "checkpointPr": 48,
+  "lastCompletedMilestone": {
+    "id": "P35",
+    "title": "runtime connection readiness",
+    "mergedSha": "a35bd6b4725f9cc29eb1c3fe0ad75dd7f15d8c3a",
+    "pr": 47,
+    "verifiedHeadSha": "7e736abf6acb70756b8c42b13586a13d825c5a18"
+  },
+  "previousMilestone": {
+    "id": "P34",
+    "title": "research/provider skill materialization and runtime prerequisites",
+    "mergedSha": "c58dc536716df39a4335bd9f0136174fdbd24cda",
+    "pr": 46,
+    "verifiedHeadSha": "1eba71b10631de245d98c565070e73d0b8455ad5"
+  },
+  "verification": [
+    { "name": "CI", "runId": 36903998260, "conclusion": "success" },
+    { "name": "P35 Runtime Connection Readiness", "runId": 36903998302, "conclusion": "success" },
+    { "name": "P34 Research and Provider Skill Assessment", "runId": 36903998258, "conclusion": "success" },
+    { "name": "P33 Curated Skill Assessment", "runId": 36903998263, "conclusion": "success" },
+    { "name": "Community Contribution Validation", "runId": 36903998254, "conclusion": "success" }
+  ],
+  "nextMilestone": {
+    "id": "P36",
+    "title": "verified host/MCP connection readiness",
+    "status": "not-started",
+    "branch": null,
+    "goals": [
+      "distinguish selected, installed, runtime-present, configured, verified-connected, and mutation-authorized states",
+      "make required host/MCP readiness fail closed when verification is unavailable",
+      "keep optional connections advisory without unnecessary live account probes",
+      "preserve immutable installed-manifest runtime requirements",
+      "never persist connector credentials or treat connectivity as production/destructive approval"
+    ]
+  },
+  "resumeRules": [
+    "inspect main, branches, pull requests, roadmap and CI before continuing",
+    "treat verifiedCodeSha as the completed code-state anchor; checkpoint-only documentation commits after it do not make the checkpoint stale",
+    "if newer production code milestones exist, they override this checkpoint and the checkpoint must be repaired before continuing",
+    "do not replay P0-P35 unless regression evidence requires it",
+    "update this checkpoint immediately after the next merged production milestone"
+  ]
+}
