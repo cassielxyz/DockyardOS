@@ -2,6 +2,8 @@
 
 This file is the durable human-readable continuation checkpoint for DockyardOS. Before starting new work, verify `main` still contains the recorded verified code state, then inspect newer commits/PRs and continue from the newest verified production milestone instead of replaying completed work.
 
+For the complete cross-agent continuation, parallel-work, verification, documentation, safety, and implementation contract, read [`AGENT_CONTINUATION_GUIDE.md`](AGENT_CONTINUATION_GUIDE.md) before making changes.
+
 ## Checkpoint identity
 
 - Checkpoint date: 2026-10-01
