@@ -24,10 +24,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
+          node-version: 22
       - name: Install Core dependencies
-        run: npm ci
+        run: npm install --ignore-scripts
       - name: Build Core
         run: npm run build
       - name: Run focused P37 tests
@@ -51,7 +50,7 @@ jobs:
           NODE
       - name: Install VS Code extension dependencies
         working-directory: integrations/vscode
-        run: npm ci
+        run: npm install --ignore-scripts
       - name: Check extension JavaScript
         working-directory: integrations/vscode
         run: npm run check
