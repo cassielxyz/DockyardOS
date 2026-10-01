@@ -1,0 +1,55 @@
+name: P38 Universal Control Center
+
+on:
+  pull_request:
+    paths:
+      - "integrations/vscode/**"
+      - "test/p38-universal-control-center.test.mjs"
+      - ".github/workflows/p38-universal-control-center.yml"
+      - "README.md"
+      - "docs/assets/readme/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Core dependencies
+        run: npm install --ignore-scripts
+      - name: Build Core
+        run: npm run build
+      - name: Run universal control center tests
+        run: node --test test/p38-universal-control-center.test.mjs test/p37-connections-creative-ui.test.mjs
+      - name: Install extension dependencies
+        working-directory: integrations/vscode
+        run: npm install --ignore-scripts
+      - name: Check extension JavaScript
+        working-directory: integrations/vscode
+        run: npm run check
+      - name: Package universal preview VSIX
+        working-directory: integrations/vscode
+        run: |
+          npm run prepare-core
+          npx @vscode/vsce package --out /tmp/dockyardos-universal-preview.vsix
+          test -s /tmp/dockyardos-universal-preview.vsix
+          unzip -l /tmp/dockyardos-universal-preview.vsix | grep -q 'extension/main.js'
+          unzip -l /tmp/dockyardos-universal-preview.vsix | grep -q 'extension/dashboard-controller.js'
+          unzip -l /tmp/dockyardos-universal-preview.vsix | grep -q 'extension/dashboard-view.js'
+          unzip -l /tmp/dockyardos-universal-preview.vsix | grep -q 'extension/ui-theme.js'
+          unzip -l /tmp/dockyardos-universal-preview.vsix | grep -q 'extension/assets/dockyard-graffiti-bg.svg'
+          unzip -l /tmp/dockyardos-universal-preview.vsix | grep -q 'extension/connections-controller.js'
+          unzip -l /tmp/dockyardos-universal-preview.vsix | grep -q 'extension/community-hub-view.js'
+          unzip -l /tmp/dockyardos-universal-preview.vsix | grep -q 'extension/core/dist/main.js'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dockyardos-universal-preview-vsix
+          path: /tmp/dockyardos-universal-preview.vsix
+          if-no-files-found: error
