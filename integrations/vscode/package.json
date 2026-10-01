@@ -1,7 +1,7 @@
 {
   "name": "dockyardos-vscode",
   "displayName": "DockyardOS",
-  "description": "Global VS Code control surface for DockyardOS autonomous development orchestration.",
+  "description": "Universal control center for persistent AI development orchestration, memory, connectors, skills, verification and safe automation.",
   "version": "0.1.0",
   "publisher": "cassielxyz",
   "license": "MIT",
@@ -20,7 +20,9 @@
     "orchestration",
     "checkpoint",
     "security",
-    "mcp"
+    "mcp",
+    "memory",
+    "antigravity"
   ],
   "engines": {
     "vscode": "^1.95.0"
@@ -28,6 +30,8 @@
   "categories": ["Other", "Programming Languages", "Testing"],
   "activationEvents": [
     "onStartupFinished",
+    "onCommand:dockyardOS.dashboard",
+    "onCommand:dockyardOS.autoInitialize",
     "onCommand:dockyardOS.initialize",
     "onCommand:dockyardOS.doctor",
     "onCommand:dockyardOS.status",
@@ -44,6 +48,8 @@
   "main": "./main.js",
   "contributes": {
     "commands": [
+      { "command": "dockyardOS.dashboard", "title": "DockyardOS: Open Control Center", "category": "DockyardOS" },
+      { "command": "dockyardOS.autoInitialize", "title": "DockyardOS: Auto Initialize Project", "category": "DockyardOS" },
       { "command": "dockyardOS.initialize", "title": "DockyardOS: Initialize Project", "category": "DockyardOS" },
       { "command": "dockyardOS.doctor", "title": "DockyardOS: Run Doctor", "category": "DockyardOS" },
       { "command": "dockyardOS.status", "title": "DockyardOS: Project Status", "category": "DockyardOS" },
@@ -69,7 +75,34 @@
           "type": "string",
           "enum": ["antigravity", "gemini-cli", "codex", "claude-code", "cursor", "opencode"],
           "default": "antigravity",
-          "description": "Agent host used by DockyardOS host checks from VS Code."
+          "description": "Default coding-agent host for one-click initialization and host checks."
+        },
+        "dockyardOS.defaultMode": {
+          "type": "string",
+          "enum": ["safe", "balanced", "autonomous"],
+          "default": "balanced",
+          "description": "Default DockyardOS operating mode used by Auto Initialize."
+        },
+        "dockyardOS.autoInitialize.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically initialize DockyardOS project state when a trusted workspace opens. Disabled by default."
+        },
+        "dockyardOS.autoInitialize.installHostIntegration": {
+          "type": "boolean",
+          "default": true,
+          "description": "When Auto Initialize runs, also install/update the selected default agent-host integration using the configured scope."
+        },
+        "dockyardOS.autoInitialize.hostScope": {
+          "type": "string",
+          "enum": ["user", "project"],
+          "default": "user",
+          "description": "Default host-integration scope used by Auto Initialize. User scope is normally the easiest universal setup."
+        },
+        "dockyardOS.dashboard.openOnStartup": {
+          "type": "boolean",
+          "default": true,
+          "description": "Open the DockyardOS Control Center when a trusted project workspace starts."
         },
         "dockyardOS.communityUpdates.enabled": {
           "type": "boolean",
@@ -97,7 +130,7 @@
     }
   },
   "scripts": {
-    "check": "node --check main.js && node --check extension.js && node --check connections-controller.js && node --check connections-model.js && node --check connections-view.js && node --check community-hub-model.js && node --check community-hub-view.js && node --check community-update-scheduler.js && node --check partner-offers.js && node --check scripts/generate-partner-offers.cjs && node --check scripts/prepare-core.cjs",
+    "check": "node --check main.js && node --check extension.js && node --check dashboard-controller.js && node --check dashboard-view.js && node --check ui-theme.js && node --check connections-controller.js && node --check connections-model.js && node --check connections-view.js && node --check community-hub-model.js && node --check community-hub-view.js && node --check community-update-scheduler.js && node --check partner-offers.js && node --check scripts/generate-partner-offers.cjs && node --check scripts/prepare-core.cjs",
     "generate-partners": "node scripts/generate-partner-offers.cjs",
     "prepare-core": "node scripts/prepare-core.cjs",
     "package": "npm run generate-partners && npm run prepare-core && npx @vscode/vsce package"
