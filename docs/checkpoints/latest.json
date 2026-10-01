@@ -2,46 +2,50 @@
   "schemaVersion": 1,
   "repository": "cassielxyz/DockyardOS",
   "checkpointDate": "2026-10-02",
-  "verifiedCodeSha": "67416f90d2ddc923b48506d4d04f8f3679c31d48",
-  "checkpointPr": 53,
+  "verifiedCodeSha": "0467a1900a93b79764f5d57c6c062382255e4f42",
+  "checkpointPr": null,
   "lastCompletedMilestone": {
+    "id": "P38",
+    "title": "universal DockyardOS control center and README rebuild",
+    "mergedSha": "0467a1900a93b79764f5d57c6c062382255e4f42",
+    "pr": 54,
+    "verifiedHeadSha": "7ebc685c19f6174768cdb75a1c41e23e1d10ef39"
+  },
+  "previousMilestone": {
     "id": "P37",
     "title": "Connections Center + creative UI orchestration",
     "mergedSha": "67416f90d2ddc923b48506d4d04f8f3679c31d48",
     "pr": 52,
     "verifiedHeadSha": "2666a31bfd6d08ef772fddbcb5b38e7179461b4f"
   },
-  "previousMilestone": {
-    "id": "P36",
-    "title": "verified host/MCP connection readiness",
-    "mergedSha": "6adb94e6ba714cf5e1457c2258fe0e5ec226031b",
-    "pr": 50,
-    "verifiedHeadSha": "6952144a3bc93ab23466c317fdc3146e5ea1bdc0"
-  },
   "verification": [
-    { "name": "CI", "runId": 36919036448, "conclusion": "success" },
-    { "name": "P37 Connections and Creative UI", "runId": 36919036348, "conclusion": "success" }
+    { "name": "CI", "runId": 36924832259, "conclusion": "success" },
+    { "name": "P37 Connections and Creative UI", "runId": 36924832204, "conclusion": "success" },
+    { "name": "P38 Universal Control Center", "runId": 36924832447, "conclusion": "success" }
   ],
-  "developmentFailureEvidence": [
+  "artifacts": [
     {
-      "runId": 36918844913,
-      "classification": "workflow-definition-failure",
-      "detail": "The first focused P37 run failed in actions/setup-node before project code executed because npm cache discovery requires a root lockfile. The workflow was aligned to the repository's existing npm install --ignore-scripts strategy and reran green. This was neither a code/test failure nor a runner-allocation failure."
+      "name": "dockyardos-universal-preview-vsix",
+      "artifactId": 11193271894,
+      "sha256": "9ffa31eebf6a4861dc01e35c97c530ed9792753bc97bf1ee02c57adc16d13407",
+      "expiresAt": "2026-12-30T20:53:07Z"
     }
   ],
   "safetyInvariants": [
-    "the Connections Center is not a credential vault and never persists provider passwords, OAuth tokens, API keys or MCP credentials into project/checkpoint state",
-    "local provider inspection makes no remote account calls; explicit live verification remains bounded and read-only",
-    "provider login/setup commands and setup URLs come only from extension-side allowlisted definitions, never caller-supplied webview strings",
+    "the Universal Control Center is a UI over existing Dockyard truth/policy boundaries, not a second authority",
+    "Auto Initialize requires workspace trust; automatic workspace initialization remains explicit opt-in",
+    "interactive Auto Initialize confirms host integration changes before applying them",
+    "dashboard actions and setting keys are extension-side allowlisted and webview input cannot inject arbitrary commands or settings",
+    "Dockyard Core child processes use shell=false",
+    "the fixed graffiti background is repository-owned and packaged locally rather than remotely fetched",
+    "Connections remains non-secret-bearing: credentials and tokens are not copied into project/checkpoint state",
     "configured or installed MCP metadata is not treated as verified current-session connectivity",
-    "P36 launcher-bound host-session evidence remains authoritative for active MCP connection truth",
-    "no-login MCP readiness does not imply a connected state",
-    "connection verification never grants deployment, database, DNS, Git, destructive or production mutation approval",
-    "third-party creative skill selection remains subject to Dockyard trust/readiness/fulfillment boundaries",
-    "design references are used for original synthesis rather than reference-site cloning"
+    "provider/MCP readiness never grants external mutation approval",
+    "Community Hub retains quarantine, signature, immutable-revision/hash and approval boundaries",
+    "Creative UI reference use remains original synthesis rather than reference-site cloning"
   ],
   "nextMilestone": {
-    "id": "P38",
+    "id": "P39",
     "title": "first guarded live VS Code Marketplace publication",
     "status": "externally-gated",
     "branch": null,
@@ -62,12 +66,13 @@
     ]
   },
   "resumeRules": [
-    "inspect main, branches, pull requests, roadmap and CI before continuing",
+    "inspect main, branches, pull requests, roadmap, checkpoint and CI before continuing",
     "treat verifiedCodeSha as the completed code-state anchor; checkpoint-only documentation commits after it do not make the checkpoint stale",
     "if newer production code milestones exist, they override this checkpoint and the checkpoint must be repaired before continuing",
-    "do not replay P0-P37 unless regression evidence requires it",
-    "keep runner_id: 0 / zero-step infrastructure failures, workflow-definition failures, external-provider failures and real code/test failures distinct",
-    "do not perform the live P38 Marketplace mutation without all external gates and explicit production approval",
+    "do not replay P0-P38 unless regression evidence requires it",
+    "preserve the universal dashboard, Auto Initialize safety gates, shared UI design system and VSIX package assertions",
+    "keep runner-allocation failures, workflow-definition failures, external-provider failures and real code/test failures distinct",
+    "do not perform the live P39 Marketplace mutation without all external gates and explicit production approval",
     "update this checkpoint immediately after the next completed production milestone"
   ]
 }
