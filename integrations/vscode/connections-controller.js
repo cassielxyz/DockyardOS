@@ -80,6 +80,10 @@ function safeUrl(raw) {
   return vscode.Uri.parse(url.toString());
 }
 
+function backgroundUri(context, webview) {
+  return webview.asWebviewUri(vscode.Uri.file(path.join(context.extensionPath, "assets", "dockyard-graffiti-bg.svg"))).toString();
+}
+
 async function openProviderSetup(id) {
   const definition = providerDefinition(id);
   if (!definition?.setupUrl) throw new Error(`No setup documentation is registered for provider ${id}.`);
@@ -146,10 +150,14 @@ async function openConnectionsCenter(context) {
     "dockyardOS.connections",
     "DockyardOS Connections",
     vscode.ViewColumn.One,
-    { enableScripts: true, retainContextWhenHidden: true, localResourceRoots: [] },
+    {
+      enableScripts: true,
+      retainContextWhenHidden: true,
+      localResourceRoots: [vscode.Uri.file(path.join(context.extensionPath, "assets"))],
+    },
   );
   connectionsPanel = panel;
-  panel.webview.html = renderConnectionsHtml(panel.webview, model);
+  panel.webview.html = renderConnectionsHtml(panel.webview, model, backgroundUri(context, panel.webview));
   panel.onDidDispose(() => { if (connectionsPanel === panel) connectionsPanel = undefined; }, null, context.subscriptions);
   panel.webview.onDidReceiveMessage(async (message) => {
     try {
