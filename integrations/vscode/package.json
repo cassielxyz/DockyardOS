@@ -36,11 +36,12 @@
     "onCommand:dockyardOS.teamStatus",
     "onCommand:dockyardOS.hostDoctor",
     "onCommand:dockyardOS.hostInstall",
+    "onCommand:dockyardOS.connections",
     "onCommand:dockyardOS.communityBrowse",
     "onCommand:dockyardOS.communityStatus",
     "onCommand:dockyardOS.communityUpdatesCheck"
   ],
-  "main": "./extension.js",
+  "main": "./main.js",
   "contributes": {
     "commands": [
       { "command": "dockyardOS.initialize", "title": "DockyardOS: Initialize Project", "category": "DockyardOS" },
@@ -51,6 +52,7 @@
       { "command": "dockyardOS.teamStatus", "title": "DockyardOS: Team Status", "category": "DockyardOS" },
       { "command": "dockyardOS.hostDoctor", "title": "DockyardOS: Check Agent Host", "category": "DockyardOS" },
       { "command": "dockyardOS.hostInstall", "title": "DockyardOS: Install/Update Agent Host Integration", "category": "DockyardOS" },
+      { "command": "dockyardOS.connections", "title": "DockyardOS: Connections", "category": "DockyardOS" },
       { "command": "dockyardOS.communityBrowse", "title": "DockyardOS: Open Community Hub", "category": "DockyardOS" },
       { "command": "dockyardOS.communityStatus", "title": "DockyardOS: Community Package Status", "category": "DockyardOS" },
       { "command": "dockyardOS.communityUpdatesCheck", "title": "DockyardOS: Check Community Updates Now", "category": "DockyardOS" }
@@ -95,7 +97,7 @@
     }
   },
   "scripts": {
-    "check": "node --check extension.js && node --check community-hub-model.js && node --check community-hub-view.js && node --check community-update-scheduler.js && node --check partner-offers.js && node --check scripts/generate-partner-offers.cjs && node --check scripts/prepare-core.cjs",
+    "check": "node --check main.js && node --check extension.js && node --check connections-controller.js && node --check connections-model.js && node --check connections-view.js && node --check community-hub-model.js && node --check community-hub-view.js && node --check community-update-scheduler.js && node --check partner-offers.js && node --check scripts/generate-partner-offers.cjs && node --check scripts/prepare-core.cjs",
     "generate-partners": "node scripts/generate-partner-offers.cjs",
     "prepare-core": "node scripts/prepare-core.cjs",
     "package": "npm run generate-partners && npm run prepare-core && npx @vscode/vsce package"

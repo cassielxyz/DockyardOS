@@ -1,6 +1,7 @@
 import type { TeamRecipe } from "./types.js";
 import { getCandidate } from "./registry.js";
 import { expandedRecipes } from "./recipes-expanded.js";
+import { creativeRecipes } from "./recipes-creative.js";
 
 const baseRecipes: TeamRecipe[] = [
   {
@@ -185,7 +186,7 @@ const baseRecipes: TeamRecipe[] = [
   },
 ];
 
-export const recipes: TeamRecipe[] = [...baseRecipes, ...expandedRecipes];
+export const recipes: TeamRecipe[] = [...baseRecipes, ...expandedRecipes, ...creativeRecipes];
 
 export function recipeById(id: string): TeamRecipe | undefined {
   return recipes.find((recipe) => recipe.id === id);

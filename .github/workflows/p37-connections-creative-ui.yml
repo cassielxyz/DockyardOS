@@ -1,0 +1,69 @@
+name: P37 Connections and Creative UI
+
+on:
+  pull_request:
+    paths:
+      - "src/catalog-creative.ts"
+      - "src/capability-inference.ts"
+      - "src/recipes-creative.ts"
+      - "src/recipes.ts"
+      - "src/registry.ts"
+      - "integrations/vscode/**"
+      - "test/p37-connections-creative-ui.test.mjs"
+      - ".github/workflows/p37-connections-creative-ui.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Core dependencies
+        run: npm install --ignore-scripts
+      - name: Build Core
+        run: npm run build
+      - name: Run focused P37 tests
+        run: node --test test/p37-connections-creative-ui.test.mjs
+      - name: Verify registry and creative recommendation
+        run: |
+          node dist/main.js registry verify
+          node dist/main.js recommend \
+            --task "Build a premium creative landing page that does not look AI-generated and use real website inspiration" \
+            --stack web,nextjs,react \
+            --host antigravity \
+            --json > /tmp/p37-recommend.json
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const result = JSON.parse(fs.readFileSync('/tmp/p37-recommend.json', 'utf8'));
+          if (result.recipe?.id !== 'creative-web-ui') throw new Error(`wrong recipe: ${result.recipe?.id}`);
+          const skills = new Set(result.skills.map(x => x.candidate?.id ?? x.id));
+          const mcps = new Set(result.mcps.map(x => x.candidate?.id ?? x.id));
+          for (const id of ['taste-skill', 'awesome-design-skills']) if (!skills.has(id)) throw new Error(`missing ${id}`);
+          if (!mcps.has('inspo-mcp')) throw new Error('missing inspo-mcp');
+          NODE
+      - name: Install VS Code extension dependencies
+        working-directory: integrations/vscode
+        run: npm install --ignore-scripts
+      - name: Check extension JavaScript
+        working-directory: integrations/vscode
+        run: npm run check
+      - name: Package VSIX and verify production contents
+        working-directory: integrations/vscode
+        run: |
+          npm run prepare-core
+          npx @vscode/vsce package --out /tmp/dockyardos-vscode.vsix
+          test -s /tmp/dockyardos-vscode.vsix
+          unzip -l /tmp/dockyardos-vscode.vsix | grep -q 'extension/main.js'
+          unzip -l /tmp/dockyardos-vscode.vsix | grep -q 'extension/connections-controller.js'
+          unzip -l /tmp/dockyardos-vscode.vsix | grep -q 'extension/connections-model.js'
+          unzip -l /tmp/dockyardos-vscode.vsix | grep -q 'extension/connections-view.js'
+          unzip -l /tmp/dockyardos-vscode.vsix | grep -q 'extension/core/dist/main.js'
+          unzip -l /tmp/dockyardos-vscode.vsix | grep -q 'extension/core/dist/catalog-creative.js'
+          unzip -l /tmp/dockyardos-vscode.vsix | grep -q 'extension/core/dist/recipes-creative.js'
