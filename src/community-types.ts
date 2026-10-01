@@ -1,9 +1,10 @@
-import type { CapabilityKind, HostId, PermissionId, RiskLevel, TrustLevel, UpdateChannel } from "./types.js";
+import type { CapabilityKind, HostId, PermissionId, ProviderReadiness, RiskLevel, TrustLevel, UpdateChannel } from "./types.js";
 
 export type CommunitySourceType = "github";
 export type CommunityEntrypointType = "skill" | "agent" | "mcp" | "rules" | "workflow" | "docs";
 export type CommunityInstallDecision = "automatic" | "approval-required" | "quarantine";
 export type CommunityPackageStatus = "discovered" | "resolved" | "quarantined" | "approved" | "installed" | "rejected";
+export type CommunityProviderMinimumReadiness = Extract<ProviderReadiness, "configured" | "authenticated" | "linked">;
 
 export interface CommunitySource {
   type: CommunitySourceType;
@@ -24,10 +25,25 @@ export interface CommunityPublisher {
   signatureRequired?: boolean;
 }
 
+export type CommunityRuntimeConnectionRequirement =
+  | {
+      kind: "provider";
+      id: string;
+      required: boolean;
+      minimumReadiness: CommunityProviderMinimumReadiness;
+    }
+  | {
+      kind: "mcp";
+      id: string;
+      required: boolean;
+    };
+
 export interface CommunityRuntimeRequirements {
   /** Every listed executable must exist before an installed package can be called runtime-ready. */
   executables?: string[];
-  /** Human-readable prerequisites that cannot yet be machine-verified by DockyardOS. */
+  /** External provider/MCP connections. Required entries gate readiness; optional entries are advisory only. */
+  connections?: CommunityRuntimeConnectionRequirement[];
+  /** Human-readable prerequisites or task-dependent caveats that cannot yet be machine-verified by DockyardOS. */
   notes?: string[];
 }
 
