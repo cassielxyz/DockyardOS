@@ -704,23 +704,22 @@ Use an OWASP-aligned profile with Gitleaks, OSV, Semgrep and optional Strix, the
 
 ## Install DockyardOS
 
-### Normal users — prebuilt VSIX
+### Normal users — GitHub prerelease
 
-Until the guarded Marketplace publication is completed, install the prebuilt VSIX from GitHub Actions.
+The first downloadable DockyardOS extension release is **v0.1.0 Preview 1**:
 
-For the newest universal Control Center build:
+[Download DockyardOS v0.1.0 Preview 1](https://github.com/cassielxyz/DockyardOS/releases/tag/v0.1.0-preview.1)
 
-1. open this repository’s **Actions** page;
-2. open a successful **P38 Universal Control Center** run;
-3. download the `dockyardos-universal-preview-vsix` artifact;
-4. extract `dockyardos-universal-preview.vsix` if GitHub downloads an artifact ZIP;
-5. in VS Code open **Extensions → ... → Install from VSIX...**;
-6. choose the VSIX and reload VS Code;
-7. open a trusted project folder;
-8. the DockyardOS Control Center can open automatically;
-9. press **Auto Initialize** for one-click project + host setup.
+1. open the release page above;
+2. download `dockyardos-vscode.vsix`;
+3. optionally download `dockyardos-vscode.vsix.sha256` and verify the package checksum;
+4. in VS Code open **Extensions → ... → Install from VSIX...**;
+5. choose the VSIX and reload VS Code;
+6. open a trusted project folder;
+7. the DockyardOS Control Center can open automatically;
+8. press **Auto Initialize** for one-click project + host setup.
 
-The guarded **VS Code Extension** release workflow remains the official packaging path for versioned public release artifacts and Marketplace publication.
+Preview 1 is the **source-development** edition. The stable official-public `v0.1.0` build remains guarded by the real DockyardOS public control-plane configuration and the separate Marketplace publication gates; those gates are not bypassed for the preview.
 
 ### Build the VSIX yourself
 
