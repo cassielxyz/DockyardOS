@@ -11,6 +11,8 @@ const KINDS = new Set(["skill", "tool", "agent", "mcp", "provider", "workflow"])
 const TRUST = new Set(["official", "maintainer", "community", "dockyard"]);
 const RISK = new Set(["low", "medium", "high"]);
 const CHANNEL = new Set(["stable", "recommended", "edge", "dev"]);
+const DEFAULT_REGISTRY_URL = new URL("../registry/community.json", import.meta.url);
+const CURATED_OVERLAY_URL = new URL("../registry/curated-packages.json", import.meta.url);
 
 function safeRelativePath(value: string): boolean {
   if (!value || value.includes("\\") || value.startsWith("/") || value.startsWith("~")) return false;
@@ -82,9 +84,36 @@ export function validateCommunityRegistry(index: CommunityRegistryIndex): string
   return errors;
 }
 
+async function readRegistry(target: string): Promise<CommunityRegistryIndex> {
+  return JSON.parse(await readFile(target, "utf8")) as CommunityRegistryIndex;
+}
+
+function mergeBundledRegistries(base: CommunityRegistryIndex, overlay: CommunityRegistryIndex): CommunityRegistryIndex {
+  const updatedAt = Date.parse(overlay.updatedAt) > Date.parse(base.updatedAt) ? overlay.updatedAt : base.updatedAt;
+  return {
+    schemaVersion: 1,
+    updatedAt,
+    packages: [...base.packages, ...overlay.packages],
+    discoverySources: [...base.discoverySources, ...overlay.discoverySources],
+  };
+}
+
 export async function loadCommunityRegistry(path?: string): Promise<CommunityRegistryIndex> {
-  const target = path ?? fileURLToPath(new URL("../registry/community.json", import.meta.url));
-  const parsed = JSON.parse(await readFile(target, "utf8")) as CommunityRegistryIndex;
+  if (path) {
+    const parsed = await readRegistry(path);
+    const errors = validateCommunityRegistry(parsed);
+    if (errors.length) throw new Error(`Invalid DockyardOS community registry: ${errors.join("; ")}`);
+    return parsed;
+  }
+
+  const base = await readRegistry(fileURLToPath(DEFAULT_REGISTRY_URL));
+  let parsed = base;
+  try {
+    const curated = await readRegistry(fileURLToPath(CURATED_OVERLAY_URL));
+    parsed = mergeBundledRegistries(base, curated);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
   const errors = validateCommunityRegistry(parsed);
   if (errors.length) throw new Error(`Invalid DockyardOS community registry: ${errors.join("; ")}`);
   return parsed;
