@@ -73,7 +73,10 @@ test("signed ad sessions and leases are installation-bound and tamper evident", 
     /does not belong/i,
   );
   const [body, signature] = session.sessionToken.split(".");
-  assert.throws(() => verifyAdToken(`${body}.${signature.slice(0, -1)}x`, "ad-session", now + 100), /signature/i);
+  const replacement = signature.endsWith("x") ? "y" : "x";
+  const tamperedSignature = `${signature.slice(0, -1)}${replacement}`;
+  assert.notEqual(tamperedSignature, signature);
+  assert.throws(() => verifyAdToken(`${body}.${tamperedSignature}`, "ad-session", now + 100), /signature/i);
 });
 
 test("admin bearer token is required and compared without a public fallback", () => {
