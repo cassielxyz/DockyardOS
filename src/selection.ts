@@ -22,6 +22,32 @@ function intersection(a: string[], b: string[]): string[] {
 
 export function inferTaskType(text: string): string {
   const prompt = text.toLowerCase();
+
+  // Specific practical archetypes must win before broad words such as server, feature, cleanup, or deploy.
+  if (/production incident|service incident|production outage|\boutage\b|incident response|root cause/.test(prompt)) return "incident";
+  if (/\brag\b|retrieval[- ]augmented|knowledge assistant|knowledge base assistant/.test(prompt)) return "rag";
+  if (/\bmcp\b.*(?:server|connector|tool)|model context protocol/.test(prompt)) return "mcp";
+  if (/vs ?code extension|visual studio code extension|ide extension|editor extension/.test(prompt)) return "ide-extension";
+  if (/browser extension|chrome extension|firefox extension|manifest v3/.test(prompt)) return "browser-extension";
+  if (/monorepo|workspace graph|turborepo|nx workspace/.test(prompt)) return "monorepo";
+  if (/dependency upgrade|framework upgrade|upgrade dependencies|major version upgrade/.test(prompt)) return "dependency-upgrade";
+  if (/kubernetes|\bk8s\b|helm chart|cluster platform/.test(prompt)) return "kubernetes";
+  if (/terraform|opentofu|infrastructure as code|\biac\b|cloud infrastructure/.test(prompt)) return "infrastructure";
+  if (/stripe|payment|billing|subscription|invoice|checkout session/.test(prompt)) return "payments";
+  if (/enterprise.*(?:sso|saas|tenant|organization)|b2b saas|multi[- ]tenant.*sso/.test(prompt)) return "enterprise-saas";
+  if (/authentication|authorization|\bauth\b|oauth|openid|\bsso\b|mfa|login|sign[- ]?in/.test(prompt)) return "auth";
+  if (/websocket|real[- ]?time|realtime|presence|collaborative editor|live collaboration/.test(prompt)) return "realtime";
+  if (/data pipeline|\betl\b|\belt\b|analytics pipeline|data ingestion/.test(prompt)) return "data-pipeline";
+  if (/machine learning|\bml\b|model training|model inference|inference service/.test(prompt)) return "machine-learning";
+  if (/background job|worker queue|job queue|task queue|scheduled job|cron worker/.test(prompt)) return "background-jobs";
+  if (/file upload|media platform|object storage|blob storage|storage service/.test(prompt)) return "storage";
+  if (/full[- ]text search|search platform|search engine|search indexing|ranking service/.test(prompt)) return "search";
+  if (/command[- ]line|\bcli\b|developer cli/.test(prompt)) return "cli";
+  if (/\bsdk\b|client librar|software development kit/.test(prompt)) return "sdk";
+  if (/pdf|docx|word document|spreadsheet|xlsx|powerpoint|pptx|document automation|office artifact/.test(prompt)) return "document";
+  if (/desktop app|electron app|tauri app/.test(prompt)) return "desktop";
+  if (/multiplayer game|game backend|game server/.test(prompt)) return "game";
+
   if (/vulnerab|security|pentest|hardening|owasp|exploit/.test(prompt)) return "security";
   if (/bug|error|crash|broken|fix issue|debug/.test(prompt)) return "bug-fix";
   if (/refactor|cleanup|clean up|tech debt|dead code/.test(prompt)) return "refactor";
@@ -29,9 +55,9 @@ export function inferTaskType(text: string): string {
   if (/migration|migrate|move database|move provider/.test(prompt)) return "migration";
   if (/performance|slow|optimi[sz]e|lighthouse/.test(prompt)) return "performance";
   if (/landing page|marketing page|portfolio/.test(prompt)) return "landing-page";
-  if (/e-?commerce|storefront|shopping|checkout/.test(prompt)) return "ecommerce";
+  if (/e-?commerce|storefront|shopping/.test(prompt)) return "ecommerce";
   if (/mobile|android|ios|flutter|react native|expo/.test(prompt)) return "mobile";
-  if (/ai agent|agentic|mcp server|chatbot/.test(prompt)) return "agent";
+  if (/ai agent|agentic|chatbot/.test(prompt)) return "agent";
   if (/api|backend|microservice|server/.test(prompt)) return "api";
   if (/build|create|start|new project|from scratch/.test(prompt)) return "new-project";
   return "feature";
