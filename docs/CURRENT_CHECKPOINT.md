@@ -1,15 +1,18 @@
 # DockyardOS Current Checkpoint
 
-This file is the durable human-readable continuation checkpoint for DockyardOS. Before starting new work, verify `main` still matches or descends from the recorded commit, then inspect newer commits/PRs and continue from the newest verified state instead of replaying completed milestones.
+This file is the durable human-readable continuation checkpoint for DockyardOS. Before starting new work, verify `main` still contains the recorded verified code state, then inspect newer commits/PRs and continue from the newest verified production milestone instead of replaying completed work.
 
 ## Checkpoint identity
 
 - Checkpoint date: 2026-10-01
 - Repository: `cassielxyz/DockyardOS`
-- Verified merged `main`: `a35bd6b4725f9cc29eb1c3fe0ad75dd7f15d8c3a`
+- Verified completed code state: `a35bd6b4725f9cc29eb1c3fe0ad75dd7f15d8c3a`
+- Checkpoint PR: `#48`
 - Last completed milestone: **P35 — runtime connection readiness**
 - Previous completed milestone: **P34 — research/provider skill materialization + runtime prerequisites**
 - Next continuation milestone: **P36 — verified host/MCP connection readiness**
+
+The verified code-state SHA is the milestone anchor. A later documentation-only checkpoint commit/merge is expected and does not make this checkpoint stale by itself.
 
 ## Completed state through P35
 
@@ -89,18 +92,20 @@ At P36 start, inspect the current host adapters, MCP bridge, host doctor/native-
 When the user says `continue`:
 
 1. inspect `main`, recent commits, open PRs, branches, roadmap and CI;
-2. compare the latest `main` with the commit above;
-3. if `main` has advanced, treat the newer verified repository state as authoritative and update this checkpoint;
-4. if it has not advanced, continue from P36;
-5. do not recreate P34/P35 work;
-6. create a dedicated P36 branch and keep exact-head verification before merge;
-7. after P36 merges, update both this file and `docs/checkpoints/latest.json` immediately.
+2. verify `a35bd6b4725f9cc29eb1c3fe0ad75dd7f15d8c3a` is still in the ancestry of the current repository state;
+3. inspect commits after that anchor;
+4. ignore checkpoint-only documentation commits when deciding whether production work advanced;
+5. if a newer production milestone exists, treat it as authoritative and repair this checkpoint before continuing;
+6. otherwise continue from P36;
+7. do not recreate P34/P35 work;
+8. create a dedicated P36 branch and keep exact-head verification before merge;
+9. after P36 merges, update both this file and `docs/checkpoints/latest.json` immediately.
 
 ## Checkpoint maintenance rule
 
 Every merged production milestone must update the durable checkpoint in the same continuation cycle. A chat summary is not sufficient. The repo-level checkpoint must record at minimum:
 
-- merged `main` SHA;
+- verified completed code-state SHA;
 - last completed milestone;
 - next milestone;
 - important safety/trust invariants;
