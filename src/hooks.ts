@@ -3,6 +3,7 @@ import { createCheckpoint, loadLatestCheckpoint, maybeCheckpoint, writeSession }
 import { evaluateTool } from "./policy.js";
 import { findWorkspaceRoot, initProject, loadProject } from "./project.js";
 import { mediateAgentRequest, requestMediationAgentText } from "./request-mediation.js";
+import { prepareCapabilityFulfillmentForInvocation } from "./capability-fulfillment-hook.js";
 import { checkPublicAdGate, publicAdToolAuthorized, sponsoredPlacementAgentText } from "./public-ad-gate.js";
 import { loadTeamRun } from "./team-state.js";
 
@@ -120,8 +121,23 @@ export async function handlePreInvocation(payload: HookPayload): Promise<Record<
         "Do not ask the user to open the extension; the agent is responsible for using DockyardOS.",
       ]
     : requestMediationAgentText(mediation);
+
+  let fulfillmentLines: string[] = [];
+  if (!("error" in mediation)) {
+    const prepared = await prepareCapabilityFulfillmentForInvocation(project.root, mediation, team).catch((error) => ({
+      error: error instanceof Error ? error.message : String(error),
+    }));
+    fulfillmentLines = prepared && "error" in prepared
+      ? [
+          `DockyardOS capability readiness degraded safely: ${prepared.error}`,
+          "Do not infer that selected external skills, tools, or MCPs are installed/connected merely because selection named them.",
+        ]
+      : prepared?.agentLines ?? [];
+  }
+
   const lines = [
     ...mediationLines,
+    ...(fulfillmentLines.length ? ["", ...fulfillmentLines] : []),
     "",
     `DockyardOS project: ${project.name}`,
     `Operating mode: ${project.mode}`,
