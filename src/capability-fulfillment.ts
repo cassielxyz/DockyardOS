@@ -2,9 +2,11 @@ import { access } from "node:fs/promises";
 import { resolve } from "node:path";
 import { activeCommunityPackages } from "./community-runtime.js";
 import { loadEffectiveCommunityRegistry } from "./community-effective-registry.js";
-import type { CommunityPackageManifest } from "./community-types.js";
+import type { CommunityRuntimeConnectionRequirement, CommunityRuntimeRequirements } from "./community-types.js";
 import { writeJsonAtomic } from "./fs-utils.js";
 import { commandExists } from "./process.js";
+import { probeProvider } from "./provider-detection.js";
+import { providerAdapter } from "./provider-adapters.js";
 import { projectDirectory, projectIdForRoot } from "./project.js";
 import { getCandidate } from "./registry.js";
 import type { Candidate, SelectionResult } from "./types.js";
@@ -17,6 +19,29 @@ export type CapabilityFulfillmentStatus =
   | "discovery-only"
   | "blocked";
 
+export interface RuntimeConnectionEvidence {
+  kind: CommunityRuntimeConnectionRequirement["kind"];
+  id: string;
+  required: boolean;
+  ready: boolean;
+  minimumReadiness?: "configured" | "authenticated" | "linked";
+  detail: string;
+}
+
+export interface RuntimePrerequisiteEvaluation {
+  missingExecutables: string[];
+  connections: RuntimeConnectionEvidence[];
+  unresolvedRequiredConnections: RuntimeConnectionEvidence[];
+  unresolvedOptionalConnections: RuntimeConnectionEvidence[];
+}
+
+export interface RuntimePrerequisiteDependencies {
+  connectionProbe?: (
+    root: string,
+    requirement: CommunityRuntimeConnectionRequirement,
+  ) => Promise<RuntimeConnectionEvidence>;
+}
+
 export interface CapabilityFulfillmentEntry {
   candidateId: string;
   displayName: string;
@@ -28,6 +53,7 @@ export interface CapabilityFulfillmentEntry {
   packageId?: string;
   activeRevision?: string;
   executable?: string;
+  connections?: RuntimeConnectionEvidence[];
   automaticAction?: "none" | "assess-install";
 }
 
@@ -102,12 +128,82 @@ async function localExecutable(root: string, executable: string): Promise<boolea
   return false;
 }
 
-async function missingPackageRuntime(root: string, manifest: CommunityPackageManifest): Promise<string[]> {
-  const missing: string[] = [];
-  for (const executable of manifest.runtimeRequirements?.executables ?? []) {
-    if (!await localExecutable(root, executable)) missing.push(executable);
+async function defaultConnectionProbe(
+  root: string,
+  requirement: CommunityRuntimeConnectionRequirement,
+): Promise<RuntimeConnectionEvidence> {
+  if (requirement.kind === "mcp") {
+    return {
+      kind: "mcp",
+      id: requirement.id,
+      required: requirement.required,
+      ready: false,
+      detail: "MCP connectivity must be verified by the active host/connector; package installation alone never proves an MCP connection or credentials.",
+    };
   }
-  return missing;
+
+  const adapter = providerAdapter(requirement.id);
+  if (!adapter) {
+    return {
+      kind: "provider",
+      id: requirement.id,
+      required: requirement.required,
+      minimumReadiness: requirement.minimumReadiness,
+      ready: false,
+      detail: `DockyardOS has no verified provider readiness adapter for ${requirement.id}.`,
+    };
+  }
+
+  const live = requirement.minimumReadiness === "authenticated" || requirement.minimumReadiness === "linked";
+  const probe = await probeProvider(adapter, root, { live });
+  let ready = false;
+  if (requirement.minimumReadiness === "configured") {
+    ready = probe.configured;
+  } else if (requirement.minimumReadiness === "authenticated") {
+    ready = probe.authenticated === true;
+  } else {
+    // A project link marker/status alone is not enough when the provider exposes an auth probe.
+    ready = probe.linked === true && (!adapter.authProbe || probe.authenticated === true);
+  }
+
+  return {
+    kind: "provider",
+    id: requirement.id,
+    required: requirement.required,
+    minimumReadiness: requirement.minimumReadiness,
+    ready,
+    detail: ready
+      ? `${adapter.displayName} satisfies required ${requirement.minimumReadiness} readiness (${probe.safeSummary ?? probe.readiness}).`
+      : `${adapter.displayName} does not currently satisfy ${requirement.minimumReadiness} readiness (${probe.safeSummary ?? probe.readiness}).`,
+  };
+}
+
+export async function evaluateCommunityRuntimeRequirements(
+  root: string,
+  requirements?: CommunityRuntimeRequirements,
+  options: RuntimePrerequisiteDependencies = {},
+): Promise<RuntimePrerequisiteEvaluation> {
+  const missingExecutables: string[] = [];
+  for (const executable of requirements?.executables ?? []) {
+    if (!await localExecutable(root, executable)) missingExecutables.push(executable);
+  }
+
+  const connectionProbe = options.connectionProbe ?? defaultConnectionProbe;
+  const connections: RuntimeConnectionEvidence[] = [];
+  for (const requirement of requirements?.connections ?? []) {
+    const evidence = await connectionProbe(root, requirement);
+    if (evidence.kind !== requirement.kind || evidence.id !== requirement.id || evidence.required !== requirement.required) {
+      throw new Error(`Runtime connection probe returned mismatched evidence for ${requirement.kind}:${requirement.id}.`);
+    }
+    connections.push(evidence);
+  }
+
+  return {
+    missingExecutables,
+    connections,
+    unresolvedRequiredConnections: connections.filter((item) => item.required && !item.ready),
+    unresolvedOptionalConnections: connections.filter((item) => !item.required && !item.ready),
+  };
 }
 
 function packageIdFor(candidate: Candidate, effectiveIds: Set<string>): string | undefined {
@@ -129,7 +225,6 @@ function baseEntry(candidate: Candidate): Omit<CapabilityFulfillmentEntry, "stat
 async function planForCandidates(root: string, candidates: Candidate[], warnings: string[] = []): Promise<CapabilityFulfillmentPlan> {
   const registry = await loadEffectiveCommunityRegistry();
   const effectiveIds = new Set(registry.packages.map((item) => item.manifest.id));
-  const manifestById = new Map(registry.packages.map((item) => [item.manifest.id, item.manifest]));
   const conflictIds = new Set(registry.conflicts.filter((item) => item.kind === "package").map((item) => item.id));
   let active = [] as Awaited<ReturnType<typeof activeCommunityPackages>>;
   try {
@@ -152,25 +247,42 @@ async function planForCandidates(root: string, candidates: Candidate[], warnings
     if (packageId) {
       const activePackage = activeById.get(packageId);
       if (activePackage) {
-        const manifest = manifestById.get(packageId);
-        const missingRuntime = manifest ? await missingPackageRuntime(root, manifest) : [];
-        if (missingRuntime.length) {
+        // Runtime requirements come from the immutable manifest snapshot that belongs to
+        // the active revision, not from mutable/current registry metadata.
+        const runtime = await evaluateCommunityRuntimeRequirements(root, activePackage.runtimeRequirements);
+        if (runtime.missingExecutables.length) {
           entries.push({
             ...base,
             packageId,
             activeRevision: activePackage.revision,
-            executable: missingRuntime[0],
+            executable: runtime.missingExecutables[0],
+            ...(runtime.connections.length ? { connections: runtime.connections } : {}),
             status: "missing-runtime",
-            reason: `The package revision is installed and integrity-verified, but required runtime executable(s) are unavailable: ${missingRuntime.join(", ")}.`,
+            reason: `The package revision is installed and integrity-verified, but required runtime executable(s) are unavailable: ${runtime.missingExecutables.join(", ")}.`,
+            automaticAction: "none",
+          });
+        } else if (runtime.unresolvedRequiredConnections.length) {
+          const unresolved = runtime.unresolvedRequiredConnections.map((item) => `${item.kind}:${item.id}`).join(", ");
+          entries.push({
+            ...base,
+            packageId,
+            activeRevision: activePackage.revision,
+            connections: runtime.connections,
+            status: "needs-connection",
+            reason: `The package revision and local runtime are verified, but required external connection(s) are not verified ready: ${unresolved}.`,
             automaticAction: "none",
           });
         } else {
+          const optional = runtime.unresolvedOptionalConnections.map((item) => `${item.kind}:${item.id}`);
           entries.push({
             ...base,
             packageId,
             activeRevision: activePackage.revision,
+            ...(runtime.connections.length ? { connections: runtime.connections } : {}),
             status: "ready",
-            reason: "A verified immutable community-package revision is active, passed runtime integrity verification, and all declared runtime executables are available.",
+            reason: optional.length
+              ? `The immutable package revision and all required runtime prerequisites are verified. Optional connection(s) remain unverified and are not assumed: ${optional.join(", ")}.`
+              : "The immutable package revision and all declared required runtime executables/connections are verified ready.",
             automaticAction: "none",
           });
         }
@@ -181,7 +293,7 @@ async function planForCandidates(root: string, candidates: Candidate[], warnings
           ...base,
           packageId,
           status: "installable-unassessed",
-          reason: "A collision-safe package manifest exists, but the exact upstream revision still needs quarantine assessment before activation. Runtime prerequisites are rechecked after activation.",
+          reason: "A collision-safe package manifest exists, but the exact upstream revision still needs quarantine assessment before activation. Runtime executables and connections are rechecked after activation.",
           automaticAction: "assess-install",
         });
       }
@@ -274,6 +386,7 @@ export function fulfillmentSummary(plan: CapabilityFulfillmentPlan): Record<stri
       ...(entry.packageId ? { packageId: entry.packageId } : {}),
       ...(entry.activeRevision ? { activeRevision: entry.activeRevision } : {}),
       ...(entry.executable ? { executable: entry.executable } : {}),
+      ...(entry.connections?.length ? { connections: entry.connections } : {}),
       reason: entry.reason,
     })),
   };
