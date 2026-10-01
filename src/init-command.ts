@@ -1,4 +1,3 @@
-import { installAntigravityIdeGlobalPlugin } from "./antigravity-ide-install.js";
 import { commandExists } from "./process.js";
 import { initProject } from "./project.js";
 import { executeHostInstall } from "./host-manager.js";
@@ -36,37 +35,20 @@ function defaultScope(host: HostId): HostScope {
 }
 
 async function activateHostIntegration(root: string, host: HostId, scope: HostScope): Promise<Record<string, unknown>> {
-  try {
-    const installed = await executeHostInstall(root, host, scope);
-    return {
-      status: "active",
-      host,
-      scope,
-      method: "host-manager",
-      result: installed,
-      message: `DockyardOS ${host} agent integration is active at ${scope} scope. Future project requests should be mediated from the agent conversation without opening the extension.`,
-    };
-  } catch (primaryError) {
-    if (host !== "antigravity" || scope !== "user") throw primaryError;
-    try {
-      const fallback = await installAntigravityIdeGlobalPlugin({
-        ...(process.env.DOCKYARD_ANTIGRAVITY_CONFIG_ROOT ? { configRoot: process.env.DOCKYARD_ANTIGRAVITY_CONFIG_ROOT } : {}),
-      });
-      return {
-        status: "active",
-        host,
-        scope,
-        method: fallback.method,
-        result: fallback,
-        primaryInstallError: primaryError instanceof Error ? primaryError.message : String(primaryError),
-        message: "DockyardOS Antigravity mediation is active through the IDE-global plugin directory. Future project requests should be mediated from the agent conversation without opening the extension.",
-      };
-    } catch (fallbackError) {
-      const primary = primaryError instanceof Error ? primaryError.message : String(primaryError);
-      const fallback = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
-      throw new Error(`Antigravity integration could not be activated through the CLI or IDE-global plugin directory. CLI: ${primary} Fallback: ${fallback}`);
-    }
-  }
+  const installed = await executeHostInstall(root, host, scope);
+  const fallback = Array.isArray(installed.results)
+    ? installed.results.find((item) => item?.method === "antigravity-ide-global-plugin-directory")
+    : undefined;
+  return {
+    status: "active",
+    host,
+    scope,
+    method: fallback ? "antigravity-ide-global-plugin-directory" : "host-manager",
+    result: installed,
+    message: fallback
+      ? "DockyardOS Antigravity mediation is active through the IDE-global plugin directory because the agy launcher was unavailable or could not install the plugin."
+      : `DockyardOS ${host} agent integration is active at ${scope} scope. Future project requests should be mediated from the agent conversation without opening the extension.`,
+  };
 }
 
 export async function handleInitCommand(root: string, args: string[], json = false): Promise<void> {
