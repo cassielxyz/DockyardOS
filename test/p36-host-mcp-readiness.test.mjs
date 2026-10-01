@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const dockyard = await import("../dist/index.js");
@@ -32,6 +33,10 @@ function baseEntry(overrides) {
     automaticAction: "none",
     ...overrides,
   };
+}
+
+async function jsonFixture(path) {
+  return JSON.parse(await readFile(new URL(`../${path}`, import.meta.url), "utf8"));
 }
 
 test("host-session MCP evidence is process-local metadata and grants no mutation approval", () => {
@@ -114,4 +119,25 @@ test("host MCP evidence never overrides an unresolved required provider connecti
   assert.equal(updated.entries[0]?.connections?.[0]?.ready, true);
   assert.equal(updated.entries[0]?.connections?.[1]?.ready, false);
   assert.deepEqual(updated.needsConnection, ["fixture-agent"]);
+});
+
+test("native host MCP launchers bind session identity instead of accepting a caller-selected host", async () => {
+  const gemini = await jsonFixture("integrations/native/gemini-cli/gemini-extension.json");
+  const codex = await jsonFixture("integrations/native/codex/.mcp.json");
+  const claude = await jsonFixture("integrations/native/claude-code/.mcp.json");
+  const cursor = await jsonFixture("integrations/native/cursor/.cursor/mcp.json");
+  const opencode = await jsonFixture("integrations/native/opencode/opencode.jsonc");
+
+  assert.deepEqual(gemini.mcpServers.dockyardos.args, ["--host", "gemini-cli"]);
+  assert.deepEqual(codex.mcpServers.dockyardos.args, ["--host", "codex"]);
+  assert.deepEqual(claude.mcpServers.dockyardos.args, ["--host", "claude-code"]);
+  assert.deepEqual(cursor.mcpServers.dockyardos.args, ["--host", "cursor"]);
+  assert.deepEqual(opencode.mcp.servers.dockyardos.command, ["dockyard-mcp", "--host", "opencode"]);
+
+  const serverSource = await readFile(new URL("../src/mcp-server.ts", import.meta.url), "utf8");
+  assert.match(serverSource, /const activeHost = launcherHost\(\)/);
+  const attestBlock = serverSource.slice(serverSource.indexOf('"dockyard_connection_attest"'), serverSource.indexOf('"dockyard_fulfillment"'));
+  const fulfillmentBlock = serverSource.slice(serverSource.indexOf('"dockyard_fulfillment"'), serverSource.indexOf('"dockyard_recommend"'));
+  assert.doesNotMatch(attestBlock, /host:\s*z\.enum/);
+  assert.doesNotMatch(fulfillmentBlock, /host:\s*z\.enum/);
 });
