@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc">
+  <title id="title">DockyardOS</title>
+  <desc id="desc">A VS Code inspired DockyardOS hero showing persistent memory, orchestration, connections and verification.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#0d1117"/><stop offset="1" stop-color="#111827"/></linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#58a6ff"/><stop offset=".5" stop-color="#4cc9f0"/><stop offset="1" stop-color="#a78bfa"/></linearGradient>
+    <linearGradient id="ship" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#58a6ff"/><stop offset="1" stop-color="#7c3aed"/></linearGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#30363d" stroke-width="1" opacity=".32"/></pattern>
+    <filter id="glow"><feGaussianBlur stdDeviation="10" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="1200" height="560" rx="28" fill="url(#bg)"/>
+  <rect width="1200" height="560" rx="28" fill="url(#grid)"/>
+  <circle cx="1080" cy="80" r="130" fill="#4cc9f0" opacity=".06"/><circle cx="980" cy="500" r="180" fill="#a78bfa" opacity=".06"/>
+  <g transform="translate(74 74)">
+    <g transform="translate(0 2)">
+      <rect x="0" y="0" width="86" height="86" rx="22" fill="#161b22" stroke="#30363d"/>
+      <path d="M22 52h42l-5 12H27z" fill="url(#ship)"/><path d="M31 25h24l5 23H26z" fill="none" stroke="#e6edf3" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M43 16v34M34 31h18" stroke="#4cc9f0" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="22" cy="69" r="3" fill="#58a6ff"/><circle cx="34" cy="69" r="3" fill="#4cc9f0"/><circle cx="46" cy="69" r="3" fill="#a78bfa"/>
+    </g>
+    <text x="112" y="42" fill="#f0f6fc" font-size="44" font-weight="750" font-family="Inter,Segoe UI,Arial,sans-serif">DockyardOS</text>
+    <text x="112" y="76" fill="#8b949e" font-size="18" font-family="Inter,Segoe UI,Arial,sans-serif">Persistent autonomous development orchestration for AI coding agents</text>
+  </g>
+  <g transform="translate(74 210)" font-family="Inter,Segoe UI,Arial,sans-serif">
+    <text x="0" y="0" fill="#c9d1d9" font-size="22">Your agent can lose the chat.</text>
+    <text x="0" y="34" fill="#f0f6fc" font-size="28" font-weight="700">Your project should not lose its brain.</text>
+    <rect x="0" y="70" width="492" height="54" rx="12" fill="#161b22" stroke="#30363d"/>
+    <circle cx="28" cy="97" r="6" fill="#3fb950"/>
+    <text x="48" y="104" fill="#c9d1d9" font-size="16">memory • checkpoints • teams • skills • providers • verification</text>
+  </g>
+  <g transform="translate(650 185)" font-family="Inter,Segoe UI,Arial,sans-serif">
+    <rect x="0" y="0" width="476" height="300" rx="18" fill="#0f141b" stroke="#30363d"/>
+    <rect x="0" y="0" width="476" height="42" rx="18" fill="#161b22"/><circle cx="22" cy="21" r="5" fill="#f85149"/><circle cx="40" cy="21" r="5" fill="#d29922"/><circle cx="58" cy="21" r="5" fill="#3fb950"/><text x="88" y="27" fill="#8b949e" font-size="13">DockyardOS Control Surface</text>
+    <g transform="translate(22 64)">
+      <rect width="202" height="84" rx="12" fill="#161b22" stroke="#30363d"/><text x="16" y="27" fill="#8b949e" font-size="12">PROJECT MEMORY</text><text x="16" y="54" fill="#f0f6fc" font-size="17" font-weight="650">Resume context</text><circle cx="178" cy="22" r="6" fill="#3fb950"/><text x="16" y="72" fill="#7ee787" font-size="11">checkpoint healthy</text>
+      <rect x="218" width="214" height="84" rx="12" fill="#161b22" stroke="#30363d"/><text x="234" y="27" fill="#8b949e" font-size="12">CONNECTIONS</text><text x="234" y="54" fill="#f0f6fc" font-size="17" font-weight="650">Readiness verified</text><circle cx="404" cy="22" r="6" fill="#58a6ff"/><text x="234" y="72" fill="#79c0ff" font-size="11">read-only live checks</text>
+      <rect y="100" width="202" height="84" rx="12" fill="#161b22" stroke="#30363d"/><text x="16" y="127" fill="#8b949e" font-size="12">WORKFLOW</text><text x="16" y="154" fill="#f0f6fc" font-size="17" font-weight="650">Implementation</text><rect x="16" y="168" width="144" height="5" rx="3" fill="#21262d"/><rect x="16" y="168" width="98" height="5" rx="3" fill="url(#accent)"/>
+      <rect x="218" y="100" width="214" height="84" rx="12" fill="#161b22" stroke="#30363d"/><text x="234" y="127" fill="#8b949e" font-size="12">VERIFICATION</text><text x="234" y="154" fill="#f0f6fc" font-size="17" font-weight="650">Proof → fix → rerun</text><text x="234" y="172" fill="#a78bfa" font-size="11">independent QA + security</text>
+      <rect y="200" width="432" height="50" rx="12" fill="#111827" stroke="#30363d"/><text x="16" y="231" fill="#c9d1d9" font-size="13">Antigravity • Gemini • Codex • Claude • Cursor • OpenCode • VS Code</text>
+    </g>
+  </g>
+  <rect x="74" y="500" width="470" height="3" rx="2" fill="url(#accent)" filter="url(#glow)" opacity=".9"/>
+</svg>
