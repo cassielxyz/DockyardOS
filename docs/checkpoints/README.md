@@ -8,7 +8,7 @@ Checkpoint files exist to prevent agent/chat/session loss from becoming project-
 
 After every merged production milestone:
 
-1. inspect the actual merged `main` SHA and exact-head CI evidence;
+1. inspect the actual merged production SHA and exact-head CI evidence;
 2. update `docs/CURRENT_CHECKPOINT.md`;
 3. update `docs/checkpoints/latest.json`;
 4. record the next milestone and its status;
@@ -16,4 +16,4 @@ After every merged production milestone:
 
 A conversation summary, local hidden state, branch name, or PR body alone is not a durable checkpoint.
 
-On resume, repository state is authoritative. If `main` is newer than `latest.json.mainSha`, inspect the newer commits/PRs first and repair the checkpoint before continuing.
+`latest.json.verifiedCodeSha` is the completed production-code anchor, not the later checkpoint-document commit. On resume, inspect commits after that anchor. Documentation-only checkpoint commits do not make the checkpoint stale, but any newer production milestone does and must be reconciled before continuing.
