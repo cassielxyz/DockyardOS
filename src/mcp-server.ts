@@ -4,7 +4,9 @@ import { serveStdio } from "@modelcontextprotocol/server/stdio";
 import * as z from "zod/v4";
 import { createCheckpoint } from "./checkpoints.js";
 import { activeCommunityPackages, readActiveCommunityEntrypoint } from "./community-runtime.js";
+import { fulfillmentSummary, planCapabilityFulfillmentForIds } from "./capability-fulfillment.js";
 import { buildDockyardContext } from "./dockyard-context.js";
+import { applyHostSessionConnectionEvidence, HostSessionConnectionRegistry } from "./host-session-readiness.js";
 import { evaluateCommand } from "./policy.js";
 import { findWorkspaceRoot, requireProject } from "./project.js";
 import { checkPublicAdGate } from "./public-ad-gate.js";
@@ -15,6 +17,8 @@ import type { HostId, SecurityLevel } from "./types.js";
 
 const HOSTS = ["antigravity", "gemini-cli", "codex", "claude-code", "cursor", "opencode", "universal", "vscode"] as const;
 const workspace = z.string().min(1).optional().describe("Project workspace path. Pass this when the MCP process was launched outside the project directory.");
+const mcpConnectionId = z.string().min(1).max(128).regex(/^[a-z0-9](?:[a-z0-9._-]{0,126}[a-z0-9])?$/)
+  .describe("DockyardOS MCP capability/connection id that the active host just used successfully.");
 
 function workspaceRoot(value?: string): string {
   return findWorkspaceRoot(value ?? process.cwd());
@@ -63,6 +67,7 @@ async function publicGate(value?: string) {
 
 serveStdio(() => {
   const server = new McpServer({ name: "dockyardos", version: "0.1.0" });
+  const sessionConnections = new HostSessionConnectionRegistry();
 
   server.registerTool(
     "dockyard_public_gate",
@@ -86,6 +91,59 @@ serveStdio(() => {
       const gated = await publicGate(value);
       if (gated.blocked) return gated.blocked;
       return result(await buildDockyardContext(gated.root, host));
+    },
+  );
+
+  server.registerTool(
+    "dockyard_connection_attest",
+    {
+      description: "Record process-scoped evidence that the active host successfully used a specific MCP connection in this session. Call this only after a successful target-MCP tool/resource interaction. It stores no credentials, expires when this dockyard-mcp process exits, and never grants mutation or production approval.",
+      inputSchema: z.object({
+        host: z.enum(HOSTS).default("universal"),
+        mcpId: mcpConnectionId,
+        observation: z.enum(["tool-call-success", "resource-read-success", "prompt-use-success"]),
+        workspace,
+      }),
+    },
+    async ({ host, mcpId, observation, workspace: value }) => {
+      const gated = await publicGate(value);
+      if (gated.blocked) return gated.blocked;
+      await requireProject(gated.root);
+      const evidence = sessionConnections.attestMcp(mcpHost(host), mcpId, observation);
+      return result({
+        evidence,
+        persistence: "memory-only",
+        expires: "dockyard-mcp-process-exit",
+        credentialsStored: false,
+        grantsMutationApproval: false,
+      });
+    },
+  );
+
+  server.registerTool(
+    "dockyard_fulfillment",
+    {
+      description: "Evaluate selected capability readiness for the active host session. Installed/configured state alone is insufficient for MCP readiness; only MCP ids explicitly attested after successful use in this dockyard-mcp process are treated as session-verified. Provider readiness still uses DockyardOS read-only/live probes and no result grants mutation approval.",
+      inputSchema: z.object({
+        capabilityIds: z.array(z.string().min(1).max(128)).min(1).max(64),
+        host: z.enum(HOSTS).default("universal"),
+        workspace,
+      }),
+    },
+    async ({ capabilityIds, host, workspace: value }) => {
+      const gated = await publicGate(value);
+      if (gated.blocked) return gated.blocked;
+      await requireProject(gated.root);
+      const normalizedHost = mcpHost(host);
+      const base = await planCapabilityFulfillmentForIds(gated.root, capabilityIds);
+      const evidence = sessionConnections.listMcp(normalizedHost);
+      const plan = applyHostSessionConnectionEvidence(base, normalizedHost, evidence);
+      return result({
+        host: normalizedHost,
+        connectionEvidence: evidence,
+        fulfillment: fulfillmentSummary(plan),
+        grantsMutationApproval: false,
+      });
     },
   );
 
