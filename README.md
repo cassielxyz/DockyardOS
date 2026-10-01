@@ -68,10 +68,10 @@ If you want the newest source build before a release artifact is available, inst
 ```bash
 git clone https://github.com/cassielxyz/DockyardOS.git
 cd DockyardOS
-npm ci
+npm install --ignore-scripts
 npm test
 cd integrations/vscode
-npm ci
+npm install --ignore-scripts
 npm run package
 ```
 
