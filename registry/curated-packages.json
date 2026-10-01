@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-10-01T16:30:00.000Z",
+  "updatedAt": "2026-10-01T16:40:00.000Z",
   "packages": [
     {
       "schemaVersion": 1,
@@ -29,8 +29,8 @@
     },
     {
       "schemaVersion": 1,
-      "id": "supabase-core-skill",
-      "displayName": "Supabase Core Skill",
+      "id": "supabase-skill",
+      "displayName": "Supabase Agent Skill",
       "version": "rolling-main",
       "kind": "skill",
       "description": "Official Supabase guidance for Database, Auth, Storage, Edge Functions, Realtime, RLS, migrations, CLI, MCP, and debugging.",
@@ -53,27 +53,27 @@
     },
     {
       "schemaVersion": 1,
-      "id": "cloudflare-workers-best-practices",
-      "displayName": "Cloudflare Workers Best Practices",
+      "id": "cloudflare-skill",
+      "displayName": "Cloudflare Platform",
       "version": "rolling-main",
       "kind": "skill",
-      "description": "Official Cloudflare production guidance for Workers runtime patterns, configuration, observability, platform APIs, security, and validation.",
-      "source": { "type": "github", "repository": "cloudflare/skills", "ref": "main", "subdirectory": "skills/workers-best-practices" },
+      "description": "Official Cloudflare platform-selection and implementation guidance across Workers, storage, networking, security, DNS, AI, and deployment products.",
+      "source": { "type": "github", "repository": "cloudflare/skills", "ref": "main", "subdirectory": "skills/cloudflare" },
       "publisher": { "id": "cloudflare", "name": "Cloudflare", "signatureRequired": false },
       "license": "Apache-2.0",
       "trust": "official",
-      "risk": "medium",
-      "permissions": ["filesystem-read", "filesystem-write", "shell", "network"],
-      "capabilities": ["cloudflare-workers", "edge", "observability", "runtime-review", "security", "performance"],
-      "tags": ["cloudflare", "workers", "edge", "wrangler", "best-practices"],
+      "risk": "high",
+      "permissions": ["filesystem-read", "filesystem-write", "shell", "network", "secrets", "deployment", "dns"],
+      "capabilities": ["cloudflare", "workers", "storage", "edge", "security", "dns", "provider-selection", "deployment"],
+      "tags": ["cloudflare", "workers", "edge", "security", "hosting"],
       "hosts": ["antigravity", "gemini-cli", "codex", "claude-code", "cursor", "opencode", "universal"],
       "channel": "recommended",
       "entrypoints": [{ "type": "skill", "path": "SKILL.md" }],
       "runtimeRequirements": {
-        "notes": ["The skill may retrieve current Cloudflare docs and run project validation commands; Wrangler-dependent operations require Wrangler to be present when that workflow is selected."]
+        "notes": ["Implementation paths may require the current Cloudflare `cf` CLI or Wrangler plus authenticated provider access. The skill package alone does not prove deployment/DNS authority."]
       },
-      "maxFiles": 256,
-      "maxBytes": 4194304
+      "maxFiles": 1200,
+      "maxBytes": 16777216
     }
   ],
   "discoverySources": []
