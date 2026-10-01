@@ -12,8 +12,8 @@ For the complete continuation contract, read [`AGENT_CONTINUATION_GUIDE.md`](AGE
 - Checkpoint PR: `#55`
 - Last completed milestone: **P38 — universal DockyardOS control center and README rebuild**
 - Previous completed milestone: **P37 — Connections Center + creative UI orchestration**
-- Next continuation milestone: **P39 — first guarded live VS Code Marketplace publication**
-- P39 status: **externally gated; do not publish without explicit production approval and required publisher/token/tag setup**
+- Next continuation milestone: **P39 — stable official-public v0.1.0 and first guarded live VS Code Marketplace publication**
+- P39 status: **preview release published; stable/Marketplace path remains externally gated by the real public control-plane origin, publisher/token/tag setup, and explicit production approval**
 
 The verified code-state SHA is the production anchor. Later checkpoint-only documentation or test-reliability commits do not make the production checkpoint stale by themselves.
 
@@ -60,6 +60,26 @@ Produced preview artifact:
 
 PR `#54` had no submitted reviews or unresolved review threads at the final merge check.
 
+
+## First downloadable release — v0.1.0 Preview 1
+
+The first user-downloadable VSIX release is now published as GitHub prerelease `v0.1.0-preview.1`.
+
+Release evidence:
+
+- tag: `v0.1.0-preview.1`;
+- annotated tag resolves to production commit `0baf28bff5a810eb1499ca7cb6a61c1d4cf93b06`;
+- GitHub release id: `401432695`;
+- release workflow: `Release DockyardOS v0.1.0 Preview 1`, run `36941461041` — **success**;
+- VSIX asset: `dockyardos-vscode.vsix`, asset id `604356680`, size `3905750` bytes;
+- VSIX digest reported by GitHub: `sha256:62989a2855e53abbadcfe0a96cbb1284e7a902ec1d011aa77be26ea93e923866`;
+- checksum asset: `dockyardos-vscode.vsix.sha256`, asset id `604356682`;
+- release is explicitly marked **prerelease** and packages the source-development edition.
+
+A first stable-release attempt (workflow run `36941254160`) passed release identity and the complete Core test suite, then stopped at the official-public stamping gate because repository variable `DOCKYARD_PUBLIC_CONTROL_URL` is not configured. The workflow created **no stable tag and no stable release**, which is the intended fail-closed behavior.
+
+The connected Vercel account had no existing DockyardOS/control-plane project, and the repository only contained a test placeholder URL. No fake origin was stamped and the official-public gate was not weakened.
+
 ### Checkpoint validation flake found and repaired
 
 The first CI attempt on checkpoint PR `#55` (run `36925314926`) failed one unrelated ad-control tamper test while 295/296 tests passed. The exact rerun passed the full test step, which isolated the problem as test nondeterminism rather than a P38 production regression.
@@ -93,7 +113,9 @@ Current release facts:
 - extension: `integrations/vscode` / `dockyardos-vscode`;
 - publisher: `cassielxyz`;
 - current extension version: `0.1.0`;
-- expected release tag: `v0.1.0`;
+- published preview tag: `v0.1.0-preview.1` (source-development prerelease);
+- expected stable release tag: `v0.1.0`;
+- stable packaging first requires a real credential-free HTTPS `DOCKYARD_PUBLIC_CONTROL_URL` for the operational public control plane;
 - Marketplace publication is manual `workflow_dispatch` only;
 - publication requires `publish_marketplace=true`;
 - `release_tag` must exactly equal `v<extension version>`;
@@ -103,7 +125,7 @@ Current release facts:
 
 P39 is a production external mutation. Do not create the release tag or dispatch Marketplace publication merely because the universal VSIX is packaged and green. Perform read-only preflight first and require explicit production publication approval for the exact release version/commit.
 
-If the external publisher/token/tag requirements or approval are unavailable, preserve P39 as blocked rather than weakening the release workflow or claiming publication succeeded.
+If the control-plane origin, external publisher/token/tag requirements, or approval are unavailable, preserve stable P39 as blocked rather than weakening the release workflow or claiming publication succeeded. The Preview 1 prerelease does not satisfy the stable official-public or Marketplace milestone.
 
 ## Resume procedure
 
