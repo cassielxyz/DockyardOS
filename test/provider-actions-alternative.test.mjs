@@ -14,6 +14,20 @@ function plan(workspace, providerId, actionId, environment, params = {}) {
   return dockyard.planRoutedProviderAction(workspace, { providerId, actionId, environment, params });
 }
 
+function providerArgs(result, command, npmPackage) {
+  if (result.command === command) return result.args;
+  assert.equal(result.command, "npx");
+  assert.deepEqual(result.args.slice(0, 2), ["-y", npmPackage]);
+  return result.args.slice(2);
+}
+
+function verificationArgs(result, command, npmPackage) {
+  if (result.verification.command === command) return result.verification.args;
+  assert.equal(result.verification.command, "npx");
+  assert.deepEqual(result.verification.args.slice(0, 2), ["-y", npmPackage]);
+  return result.verification.args.slice(2);
+}
+
 test("provider action router exposes primary and alternative actions", async () => {
   const firebase = dockyard.listRoutedProviderActions("firebase");
   assert.ok(firebase.some((item) => item.id === "hosting-preview-deploy"));
@@ -30,8 +44,7 @@ test("Neon preview branch plan is explicit, non-production, and strips secret ou
     project: "quiet-snow-1234",
     branch: "preview/pr-42",
   });
-  assert.equal(result.command, "neon");
-  assert.deepEqual(result.args, [
+  assert.deepEqual(providerArgs(result, "neon", "neon@latest"), [
     "branches", "create",
     "--project-id", "quiet-snow-1234",
     "--name", "preview/pr-42",
@@ -39,7 +52,7 @@ test("Neon preview branch plan is explicit, non-production, and strips secret ou
     "--no-secrets",
   ]);
   assert.equal(result.productionApprovalRequired, false);
-  assert.deepEqual(result.verification.args, ["branches", "list", "--project-id", "quiet-snow-1234", "--output", "json"]);
+  assert.deepEqual(verificationArgs(result, "neon", "neon@latest"), ["branches", "list", "--project-id", "quiet-snow-1234", "--output", "json"]);
 
   assert.throws(
     () => plan(workspace, "neon", "preview-branch-create", "production", { project: "quiet-snow-1234", branch: "release" }),
@@ -62,7 +75,7 @@ test("Firebase preview and production Hosting plans pin an explicit project", as
     channel: "pr-42",
     target: "web",
   });
-  assert.deepEqual(preview.args, [
+  assert.deepEqual(providerArgs(preview, "firebase", "firebase-tools@latest"), [
     "hosting:channel:deploy", "pr-42",
     "--project", "dockyard-preview",
     "--json",
@@ -74,7 +87,7 @@ test("Firebase preview and production Hosting plans pin an explicit project", as
     project: "dockyard-prod",
     target: "web",
   });
-  assert.deepEqual(production.args, ["deploy", "--project", "dockyard-prod", "--only", "hosting:web", "--json"]);
+  assert.deepEqual(providerArgs(production, "firebase", "firebase-tools@latest"), ["deploy", "--project", "dockyard-prod", "--only", "hosting:web", "--json"]);
   assert.equal(production.productionApprovalRequired, true);
 
   assert.throws(
@@ -91,14 +104,14 @@ test("Railway deploy plan confines source path and uses one explicit target", as
     service: "web",
     path: "apps/web",
   });
-  assert.deepEqual(result.args, [
+  assert.deepEqual(providerArgs(result, "railway", "@railway/cli@latest"), [
     "up", "apps/web",
     "--project", "abc123",
     "--environment", "preview",
     "--service", "web",
     "--ci", "--json",
   ]);
-  assert.deepEqual(result.verification.args, [
+  assert.deepEqual(verificationArgs(result, "railway", "@railway/cli@latest"), [
     "logs",
     "--project", "abc123",
     "--environment", "preview",
@@ -142,8 +155,8 @@ test("Appwrite function deploy is linked-project scoped and single-function only
     "function-id": "function_123",
   });
   assert.equal(result.requiresLinked, true);
-  assert.deepEqual(result.args, ["push", "functions", "--function-id", "function_123", "--force", "--json"]);
-  assert.deepEqual(result.verification.args, ["functions", "list", "--json"]);
+  assert.deepEqual(providerArgs(result, "appwrite", "appwrite-cli@latest"), ["push", "functions", "--function-id", "function_123", "--force", "--json"]);
+  assert.deepEqual(verificationArgs(result, "appwrite", "appwrite-cli@latest"), ["functions", "list", "--json"]);
 });
 
 test("alternative provider mutation approval fails closed before provider tooling", async () => {
