@@ -1,0 +1,56 @@
+name: P39.1 Selected Skill Loading
+
+on:
+  pull_request:
+    paths:
+      - "src/selected-skill-context.ts"
+      - "src/capability-fulfillment-hook.ts"
+      - "src/community-runtime.ts"
+      - "src/community-manifest-store.ts"
+      - "src/index.ts"
+      - "test/p39-1-selected-skill-loading.test.mjs"
+      - ".github/workflows/p39-1-selected-skill-loading.yml"
+      - "README.md"
+      - "integrations/vscode/README.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Core dependencies
+        run: npm install --ignore-scripts
+      - name: Build Core
+        run: npm run build
+      - name: Run selected-skill loading and compatibility tests
+        run: |
+          node --test test/p39-1-selected-skill-loading.test.mjs
+          node --test test/p39-autonomous-skills-cinematic-web.test.mjs
+          node --test test/capability-fulfillment.test.mjs test/team.test.mjs test/core.test.mjs
+      - name: Check VS Code extension JavaScript
+        working-directory: integrations/vscode
+        run: |
+          npm install --ignore-scripts
+          npm run check
+      - name: Package and inspect Preview 4 VSIX
+        working-directory: integrations/vscode
+        run: |
+          npm run prepare-core
+          npx @vscode/vsce package --out /tmp/dockyardos-0.1.3-preview4.vsix
+          test -s /tmp/dockyardos-0.1.3-preview4.vsix
+          unzip -l /tmp/dockyardos-0.1.3-preview4.vsix | grep -q 'extension/core/dist/skill-bootstrap.js'
+          unzip -l /tmp/dockyardos-0.1.3-preview4.vsix | grep -q 'extension/core/dist/selected-skill-context.js'
+          unzip -l /tmp/dockyardos-0.1.3-preview4.vsix | grep -q 'extension/core/dist/capability-fulfillment-hook.js'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dockyardos-0.1.3-preview4-vsix
+          path: /tmp/dockyardos-0.1.3-preview4.vsix
+          if-no-files-found: error
