@@ -5,6 +5,8 @@ import { completeTeamPhase, failTeamRun, loadTeamRun, recordTeamFailure, teamRun
 import { startTeamForSelection } from "./team-routing.js";
 import { loadTeamMetrics, teamMetricsSummary } from "./team-metrics.js";
 import { createWorktree, planWorktree, verifyWorktree } from "./worktrees.js";
+import { planCapabilityFulfillmentForIds } from "./capability-fulfillment.js";
+import { activateAutomaticCapabilities } from "./capability-fulfillment-activation.js";
 
 function values(args: string[], name: string): string[] {
   const result: string[] = [];
@@ -54,7 +56,21 @@ export async function handleTeamCommand(root: string, args: string[], json: bool
   if (subcommand === "start") {
     const { task, selection } = selectionFor(rest);
     const started = await startTeamForSelection(root, task, selection);
-    console.log(JSON.stringify(json ? started : { composition: teamCompositionSummary(started.composition), run: teamRunSummary(started.state) }, null, 2));
+    const selectedIds = [...new Set([
+      ...selection.skills.map((item) => item.candidate.id),
+      ...selection.agents.map((item) => item.candidate.id),
+      ...selection.tools.map((item) => item.candidate.id),
+      ...selection.mcps.map((item) => item.candidate.id),
+    ])];
+    const capabilityPlan = await planCapabilityFulfillmentForIds(root, selectedIds);
+    const capabilityActivation = await activateAutomaticCapabilities(root, capabilityPlan, { maxAutomaticInstalls: 8 });
+    console.log(JSON.stringify(
+      json
+        ? { ...started, capabilityActivation }
+        : { composition: teamCompositionSummary(started.composition), run: teamRunSummary(started.state), capabilityActivation },
+      null,
+      2,
+    ));
     return;
   }
 
