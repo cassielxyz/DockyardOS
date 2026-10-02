@@ -141,6 +141,26 @@ export const providerAdapters: ProviderAdapterDefinition[] = [
     freeTierCheck: "live-required",
   },
   {
+    id: "google-ai",
+    displayName: "Google AI / Gemini API",
+    cliCommands: [],
+    configMarkers: [],
+    secureCredentialProbe: {
+      envVars: ["GEMINI_API_KEY", "GOOGLE_API_KEY"],
+      validationUrl: "https://generativelanguage.googleapis.com/v1beta/models",
+      header: "x-goog-api-key",
+      successReadiness: "authenticated",
+      timeoutMs: 10_000,
+    },
+    capabilities: ["ai-models", "vision", "multimodal", "image-generation", "video-generation", "veo"],
+    environments: ["local", "preview", "production"],
+    freeTierCheck: "live-required",
+    notes: [
+      "DockyardOS detects only credential presence locally and never prints or persists the key.",
+      "Live verification performs a bounded read-only Gemini models request with the key in the x-goog-api-key header.",
+    ],
+  },
+  {
     id: "cloud-run",
     displayName: "Google Cloud Run",
     cliCommands: ["gcloud"],
