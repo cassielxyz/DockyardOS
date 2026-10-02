@@ -9,6 +9,7 @@ Repository evidence overrides chat memory. On every future `continue`, inspect l
 - Verified production anchor: `f8a3f57188045da9999c4d8f4b9463ed197685be`
 - Last completed milestone: **P40.1 — autonomous dashboard truth, skill lifecycle, and credential-safe media planning**
 - Implementation PR: **#64**
+- Checkpoint PR: **#65**
 - Exact verified PR head: `5cd92f1c3d585377496342eb9939fa1306313979`
 - Extension/Core version: **0.1.3**
 - Next milestone: **P40.2 — mock-verified live Veo execution + media evidence + FFmpeg handoff**
