@@ -496,7 +496,7 @@
 - [x] Track and display Installed / Loaded / Utilized skill lifecycle per project
 - [x] Add deterministic Veo generation plan with prompt/request/approval SHA-256 binding and `executionEnabled: false`
 - [x] Keep current pricing review and explicit billable approval mandatory before any future live request
-- [ ] Exact-head CI + Preview 5 VSIX verification before merge
+- [x] Exact-head CI + Preview 5 VSIX verification before merge
 
 ### Remaining P40
 
