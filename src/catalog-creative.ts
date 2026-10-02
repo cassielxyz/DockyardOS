@@ -95,7 +95,7 @@ export const creativeCatalog: Candidate[] = [
     defaultChannel: "recommended",
     source: {
       type: "website",
-      locator: "https://inspomcp.dev/mcp",
+      locator: "https://inspomcp.dev/api/mcp",
       revisionStrategy: "live-metadata-only",
       license: "MIT",
     },
