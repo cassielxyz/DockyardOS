@@ -42,6 +42,7 @@ export function inferTaskType(text: string): string {
   if (/bug|error|crash|broken|fix issue|debug/.test(prompt)) return "bug-fix";
 
   // Specific practical archetypes must win before broad words such as server, feature, cleanup, or deploy.
+  if (/3d (?:website|web|landing|experience)|three\.?js|react[- ]three[- ]fiber|\br3f\b|\bwebgl\b|2\.5d|cinematic (?:website|web|landing)|frame[- ]sequence|scroll[- ](?:driven|scrubbed).*frames?/.test(prompt)) return "3d-web";
   if (/\brag\b|retrieval[- ]augmented|knowledge assistant|knowledge base assistant/.test(prompt)) return "rag";
   if (/\bmcp\b.*(?:server|connector|tool)|model context protocol/.test(prompt)) return "mcp";
   if (/vs ?code extension|visual studio code extension|ide extension|editor extension/.test(prompt)) return "ide-extension";
