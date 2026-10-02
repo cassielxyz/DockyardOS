@@ -4,7 +4,7 @@ import {
   persistCapabilityFulfillment,
   type CapabilityFulfillmentPlan,
 } from "./capability-fulfillment.js";
-import { activateAutomaticCapabilities, capabilityActivationAgentText, type CapabilityActivationResult } from "./capability-fulfillment-activation.js";
+import { activateAutomaticCapabilities, capabilityActivationAgentText, type CapabilityActivationDependencies, type CapabilityActivationResult } from "./capability-fulfillment-activation.js";
 import { bundledCapabilityAgentText } from "./bundled-capability-guidance.js";
 import type { RequestMediationResult } from "./request-mediation.js";
 import type { TeamRunState } from "./team-types.js";
@@ -48,6 +48,7 @@ export async function prepareCapabilityFulfillmentForInvocation(
   root: string,
   mediation: RequestMediationResult,
   team?: TeamRunState,
+  options: { activationDependencies?: CapabilityActivationDependencies } = {},
 ): Promise<InvocationCapabilityFulfillment | undefined> {
   const candidateIds = capabilityIdsForInvocation(mediation, team);
   if (!candidateIds.length) return undefined;
@@ -62,6 +63,7 @@ export async function prepareCapabilityFulfillmentForInvocation(
     activation = await activateAutomaticCapabilities(root, plan, {
       requestHash: mediation.requestHash,
       maxAutomaticInstalls: 8,
+      ...(options.activationDependencies ? { dependencies: options.activationDependencies } : {}),
     });
     effectivePlan = activation.finalPlan;
     agentLines.push(...capabilityActivationAgentText(activation));
