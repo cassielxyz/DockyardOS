@@ -6,132 +6,120 @@ This is the durable continuation checkpoint. On every future `continue`, inspect
 
 - Checkpoint date: 2026-10-02
 - Repository: `cassielxyz/DockyardOS`
-- Verified completed production state: `1d87a611f46a3a6681fd95e3ad2a4ac68a5046c5`
-- Last completed milestone: **P39 — autonomous skill bootstrap + cinematic 3D/2.5D web workflow**
-- Implementation PR: **#60**
-- Checkpoint PR: **#61**
-- Exact verified PR head: `91ccd5a69712a12055fdc34eb22f67eb9a92c905`
+- Verified completed production state: `c9c4c4f2f0224b25c55c485893a7d5b9461d8df3`
+- Last completed milestone: **P39.1 — automatic selected installed skill context loading**
+- Implementation PR: **#62**
+- Checkpoint PR: **#63**
+- Exact verified PR head: `70ab54647bb5d32ea0d6ff234978d277a6e7ed04`
 - Current Core / VS Code extension version: **0.1.3**
 - Next milestone: **P40 — credential-safe media generation execution + remaining guarded public release work**
 
-## P39 completed state
+## P39.1 completed state
 
-P39 fixes the installed-extension feedback and adds the cinematic web workflow requested by the user.
+P39 already made Auto Initialize bootstrap every materializable/installable skill manifest into Dockyard's user-owned PC library. P39.1 closes the remaining runtime gap: **installed globally is not the same as loaded into every agent prompt**.
 
-### Autonomous skills
-
-- `DockyardOS: Auto Initialize Project` now bootstraps every **materializable/installable** skill manifest into the user-owned Dockyard library under `~/.dockyardos`.
-- New CLI: `dockyard skills bootstrap --json`.
-- Automatic-safe packages activate only after fresh exact-revision/hash assessment.
-- Approval-required packages may be downloaded/assessed/staged but stay inactive.
-- Quarantined packages remain quarantined.
-- Discovery-only mega-registry entries are never mislabeled installed.
-- Request/invocation fulfillment now automatically activates selected automatic-safe packages; the agent is no longer told to ask the user to run `dockyard capabilities fulfill` manually.
-- Team Start performs the same selected-capability fulfillment.
-- Only selected/phase-relevant bundled skill guidance is injected into model context.
-
-### Team Start / Antigravity fixes
-
-- Fixed the installed Antigravity/VS Code-compatible crash:
-  `Cannot read properties of undefined (reading 'clear')`.
-- Output Channel creation/use is defensive; missing partial APIs fall back to a normal notification instead of failing the team command.
-- Stack aliases now normalize common user spellings including `react.js`, `ReactJS`, `next.js`, `three.js`, and React Three Fiber aliases.
-
-### Cinematic 3D / 2.5D web workflow
-
-A request such as:
+The lifecycle is now:
 
 ```text
-create a 3d website for r15
+Auto Initialize
+  -> materialize/assess the PC-wide skill library
+  -> reuse already-active immutable revisions
+  -> keep approval-required/quarantined packages inactive
+
+project request / continue
+  -> classify request and current team phase
+  -> select bounded capabilities
+  -> verify/activate eligible selected capabilities
+  -> load only selected ready skill entrypoints
+  -> inject bounded skill context into the current agent invocation
 ```
 
-now routes to recipe `cinematic-3d-web` instead of a generic new-project/landing flow.
+### Selective installed-skill loading
 
-Bundled capabilities:
+- New Core module: `src/selected-skill-context.ts`.
+- Only fulfillment entries that are **skill + ready + installed package + immutable active revision** are eligible.
+- The immutable installed manifest snapshot is loaded first.
+- Only manifest-declared `skill` entrypoints are eligible.
+- Skill text is read through the existing active-community runtime path, which re-verifies installed package integrity before exposing content.
+- A revision change, missing snapshot, unsafe/missing entrypoint, integrity failure, or read failure prevents injection and produces an explicit warning.
+- Candidate/package aliases such as `superpowers -> superpowers-core-skills` remain supported through fulfillment metadata.
+- Unselected skills stay out of context.
+- Approval-required, quarantined, blocked, missing-runtime and unconnected capabilities are never silently injected.
 
-- `threejs-r3f-cinematic`
-- `gsap-scroll-storytelling`
-- `frame-sequence-2-5d`
-- `cinematic-asset-pipeline`
-- `video-model-selection`
-- FFmpeg runtime verification for video/frame work
+### Context budget
 
-Dockyard plans one of:
+The automatic selected-skill loader is deliberately bounded:
 
-- **true-3d** — interaction genuinely needs geometry/WebGL/R3F;
-- **frame-sequence-2.5d** — deterministic cinematic scroll motion is the main requirement;
-- **hybrid** — default for a generic product 3D website: real 3D only where interaction earns the runtime cost, frame-sequence storytelling for major transitions.
+- default maximum selected installed skills: **8**
+- default maximum characters per skill: **10,000**
+- default maximum total selected-skill characters: **48,000**
+- oversized skill text is explicitly marked as truncated
+- budget exhaustion is surfaced as a warning instead of silently loading the full library
 
-The planner keeps hero/story/details/closing as separate semantic sections and requires mobile/reduced-motion fallbacks, browser verification and performance budgets.
+Bundled Dockyard guidance stays separate from installed upstream skill entrypoints.
 
-### Video model selection
+### Authority boundary
 
-Dockyard includes verified non-secret metadata and feature-aware selection for:
+Injected upstream skill text is explicitly scoped implementation guidance. It cannot override:
 
-- `veo-3.1-generate-preview`
-- `veo-3.1-fast-generate-preview`
-- `veo-3.1-lite-generate-preview`
+1. the user's explicit requirement;
+2. DockyardOS approval/safety policy;
+3. security and provider mutation gates;
+4. repository/test evidence.
 
-Model selection is not authentication and does not generate/spend by itself. Actual billable media generation remains an external provider action boundary. Provider credentials/API keys must not be stored in Dockyard checkpoints, logs or generated source.
-
-See `docs/CINEMATIC_WEB.md`.
+This preserves the existing rule that discovering/installing/loading a skill does not grant external or destructive authority.
 
 ## Verification evidence
 
-Exact PR head `91ccd5a69712a12055fdc34eb22f67eb9a92c905` passed:
+Exact P39.1 PR head `70ab54647bb5d32ea0d6ff234978d277a6e7ed04` passed:
 
-- CI — `37000029861`
-- P21 Provider Action Plans — `37000029786`
-- P22 Provider Pricing Evidence — `37000029860`
-- P23 Provider Migration Plans — `37000029835`
-- P33 Curated Skill Assessment — `37000030046`
-- P34 Research and Provider Skill Assessment — `37000029912`
-- P35 Runtime Connection Readiness — `37000029921`
-- P36 Host MCP Connection Readiness — `37000029867`
-- P37 Connections and Creative UI — `37000029875`
-- P38 Universal Control Center — `37000030130`
-- P38.2 Guided Connections — `37000029838`
-- P39 Autonomous Skills and Cinematic Web — `37000029880`
+- CI — `37001673487` — success
+- P39.1 Selected Skill Loading — `37001673602` — success
+- P39 Autonomous Skills and Cinematic Web — `37001673545` — success
+- P38.2 Guided Connections — `37001673332` — success
+- P38 Universal Control Center — `37001673554` — success
+- P37 Connections and Creative UI — `37001673549` — success
+- P36 Host MCP Connection Readiness — `37001673389` — success
+- P33 Curated Skill Assessment — `37001673348` — success
+- P21 Provider Action Plans — `37001673502` — success
+- P22 Provider Pricing Evidence — `37001673488` — success
+- P23 Provider Migration Plans — `37001673420` — success
 
-Post-merge `main` at `1d87a611f46a3a6681fd95e3ad2a4ac68a5046c5`:
+PR #62 had no submitted reviews or unresolved review threads at the exact-head merge check.
 
-- CI — `37000135809` — success
-- P21 — `37000135786` — success
-- P22 — `37000135778` — success
-- P23 — `37000135783` — success
+## Preview 4 artifact
 
-## Preview 3 artifact
+Validated focused workflow artifact:
 
-Validated P39 workflow artifact:
+- name: `dockyardos-0.1.3-preview4-vsix`
+- artifact id: `11224186878`
+- source head: `70ab54647bb5d32ea0d6ff234978d277a6e7ed04`
+- GitHub artifact digest: `sha256:bed234740f5b0adc881fdd7ebcd9eb274e95fd295e4210c0e23c80e6e865739e`
+- extracted VSIX size: `3945089` bytes
+- extracted VSIX SHA-256: `37c97430f3ab9b321a1ceef373d0c55af7e3f0247afba76a605d70b91b049504`
+- artifact expiry reported by GitHub: `2026-12-31T11:33:41Z`
 
-- name: `dockyardos-0.1.3-preview3-vsix`
-- artifact id: `11222759988`
-- source head: `91ccd5a69712a12055fdc34eb22f67eb9a92c905`
-- GitHub artifact digest: `sha256:fe4362019927eda0cc66e0e69a035d739b1fd5cdc2f9c8f4c81251e2db2a9103`
-- extracted VSIX size: `3939979` bytes
-- extracted VSIX SHA-256: `a10115ccdfc906321279df0324c35b1e9d472b3e0ae8c6d06797cd8497037e1f`
-- artifact expiry reported by GitHub: `2026-12-31T11:15:42Z`
+The focused workflow asserts the packaged extension contains the skill bootstrap, selected-skill loader and invocation fulfillment hook.
 
 ## Safety/truthfulness invariants
 
 Future work must preserve:
 
-- selected != installed != configured != authenticated != connected != approved;
+- selected != installed != loaded != configured != authenticated != connected != approved;
 - Auto Initialize requires a trusted workspace;
-- installable skills may be bootstrapped automatically, but approval-required/quarantined packages never gain silent execution authority;
-- discovery-only capability metadata is not called installed;
-- only selected/phase-relevant skill guidance is loaded into agent context;
-- provider/model credentials are never stored in project/checkpoint state;
-- model selection is not provider authentication and is not permission to incur external spend;
-- external/billable media generation needs an explicit execution/approval boundary;
-- provider/MCP readiness never grants deployment/database/DNS/Git/production approval;
-- child-process execution remains shell-free where designed; do not reintroduce `shell:true` to work around Windows quoting;
-- semantic DOM content, reduced-motion fallback and performance verification remain part of cinematic web output;
-- the Connections Center must continue to verify real account/session readiness rather than treating an opened login page as success.
+- materializable skills may be prepared PC-wide, but approval-required/quarantined packages never gain silent execution authority;
+- discovery-only metadata is not called installed;
+- all installed skills are **not** dumped into every agent prompt;
+- only current request/phase-selected, ready, immutable-revision skill packages are eligible for automatic context loading;
+- installed skill content is integrity-reverified before injection;
+- selected skill context remains bounded and explicit about truncation/load failures;
+- upstream skill text never outranks the user's requirement or Dockyard safety/security policy;
+- provider/model credentials remain outside project/checkpoint state;
+- connection/readiness never grants deployment/database/DNS/Git/production approval.
 
 ## P40 continuation target
 
-P40 should continue from P39 rather than rebuilding it.
+P40 continues from P39.1; do not rebuild the skill system.
 
 Primary technical target:
 
@@ -139,20 +127,20 @@ Primary technical target:
 2. represent generation as a bounded, reviewable billable-provider action;
 3. require an explicit spend/generation approval before an actual Veo request;
 4. keep API keys/tokens in provider/host secure storage or process environment, never Dockyard checkpoint/source;
-5. produce durable non-secret generation evidence (model, request hash, output hash/path, timing/status; no secret headers);
+5. produce durable non-secret generation evidence;
 6. connect successful generated clips to the existing FFmpeg/frame-sequence pipeline;
 7. verify responsive 2.5D output through Playwright/performance gates.
 
-Existing public release/Marketplace work also remains externally gated. Do not publish to the VS Code Marketplace without the real public control-plane origin, valid publisher/token/tag setup and explicit production publication approval.
+The Marketplace/public-release path remains separately externally gated.
 
 ## Resume procedure
 
 When the user says `continue`:
 
 1. inspect live `main`, recent commits, open PRs, branches and CI;
-2. verify `1d87a611f46a3a6681fd95e3ad2a4ac68a5046c5` is still in current main ancestry;
-3. inspect any production commits after that SHA before selecting work;
-4. do not recreate P39 skill bootstrap, Output Channel fix, stack aliases, cinematic recipe/model selector or bundled skill docs unless regression evidence requires it;
-5. preserve P38.2 guided Connections behavior while extending provider/media setup;
+2. verify `c9c4c4f2f0224b25c55c485893a7d5b9461d8df3` is still in current main ancestry;
+3. inspect production commits after that SHA before selecting work;
+4. do not recreate P39/P39.1 global skill bootstrap or selected skill loading unless regression evidence requires it;
+5. preserve P38.2 guided Connections behavior;
 6. distinguish external-provider, billable-action, runner, workflow, flaky-test and real code failures;
 7. checkpoint the next completed production milestone immediately.

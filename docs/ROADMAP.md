@@ -472,6 +472,19 @@
 - [x] Verified Veo 3.1 Standard/Fast/Lite metadata and feature-aware model selector
 - [x] Preview 3 VSIX package assertions and exact-head CI/compatibility verification
 
+## P39.1 — Selective installed-skill context loading
+
+- [x] Preserve Auto Initialize's PC-wide materializable skill bootstrap instead of downloading the same active revision per project
+- [x] Treat installed globally and loaded into the current agent as separate states
+- [x] Automatically load only current request/team-phase selected ready skill packages
+- [x] Require immutable active revision + installed manifest snapshot + declared skill entrypoint before loading
+- [x] Re-verify active package integrity through the existing community runtime before exposing skill text
+- [x] Keep approval-required, quarantined, blocked, missing-runtime and unconnected capabilities out of automatic context
+- [x] Bound selected skill context by skill count, per-skill size and total size with explicit truncation/warnings
+- [x] Keep upstream skill guidance subordinate to user requirements and DockyardOS safety/security policy
+- [x] Add deterministic P39.1 tests plus Preview 4 VSIX package-content assertions
+- [x] Exact-head CI and P39/P38/P37/provider compatibility lanes green before merge
+
 ## P40 — Credential-safe media execution + guarded public release
 
 - [ ] Add secure Google AI/media-generation connection support without storing API keys in Dockyard state/source

@@ -2,109 +2,101 @@
   "schemaVersion": 1,
   "repository": "cassielxyz/DockyardOS",
   "checkpointDate": "2026-10-02",
-  "verifiedCodeSha": "1d87a611f46a3a6681fd95e3ad2a4ac68a5046c5",
-  "checkpointPr": 61,
+  "verifiedCodeSha": "c9c4c4f2f0224b25c55c485893a7d5b9461d8df3",
+  "checkpointPr": 63,
   "lastCompletedMilestone": {
+    "id": "P39.1",
+    "title": "automatic selected installed skill context loading",
+    "mergedSha": "c9c4c4f2f0224b25c55c485893a7d5b9461d8df3",
+    "pr": 62,
+    "verifiedHeadSha": "70ab54647bb5d32ea0d6ff234978d277a6e7ed04"
+  },
+  "previousMilestone": {
     "id": "P39",
     "title": "autonomous skill bootstrap and cinematic 3D/2.5D web workflow",
     "mergedSha": "1d87a611f46a3a6681fd95e3ad2a4ac68a5046c5",
     "pr": 60,
     "verifiedHeadSha": "91ccd5a69712a12055fdc34eb22f67eb9a92c905"
   },
-  "previousMilestone": {
-    "id": "P38.2",
-    "title": "guided provider login and host-aware MCP setup",
-    "mergedSha": "cab40be449eefd0cf557cd33a333d1ee13a376e8",
-    "pr": 59
-  },
   "verification": [
     {
       "name": "CI",
-      "runId": 37000029861,
+      "runId": 37001673487,
       "conclusion": "success"
     },
     {
-      "name": "P21 Provider Action Plans",
-      "runId": 37000029786,
-      "conclusion": "success"
-    },
-    {
-      "name": "P22 Provider Pricing Evidence",
-      "runId": 37000029860,
-      "conclusion": "success"
-    },
-    {
-      "name": "P23 Provider Migration Plans",
-      "runId": 37000029835,
-      "conclusion": "success"
-    },
-    {
-      "name": "P33 Curated Skill Assessment",
-      "runId": 37000030046,
-      "conclusion": "success"
-    },
-    {
-      "name": "P34 Research and Provider Skill Assessment",
-      "runId": 37000029912,
-      "conclusion": "success"
-    },
-    {
-      "name": "P35 Runtime Connection Readiness",
-      "runId": 37000029921,
-      "conclusion": "success"
-    },
-    {
-      "name": "P36 Host MCP Connection Readiness",
-      "runId": 37000029867,
-      "conclusion": "success"
-    },
-    {
-      "name": "P37 Connections and Creative UI",
-      "runId": 37000029875,
-      "conclusion": "success"
-    },
-    {
-      "name": "P38 Universal Control Center",
-      "runId": 37000030130,
-      "conclusion": "success"
-    },
-    {
-      "name": "P38.2 Guided Connections",
-      "runId": 37000029838,
+      "name": "P39.1 Selected Skill Loading",
+      "runId": 37001673602,
       "conclusion": "success"
     },
     {
       "name": "P39 Autonomous Skills and Cinematic Web",
-      "runId": 37000029880,
+      "runId": 37001673545,
       "conclusion": "success"
     },
     {
-      "name": "post-merge main CI",
-      "runId": 37000135809,
+      "name": "P38.2 Guided Connections",
+      "runId": 37001673332,
+      "conclusion": "success"
+    },
+    {
+      "name": "P38 Universal Control Center",
+      "runId": 37001673554,
+      "conclusion": "success"
+    },
+    {
+      "name": "P37 Connections and Creative UI",
+      "runId": 37001673549,
+      "conclusion": "success"
+    },
+    {
+      "name": "P36 Host MCP Connection Readiness",
+      "runId": 37001673389,
+      "conclusion": "success"
+    },
+    {
+      "name": "P33 Curated Skill Assessment",
+      "runId": 37001673348,
+      "conclusion": "success"
+    },
+    {
+      "name": "P21 Provider Action Plans",
+      "runId": 37001673502,
+      "conclusion": "success"
+    },
+    {
+      "name": "P22 Provider Pricing Evidence",
+      "runId": 37001673488,
+      "conclusion": "success"
+    },
+    {
+      "name": "P23 Provider Migration Plans",
+      "runId": 37001673420,
       "conclusion": "success"
     }
   ],
   "artifacts": [
     {
-      "name": "dockyardos-0.1.3-preview3-vsix",
-      "artifactId": 11222759988,
-      "githubArtifactSha256": "fe4362019927eda0cc66e0e69a035d739b1fd5cdc2f9c8f4c81251e2db2a9103",
-      "extractedVsixSha256": "a10115ccdfc906321279df0324c35b1e9d472b3e0ae8c6d06797cd8497037e1f",
-      "extractedVsixSizeBytes": 3939979,
-      "expiresAt": "2026-12-31T11:15:42Z"
+      "name": "dockyardos-0.1.3-preview4-vsix",
+      "artifactId": 11224186878,
+      "githubArtifactSha256": "bed234740f5b0adc881fdd7ebcd9eb274e95fd295e4210c0e23c80e6e865739e",
+      "extractedVsixSha256": "37c97430f3ab9b321a1ceef373d0c55af7e3f0247afba76a605d70b91b049504",
+      "extractedVsixSizeBytes": 3945089,
+      "expiresAt": "2026-12-31T11:33:41Z"
     }
   ],
   "safetyInvariants": [
-    "selected != installed != configured != authenticated != connected != approved",
+    "selected != installed != loaded != configured != authenticated != connected != approved",
     "Auto Initialize requires workspace trust",
-    "all materializable skills may be downloaded/assessed automatically, but approval-required and quarantined packages remain inactive",
+    "Auto Initialize bootstraps every materializable skill into the user-owned PC-wide Dockyard library and reuses already-active immutable revisions across projects",
+    "approval-required and quarantined packages may be staged but remain inactive and are never injected automatically",
     "discovery-only catalogue entries are never represented as installed",
-    "only selected phase-relevant bundled skill guidance is injected into model context",
+    "only current request/phase selected ready skill packages with immutable active revisions are eligible for automatic model-context loading",
+    "selected installed skill text is re-read through the integrity-verifying active community entrypoint path before injection",
+    "selected skill context is bounded by skill count, per-skill characters and total characters; failed verification/read becomes an explicit warning",
+    "upstream skill text is scoped guidance and never overrides the user request, Dockyard approval policy, security gates or repository evidence",
     "provider/model credentials are never stored in Dockyard project/checkpoint state",
-    "model selection is not authentication and does not authorize external billable generation",
-    "provider/MCP readiness never grants mutation approval",
-    "do not reintroduce shell=true for Windows package/CLI handling",
-    "cinematic web output preserves semantic sections, reduced-motion fallbacks and performance verification"
+    "provider/MCP readiness never grants mutation approval"
   ],
   "nextMilestone": {
     "id": "P40",
@@ -121,8 +113,9 @@
   },
   "resumeRules": [
     "inspect live main, open PRs/branches, roadmap/checkpoint and CI before continuing",
-    "treat verifiedCodeSha as the P39 completed production anchor and inspect newer production commits before work",
-    "do not replay P39 skill/bootstrap/crash/cinematic work unless regression evidence requires it",
+    "treat verifiedCodeSha as the P39.1 completed production anchor and inspect newer production commits before work",
+    "do not replay P39/P39.1 skill bootstrap or selected-skill loading unless regression evidence requires it",
+    "preserve PC-wide installation with task/phase-specific loading; never dump the complete skill library into model context",
     "preserve P38.2 guided Connections and truthful connection-state boundaries",
     "keep billable external model generation distinct from model selection and require explicit execution approval",
     "update this checkpoint after the next completed production milestone"
