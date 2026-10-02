@@ -14,6 +14,7 @@ const {
 const { renderConnectionsHtml } = require("./connections-view.js");
 
 const MAX_OUTPUT_BYTES = 128 * 1024;
+const VERIFIED_PROVIDER_IDS_KEY = "dockyardOS.connections.verifiedProviderIds";
 let connectionsPanel;
 let lastVerifiedConnections;
 
@@ -71,6 +72,23 @@ function parseJson(text) {
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function rememberedProviderIds(context) {
+  const value = context.globalState.get(VERIFIED_PROVIDER_IDS_KEY, []);
+  return new Set(Array.isArray(value) ? value.filter((id) => typeof id === "string") : []);
+}
+
+async function rememberVerifiedProvider(context, id) {
+  const ids = rememberedProviderIds(context);
+  ids.add(id);
+  await context.globalState.update(VERIFIED_PROVIDER_IDS_KEY, [...ids].sort());
+}
+
+async function forgetVerifiedProvider(context, id) {
+  const ids = rememberedProviderIds(context);
+  ids.delete(id);
+  await context.globalState.update(VERIFIED_PROVIDER_IDS_KEY, [...ids].sort());
 }
 
 async function providerSecretEnvironment(context, onlyId) {
@@ -156,6 +174,7 @@ async function watchProviderConnection(context, panel, id) {
     try {
       const probe = await verifyOneProvider(context, id);
       if (probe?.authenticated === true || probe?.readiness === "authenticated" || probe?.readiness === "linked") {
+        await rememberVerifiedProvider(context, id);
         await postModel(context, panel, true, `${probe.displayName || id} connected and verified.`);
         return;
       }
@@ -206,6 +225,32 @@ async function postModel(context, panel, liveChecked, notice) {
   await panel.webview.postMessage({ type: "model", model, notice });
 }
 
+async function autoVerifyKnownConnections(context, panel, localModel) {
+  const remembered = rememberedProviderIds(context);
+  const candidateIds = [...new Set((localModel.providers || [])
+    .filter((provider) => provider.installed === true || (provider.connectionKind === "secret-storage" && provider.configured === true) || remembered.has(provider.id))
+    .map((provider) => provider.id))];
+  if (!candidateIds.length) return;
+
+  const probes = [];
+  for (const id of candidateIds) {
+    try {
+      const probe = await verifyOneProvider(context, id);
+      if (probe) {
+        probes.push(probe);
+        if (probe.authenticated === true || probe.readiness === "authenticated" || probe.readiness === "linked") {
+          await rememberVerifiedProvider(context, id);
+        }
+      }
+    } catch {}
+  }
+  if (!probes.length) return;
+  const verified = normalizeConnections(probes, { liveChecked: true });
+  const merged = mergeVerifiedProviderState(localModel, verified);
+  lastVerifiedConnections = merged;
+  await panel.webview.postMessage({ type: "model", model: merged, notice: "Known connected accounts verified automatically." });
+}
+
 function safeUrl(raw) {
   const url = new URL(raw);
   if (url.protocol !== "https:") throw new Error("DockyardOS Connections only opens HTTPS setup pages.");
@@ -247,6 +292,7 @@ async function connectProvider(context, panel, id) {
       throw new Error("Google AI rejected the key or the read-only verification request could not be authenticated. The key was not stored.");
     }
     await context.secrets.store(definition.secretStorageKey, key);
+    await rememberVerifiedProvider(context, id);
     await postModel(context, panel, true, "Google AI connected and verified. The API key is stored only in VS Code SecretStorage.");
     return;
   }
@@ -290,6 +336,7 @@ async function forgetProviderSecret(context, panel, id) {
   );
   if (answer !== "Forget credential") return;
   await context.secrets.delete(definition.secretStorageKey);
+  await forgetVerifiedProvider(context, id);
   await postModel(context, panel, false, `${id} credential removed from VS Code SecretStorage.`);
 }
 
@@ -364,7 +411,7 @@ async function openConnectionsCenter(context) {
   );
   connectionsPanel = panel;
   panel.webview.html = renderConnectionsHtml(panel.webview, model, backgroundUri(context, panel.webview));
-  void postModel(context, panel, true, "Connected accounts verified automatically.").catch((error) => {
+  void autoVerifyKnownConnections(context, panel, model).catch((error) => {
     void panel.webview.postMessage({ type: "notice", text: `Automatic account verification needs attention: ${error instanceof Error ? error.message : String(error)}` });
   });
   panel.onDidDispose(() => { if (connectionsPanel === panel) connectionsPanel = undefined; }, null, context.subscriptions);
