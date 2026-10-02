@@ -7,8 +7,22 @@ const CHANNEL_RANK: Record<UpdateChannel, number> = { stable: 0, recommended: 1,
 const TRUST_SCORE: Record<Candidate["trust"], number> = { official: 18, dockyard: 17, maintainer: 14, community: 8 };
 const CONTEXT_PENALTY: Record<Candidate["contextCost"], number> = { tiny: 0, small: 1, medium: 4, large: 9 };
 
+const STACK_ALIASES: Record<string, string> = {
+  "react.js": "react",
+  reactjs: "react",
+  "next.js": "nextjs",
+  "three.js": "threejs",
+  three: "threejs",
+  "@react-three/fiber": "r3f",
+  "react-three-fiber": "r3f",
+  reactthreefiber: "r3f",
+};
+
 function normalized(values: string[]): string[] {
-  return values.map((value) => value.trim().toLowerCase()).filter(Boolean);
+  return values
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean)
+    .map((value) => STACK_ALIASES[value] ?? value);
 }
 
 function uniqueNormalized(values: string[]): string[] {
