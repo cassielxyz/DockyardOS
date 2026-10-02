@@ -5,6 +5,7 @@ import {
   type CapabilityFulfillmentPlan,
 } from "./capability-fulfillment.js";
 import { activateAutomaticCapabilities, capabilityActivationAgentText, type CapabilityActivationResult } from "./capability-fulfillment-activation.js";
+import { bundledCapabilityAgentText } from "./bundled-capability-guidance.js";
 import type { RequestMediationResult } from "./request-mediation.js";
 import type { TeamRunState } from "./team-types.js";
 
@@ -67,6 +68,7 @@ export async function prepareCapabilityFulfillmentForInvocation(
   }
 
   agentLines.push(...capabilityFulfillmentAgentText(effectivePlan));
+  agentLines.push(...bundledCapabilityAgentText(effectivePlan.ready));
   if (effectivePlan.unresolved.length) {
     agentLines.push("Proceed using verified-ready capabilities only. Approval-required, quarantined, missing-runtime, or unconnected capabilities remain explicitly unresolved; do not ask the user to download packages manually.");
   }
