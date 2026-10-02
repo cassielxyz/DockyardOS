@@ -18,6 +18,7 @@ export * from "./capability-fulfillment-agent.js";
 export * from "./capability-fulfillment-activation.js";
 export * from "./capability-fulfillment-hook.js";
 export * from "./skill-bootstrap.js";
+export * from "./selected-skill-context.js";
 export * from "./request-mediation.js";
 export * from "./public-ad-gate.js";
 export * from "./provider-adapters.js";
