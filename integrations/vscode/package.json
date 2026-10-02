@@ -2,7 +2,7 @@
   "name": "dockyardos-vscode",
   "displayName": "DockyardOS",
   "description": "Universal control center for persistent AI development orchestration, memory, connectors, skills, verification and safe automation.",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "publisher": "cassielxyz",
   "license": "MIT",
   "repository": {
