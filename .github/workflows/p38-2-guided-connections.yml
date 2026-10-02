@@ -47,7 +47,7 @@ jobs:
           npx @vscode/vsce package --out /tmp/dockyardos-guided-connections.vsix
           test -s /tmp/dockyardos-guided-connections.vsix
           unzip -p /tmp/dockyardos-guided-connections.vsix extension/package.json > /tmp/vsix-package.json
-          node -e "const p=require('/tmp/vsix-package.json'); if(p.version!=='0.1.2') process.exit(1)"
+          node -e "const p=require('/tmp/vsix-package.json'); if(p.version!=='0.1.3') process.exit(1)"
           unzip -l /tmp/dockyardos-guided-connections.vsix | grep -q 'extension/connections-controller.js'
           unzip -l /tmp/dockyardos-guided-connections.vsix | grep -q 'extension/connections-model.js'
           unzip -l /tmp/dockyardos-guided-connections.vsix | grep -q 'extension/connections-setup.js'
