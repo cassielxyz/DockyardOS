@@ -5,7 +5,8 @@ import {
   type CapabilityFulfillmentPlan,
 } from "./capability-fulfillment.js";
 import { activateAutomaticCapabilities, capabilityActivationAgentText, type CapabilityActivationDependencies, type CapabilityActivationResult } from "./capability-fulfillment-activation.js";
-import { bundledCapabilityAgentText } from "./bundled-capability-guidance.js";
+import { bundledCapabilityAgentText, bundledCapabilityIds } from "./bundled-capability-guidance.js";
+import { recordProjectSkillUsage } from "./skill-usage.js";
 import { loadSelectedSkillContext, selectedSkillContextAgentText, type SelectedSkillContextDependencies, type SelectedSkillContextResult } from "./selected-skill-context.js";
 import type { RequestMediationResult } from "./request-mediation.js";
 import type { TeamRunState } from "./team-types.js";
@@ -17,6 +18,7 @@ export interface InvocationCapabilityFulfillment {
   agentLines: string[];
   activation?: CapabilityActivationResult;
   selectedSkillContext?: SelectedSkillContextResult;
+  loadedSkillIds?: string[];
 }
 
 function unique(values: string[]): string[] {
@@ -80,6 +82,11 @@ export async function prepareCapabilityFulfillmentForInvocation(
       : {}),
   });
 
+  const bundledLoaded = bundledCapabilityIds(effectivePlan.ready);
+  const installedLoaded = selectedSkillContext.entries.map((entry) => entry.candidateId);
+  const loadedSkillIds = unique([...bundledLoaded, ...installedLoaded]);
+  await recordProjectSkillUsage(root, loadedSkillIds);
+
   agentLines.push(...capabilityFulfillmentAgentText(effectivePlan));
   agentLines.push(...bundledCapabilityAgentText(effectivePlan.ready));
   agentLines.push(...selectedSkillContextAgentText(selectedSkillContext));
@@ -92,6 +99,7 @@ export async function prepareCapabilityFulfillmentForInvocation(
     persistedPath,
     agentLines,
     selectedSkillContext,
+    loadedSkillIds,
     ...(activation ? { activation } : {}),
   };
 }
