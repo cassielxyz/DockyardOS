@@ -14,7 +14,9 @@ const {
 const { renderConnectionsHtml } = require("./connections-view.js");
 
 const MAX_OUTPUT_BYTES = 128 * 1024;
+const VERIFIED_PROVIDER_IDS_KEY = "dockyardOS.connections.verifiedProviderIds";
 let connectionsPanel;
+let lastVerifiedConnections;
 
 function workspaceRoot() {
   const folder = vscode.workspace.workspaceFolders?.[0];
@@ -30,14 +32,14 @@ function dockyardInvocation(context) {
   return { command: "dockyard", prefix: [] };
 }
 
-function runDockyard(context, args) {
+function runDockyard(context, args, options = {}) {
   return new Promise((resolve, reject) => {
     const invocation = dockyardInvocation(context);
     const child = spawn(invocation.command, [...invocation.prefix, ...args], {
       cwd: workspaceRoot(),
       shell: false,
       windowsHide: true,
-      env: process.env,
+      env: { ...process.env, ...(options.env || {}) },
     });
     let stdout = "";
     let stderr = "";
@@ -72,8 +74,38 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function verifyOneProvider(context, id) {
-  const output = await runDockyard(context, ["providers", "inspect", "--live", "--id", id, "--json"]);
+function rememberedProviderIds(context) {
+  const value = context.globalState.get(VERIFIED_PROVIDER_IDS_KEY, []);
+  return new Set(Array.isArray(value) ? value.filter((id) => typeof id === "string") : []);
+}
+
+async function rememberVerifiedProvider(context, id) {
+  const ids = rememberedProviderIds(context);
+  ids.add(id);
+  await context.globalState.update(VERIFIED_PROVIDER_IDS_KEY, [...ids].sort());
+}
+
+async function forgetVerifiedProvider(context, id) {
+  const ids = rememberedProviderIds(context);
+  ids.delete(id);
+  await context.globalState.update(VERIFIED_PROVIDER_IDS_KEY, [...ids].sort());
+}
+
+async function providerSecretEnvironment(context, onlyId) {
+  const env = {};
+  for (const id of ["google-ai"]) {
+    if (onlyId && onlyId !== id) continue;
+    const definition = providerDefinition(id);
+    if (!definition?.secretStorageKey || !definition?.secretEnvVar) continue;
+    const secret = await context.secrets.get(definition.secretStorageKey);
+    if (secret) env[definition.secretEnvVar] = secret;
+  }
+  return env;
+}
+
+async function verifyOneProvider(context, id, envOverride = {}) {
+  const env = { ...(await providerSecretEnvironment(context, id)), ...envOverride };
+  const output = await runDockyard(context, ["providers", "inspect", "--live", "--id", id, "--json"], { env });
   const probes = parseJson(output);
   if (!Array.isArray(probes) || probes.length !== 1) return undefined;
   return probes[0];
@@ -142,6 +174,7 @@ async function watchProviderConnection(context, panel, id) {
     try {
       const probe = await verifyOneProvider(context, id);
       if (probe?.authenticated === true || probe?.readiness === "authenticated" || probe?.readiness === "linked") {
+        await rememberVerifiedProvider(context, id);
         await postModel(context, panel, true, `${probe.displayName || id} connected and verified.`);
         return;
       }
@@ -153,18 +186,76 @@ async function watchProviderConnection(context, panel, id) {
   });
 }
 
+function mergeVerifiedProviderState(localModel, verifiedModel) {
+  if (!verifiedModel) return localModel;
+  const verifiedById = new Map((verifiedModel.providers || []).map((provider) => [provider.id, provider]));
+  const providers = (localModel.providers || []).map((provider) => {
+    const verified = verifiedById.get(provider.id);
+    if (!verified) return provider;
+    const ready = verified.authenticated === true || verified.linked === true || verified.status?.level === "ready";
+    return ready ? { ...provider, ...verified, liveChecked: true } : provider;
+  });
+  return {
+    ...localModel,
+    providers,
+    summary: {
+      ...(localModel.summary || {}),
+      providerReady: providers.filter((item) => item.status?.level === "ready").length,
+      providerAttention: providers.filter((item) => item.status?.level === "warning" || item.status?.level === "partial").length,
+    },
+  };
+}
+
 async function loadConnections(context, liveChecked) {
   const args = ["providers", "inspect", "--json"];
   if (liveChecked) args.push("--live");
-  const output = await runDockyard(context, args);
+  const output = await runDockyard(context, args, { env: await providerSecretEnvironment(context) });
   const probes = parseJson(output);
   if (!Array.isArray(probes)) throw new Error("DockyardOS provider readiness output was not a JSON array.");
-  return normalizeConnections(probes, { liveChecked });
+  const model = normalizeConnections(probes, { liveChecked });
+  if (liveChecked) {
+    lastVerifiedConnections = model;
+    return model;
+  }
+  return mergeVerifiedProviderState(model, lastVerifiedConnections);
 }
 
 async function postModel(context, panel, liveChecked, notice) {
   const model = await loadConnections(context, liveChecked);
+  if (liveChecked) {
+    for (const provider of model.providers || []) {
+      if (provider.authenticated === true || provider.linked === true || provider.status?.level === "ready") {
+        await rememberVerifiedProvider(context, provider.id);
+      }
+    }
+  }
   await panel.webview.postMessage({ type: "model", model, notice });
+}
+
+async function autoVerifyKnownConnections(context, panel, localModel) {
+  const remembered = rememberedProviderIds(context);
+  const candidateIds = [...new Set((localModel.providers || [])
+    .filter((provider) => provider.installed === true || (provider.connectionKind === "secret-storage" && provider.configured === true) || remembered.has(provider.id))
+    .map((provider) => provider.id))];
+  if (!candidateIds.length) return;
+
+  const probes = [];
+  for (const id of candidateIds) {
+    try {
+      const probe = await verifyOneProvider(context, id);
+      if (probe) {
+        probes.push(probe);
+        if (probe.authenticated === true || probe.readiness === "authenticated" || probe.readiness === "linked") {
+          await rememberVerifiedProvider(context, id);
+        }
+      }
+    } catch {}
+  }
+  if (!probes.length) return;
+  const verified = normalizeConnections(probes, { liveChecked: true });
+  const merged = mergeVerifiedProviderState(localModel, verified);
+  lastVerifiedConnections = merged;
+  await panel.webview.postMessage({ type: "model", model: merged, notice: "Known connected accounts verified automatically." });
 }
 
 function safeUrl(raw) {
@@ -186,6 +277,32 @@ async function openProviderSetup(id) {
 async function connectProvider(context, panel, id) {
   const definition = providerDefinition(id);
   if (!definition) throw new Error(`Unknown provider connection: ${id}.`);
+
+  if (definition.secretInput) {
+    const value = await vscode.window.showInputBox({
+      title: "Connect Google AI / Gemini API",
+      prompt: "Paste a Gemini API key. DockyardOS verifies it read-only before storing it in VS Code SecretStorage.",
+      password: true,
+      ignoreFocusOut: true,
+      validateInput: (raw) => {
+        const key = String(raw || "").trim();
+        if (key.length < 16) return "API key is too short.";
+        if (key.length > 4096) return "API key is too long.";
+        if (/\s/.test(key)) return "API key must not contain whitespace.";
+        return undefined;
+      },
+    });
+    if (value === undefined) return;
+    const key = value.trim();
+    const probe = await verifyOneProvider(context, id, { [definition.secretEnvVar]: key });
+    if (probe?.authenticated !== true && probe?.readiness !== "authenticated") {
+      throw new Error("Google AI rejected the key or the read-only verification request could not be authenticated. The key was not stored.");
+    }
+    await context.secrets.store(definition.secretStorageKey, key);
+    await rememberVerifiedProvider(context, id);
+    await postModel(context, panel, true, "Google AI connected and verified. The API key is stored only in VS Code SecretStorage.");
+    return;
+  }
 
   const localModel = await loadConnections(context, false);
   const provider = localModel.providers.find((item) => item.id === id);
@@ -214,6 +331,20 @@ async function connectProvider(context, panel, id) {
     text: `${provider?.name || id} login started. Complete the browser/device flow; DockyardOS is verifying in the background.`,
   });
   void watchProviderConnection(context, panel, id);
+}
+
+async function forgetProviderSecret(context, panel, id) {
+  const definition = providerDefinition(id);
+  if (!definition?.secretStorageKey) throw new Error(`Provider ${id} does not use DockyardOS-managed SecretStorage.`);
+  const answer = await vscode.window.showWarningMessage(
+    `Forget the stored ${id} credential from VS Code SecretStorage?`,
+    { modal: true },
+    "Forget credential",
+  );
+  if (answer !== "Forget credential") return;
+  await context.secrets.delete(definition.secretStorageKey);
+  await forgetVerifiedProvider(context, id);
+  await postModel(context, panel, false, `${id} credential removed from VS Code SecretStorage.`);
 }
 
 async function openMcpSetup(id) {
@@ -287,6 +418,9 @@ async function openConnectionsCenter(context) {
   );
   connectionsPanel = panel;
   panel.webview.html = renderConnectionsHtml(panel.webview, model, backgroundUri(context, panel.webview));
+  void autoVerifyKnownConnections(context, panel, model).catch((error) => {
+    void panel.webview.postMessage({ type: "notice", text: `Automatic account verification needs attention: ${error instanceof Error ? error.message : String(error)}` });
+  });
   panel.onDidDispose(() => { if (connectionsPanel === panel) connectionsPanel = undefined; }, null, context.subscriptions);
   panel.webview.onDidReceiveMessage(async (message) => {
     try {
@@ -296,6 +430,7 @@ async function openConnectionsCenter(context) {
         case "refresh-local": await postModel(context, panel, false, "Local readiness refreshed."); return;
         case "verify-live": await postModel(context, panel, true, "Read-only live verification completed."); return;
         case "provider-connect": await connectProvider(context, panel, id); return;
+        case "provider-forget-secret": await forgetProviderSecret(context, panel, id); return;
         case "provider-setup": await openProviderSetup(id); return;
         case "mcp-setup": await openMcpSetup(id); return;
         case "mcp-configure": await configureMcp(context, panel, id); return;
@@ -316,6 +451,7 @@ function activateConnections(context) {
 
 function deactivateConnections() {
   connectionsPanel = undefined;
+  lastVerifiedConnections = undefined;
 }
 
 module.exports = { activateConnections, deactivateConnections, loadConnections };

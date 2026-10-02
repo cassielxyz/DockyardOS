@@ -26,9 +26,13 @@ const GUIDANCE: Record<string, string[]> = {
   ],
 };
 
+export function bundledCapabilityIds(candidateIds: string[]): string[] {
+  return [...new Set(candidateIds)].filter((id) => Boolean(GUIDANCE[id]));
+}
+
 export function bundledCapabilityAgentText(candidateIds: string[]): string[] {
   const lines: string[] = [];
-  for (const id of [...new Set(candidateIds)]) {
+  for (const id of bundledCapabilityIds(candidateIds)) {
     const guidance = GUIDANCE[id];
     if (!guidance) continue;
     lines.push(`DOCKYARD BUNDLED SKILL — ${id}`);

@@ -1,4 +1,5 @@
 import { bootstrapInstallableSkills } from "./skill-bootstrap.js";
+import { skillDashboardState } from "./skill-usage.js";
 
 function values(args: string[], name: string): string[] {
   const output: string[] = [];
@@ -9,10 +10,14 @@ function values(args: string[], name: string): string[] {
   return output;
 }
 
-export async function handleSkillCommand(args: string[]): Promise<void> {
+export async function handleSkillCommand(root: string, args: string[]): Promise<void> {
   const action = args[0] ?? "bootstrap";
   const rest = args.slice(1);
-  if (action !== "bootstrap") throw new Error("Usage: dockyard skills bootstrap [--ids ID[,ID]] [--no-activate] [--json]");
+  if (action === "status") {
+    console.log(JSON.stringify(await skillDashboardState(root), null, 2));
+    return;
+  }
+  if (action !== "bootstrap") throw new Error("Usage: dockyard skills bootstrap [--ids ID[,ID]] [--no-activate] [--json] | skills status [--json]");
   const result = await bootstrapInstallableSkills({
     ...(values(rest, "--ids").length ? { ids: values(rest, "--ids") } : {}),
     activateAutomatic: !rest.includes("--no-activate"),

@@ -10,8 +10,8 @@ The UI contains:
 
 - Dashboard
 - Project
-- Agents
-- Skills
+- Agents (autonomous status / current phase specialists)
+- Skills (installed / loaded / utilized)
 - Connections
 - Memory
 - Workflows
@@ -39,6 +39,8 @@ After confirmation it can:
 
 The global skill library is **not** dumped into every model prompt. When a project request arrives, Dockyard selects the current task/phase capabilities and automatically loads only the selected integrity-verified skill entrypoints into the agent invocation, with bounded context limits.
 
+The Skills page shows three separate sets: **Installed on this PC**, **Loaded for the latest/current work**, and **Utilized by this project**. The dashboard home also shows the same three counts and a short preview.
+
 Automatic initialization on project open is separately opt-in through `dockyardOS.autoInitialize.enabled` and remains disabled by default.
 
 
@@ -61,6 +63,10 @@ The Dockyard Settings page currently exposes the most useful user preferences di
 
 Settings messages are allowlisted in the extension controller. The webview cannot invent a setting key or arbitrary command.
 
+## Autonomous agents
+
+The normal UI does not ask the user to manually start a specialist team. Dockyard request mediation automatically creates or reuses the bounded team for substantial work and restores the correct phase on continuation. The Agents page only shows the current specialists, role/isolation and working state. The legacy command remains available for troubleshooting/manual testing, not as the normal workflow.
+
 ## Connections Center
 
 Connections is the provider/MCP setup and readiness UI. It is not a credential vault.
@@ -76,6 +82,9 @@ Provider account actions follow these rules:
 - Vercel, Cloudflare, Supabase, Neon, Firebase, Appwrite and Railway can use a bounded `npx` launcher when their global CLI is absent;
 - Dockyard automatically polls the provider's existing read-only live probe after login and only shows a verified account state when that probe succeeds;
 - provider-managed/self-hosted cases open the official setup surface instead of inventing credentials or OAuth behavior;
+- Google AI / Gemini API uses a masked API-key prompt and VS Code SecretStorage; Dockyard verifies the candidate key read-only before storing it and exposes a **Forget key** action;
+- secret-backed provider credentials are passed to bundled Core only through the spawned process environment and are never sent to the Connections webview model;
+- Connections automatically re-verifies locally present or previously verified accounts when the page opens, while the broader **Verify connections** action remains explicit;
 - passwords, OAuth tokens, API keys and MCP credentials are not written into Dockyard project/checkpoint state;
 - installed/configured MCP metadata is not called connected;
 - host-session evidence remains the authority for current-session MCP connectivity;

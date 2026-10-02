@@ -257,6 +257,8 @@ Representative Dockyard specialist roles include:
 
 DockyardOS activates the agents that fit the current recipe and phase instead of treating “multi-agent” as “start everything”.
 
+Normal users do not manually start those agents. In an initialized host integration, request mediation creates or reuses the bounded project team automatically for substantial work and restores the correct team/phase on continuation. The Control Center's Agents page is therefore a **status/inspection surface**, not a “Start agents” workflow.
+
 ---
 
 ## Skills, tools and intelligence added to DockyardOS
@@ -381,6 +383,8 @@ Auto Initialize bootstraps every **materializable** skill package into Dockyard'
 
 **Installed globally is not the same as loaded into the agent.** For each request or active team phase, Dockyard selects the relevant capabilities, verifies readiness, and automatically injects only the selected integrity-verified skill entrypoints into that invocation. Unselected skills stay out of context. Installed skill text is bounded to a per-invocation context budget, and a failed integrity/read check becomes an explicit load warning rather than a false “active” state.
 
+The dashboard exposes this lifecycle directly as **Installed on PC**, **Loaded for latest/current work**, and **Utilized by this project**. Utilized means the skill was actually injected into at least one project invocation/phase; discovery or installation alone does not count as usage.
+
 For requests such as `create a 3d website for r15`, Dockyard routes into a dedicated **Cinematic 3D / 2.5D Web** workflow. It can choose true Three.js/R3F, video-derived frame-sequence 2.5D, or a hybrid with separate semantic sections. The workflow includes GSAP/ScrollTrigger, FFmpeg frame extraction, asset budgets, mobile/reduced-motion fallbacks, Playwright verification and model selection for the verified Google Veo 3.1 family.
 
 See [Cinematic Web Workflow](docs/CINEMATIC_WEB.md).
@@ -431,6 +435,8 @@ DockyardOS can inspect or guide setup for providers such as:
 - other provider alternatives represented by the provider layer
 
 Provider login flows run through the provider’s own CLI or supported mechanism. Credentials remain with the provider tooling rather than being copied into Dockyard checkpoints. Vercel, Cloudflare, Supabase, Neon, Firebase, Appwrite and Railway can use Dockyard's allowlisted ephemeral CLI path when the global command is absent; GitHub and selected native CLIs use their verified install/login surfaces.
+
+For **Google AI / Gemini API**, the Connections Center uses a credential-safe API-key path: masked input, read-only verification, and VS Code SecretStorage. The key is passed to Dockyard Core only in the child-process environment for verification or a future explicitly approved media action; it is never written into project/checkpoint files or sent to the Connections webview.
 
 ### MCP / connector examples
 
@@ -503,6 +509,14 @@ store evidence
 ```
 
 Production actions require a stronger approval boundary than normal reversible project work.
+
+### Billable media planning
+
+Dockyard can create a **plan-only Google Veo generation action** with `dockyard media plan`. The plan binds the selected model, project, prompt hash, request-body hash, output settings and an exact approval SHA-256. It is marked `billable: true`, `approvalRequired: true`, and currently `executionEnabled: false`.
+
+Connecting Google AI or selecting a Veo model does **not** authorize spend. Live generation remains separately gated: Dockyard must re-plan, re-verify the provider, review current pricing and receive explicit billable approval bound to the exact plan hash.
+
+See [Credential-Safe Media Generation](docs/MEDIA_GENERATION.md).
 
 DockyardOS does not turn “GitHub connected” into permission for arbitrary force pushes, secret changes or destructive repository operations.
 

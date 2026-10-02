@@ -487,8 +487,20 @@
 
 ## P40 — Credential-safe media execution + guarded public release
 
-- [ ] Add secure Google AI/media-generation connection support without storing API keys in Dockyard state/source
-- [ ] Add explicit billable-generation planning/approval boundary before live Veo calls
+### P40.1 — Secure connection, autonomous dashboard truth and plan-only billable boundary
+
+- [x] Add Google AI provider readiness using secure in-memory credentials and bounded read-only model-list verification
+- [x] Add VS Code SecretStorage-backed Google AI Connect / Reconnect / Forget-key UI
+- [x] Auto re-verify known/local connected accounts when Connections opens instead of requiring manual status repair
+- [x] Remove manual Start Team from the normal Control Center and derive actual specialists from the current team phase/runtime
+- [x] Track and display Installed / Loaded / Utilized skill lifecycle per project
+- [x] Add deterministic Veo generation plan with prompt/request/approval SHA-256 binding and `executionEnabled: false`
+- [x] Keep current pricing review and explicit billable approval mandatory before any future live request
+- [ ] Exact-head CI + Preview 5 VSIX verification before merge
+
+### Remaining P40
+
+- [ ] Enable live Veo execution only after explicit billable approval bound to the exact re-planned SHA-256
 - [ ] Preserve non-secret request/output hash evidence and connect successful clips to FFmpeg/frame-sequence processing
 - [ ] Browser/performance verification of generated 2.5D section output
 - [ ] First guarded VS Code Marketplace publication after control-plane/publisher/token/tag setup and explicit production approval

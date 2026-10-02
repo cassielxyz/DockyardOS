@@ -17,6 +17,8 @@ import { securityProfiles } from "./security-profiles.js";
 import { compareSecurityResultFiles } from "./security-regression.js";
 import { createThreatModel, threatModelSummary } from "./threat-model.js";
 import { handlePostTool, handlePreInvocation, handlePreTool, handleStop } from "./hooks.js";
+import { mediaGenerationEvidenceTemplate, planMediaGeneration, type MediaAspectRatio, type MediaDurationSeconds } from "./media-generation.js";
+import type { VideoModelPriority, VideoResolution } from "./media-models.js";
 
 function values(args: string[], name: string): string[] {
   const result: string[] = [];
@@ -28,6 +30,11 @@ function values(args: string[], name: string): string[] {
 
 function value(args: string[], name: string): string | undefined {
   return values(args, name)[0];
+}
+
+function scalarValue(args: string[], name: string): string | undefined {
+  const index = args.indexOf(name);
+  return index >= 0 ? args[index + 1] : undefined;
 }
 
 function has(args: string[], name: string): boolean {
@@ -47,7 +54,7 @@ function print(data: unknown, json = false): void {
 }
 
 function usage(): void {
-  console.log(`DockyardOS CLI\n\nCommands:\n  init [--name NAME] [--mode safe|balanced|autonomous]\n  status [--json]\n  checkpoint [--reason TEXT] [--phase NAME] [--task TEXT] [--next TEXT] [--completed TEXT] [--blocked TEXT] [--capability ID]\n  resume [--json]\n  doctor [--json]\n  plan --profile fast|standard|full --stack nextjs,supabase --security standard|high [--json]\n  recommend --task \"build a SaaS dashboard\" --stack nextjs,supabase [--security high] [--host antigravity]\n  catalog [--query TEXT] [--category NAME] [--kind skill|agent|tool|mcp] [--stack NAME] [--host NAME]\n  categories\n  recipes [--id RECIPE]\n  registry verify\n  skills bootstrap [--ids ID[,ID]] [--no-activate]\n  providers --capability CAPABILITY\n  providers inspect [--live] [--id vercel,supabase]\n  providers chain --capability CAPABILITY\n  providers plan --capability CAPABILITY[,CAPABILITY] --stack STACK [--environment preview|production] [--free-first] [--live]\n  security profiles\n  security plan --profile web|api|mobile|llm|general [--target .] [--target-type source|url|repository] [--mode quick|standard|deep] [--strix --strix-budget USD] [--authorized]\n  security scan --profile PROFILE [same options as security plan]\n  security threat-model --profile PROFILE\n  security compare --before PATH --after PATH\n  policy --command \"...\" [--mode MODE] [--json]\n  hook pre-tool|post-tool|pre-invocation|stop\n`);
+  console.log(`DockyardOS CLI\n\nCommands:\n  init [--name NAME] [--mode safe|balanced|autonomous]\n  status [--json]\n  checkpoint [--reason TEXT] [--phase NAME] [--task TEXT] [--next TEXT] [--completed TEXT] [--blocked TEXT] [--capability ID]\n  resume [--json]\n  doctor [--json]\n  plan --profile fast|standard|full --stack nextjs,supabase --security standard|high [--json]\n  recommend --task \"build a SaaS dashboard\" --stack nextjs,supabase [--security high] [--host antigravity]\n  catalog [--query TEXT] [--category NAME] [--kind skill|agent|tool|mcp] [--stack NAME] [--host NAME]\n  categories\n  recipes [--id RECIPE]\n  registry verify\n  skills bootstrap [--ids ID[,ID]] [--no-activate]\n  providers --capability CAPABILITY\n  providers inspect [--live] [--id vercel,supabase]\n  providers chain --capability CAPABILITY\n  providers plan --capability CAPABILITY[,CAPABILITY] --stack STACK [--environment preview|production] [--free-first] [--live]\n  media plan --prompt "..." [--priority quality|speed|lean] [--resolution 720p|1080p|4k] [--aspect 16:9|9:16] [--duration 4|6|8]\n  security profiles\n  security plan --profile web|api|mobile|llm|general [--target .] [--target-type source|url|repository] [--mode quick|standard|deep] [--strix --strix-budget USD] [--authorized]\n  security scan --profile PROFILE [same options as security plan]\n  security threat-model --profile PROFILE\n  security compare --before PATH --after PATH\n  policy --command \"...\" [--mode MODE] [--json]\n  hook pre-tool|post-tool|pre-invocation|stop\n`);
 }
 
 function securityRequest(args: string[]): {
@@ -251,6 +258,32 @@ async function main(): Promise<void> {
       const capability = value(args, "--capability");
       if (!capability) throw new Error("Usage: dockyard providers --capability CAPABILITY | inspect | chain | plan");
       print(providersFor(capability), true);
+      break;
+    }
+    case "media": {
+      const subcommand = args[0] ?? "plan";
+      if (subcommand !== "plan") throw new Error("Usage: dockyard media plan --prompt \"...\" [--priority quality|speed|lean] [--resolution 720p|1080p|4k] [--aspect 16:9|9:16] [--duration 4|6|8]");
+      const mediaArgs = args.slice(1);
+      const stdinPrompt = !scalarValue(mediaArgs, "--prompt") && !process.stdin.isTTY ? await readStdin() : "";
+      const prompt = scalarValue(mediaArgs, "--prompt") ?? stdinPrompt;
+      if (!prompt.trim()) throw new Error("media plan requires --prompt or prompt text on stdin.");
+      const priority = (scalarValue(mediaArgs, "--priority") ?? "quality") as VideoModelPriority;
+      if (!["quality", "speed", "lean"].includes(priority)) throw new Error("Invalid media priority.");
+      const resolution = (scalarValue(mediaArgs, "--resolution") ?? "1080p") as VideoResolution;
+      if (!["720p", "1080p", "4k"].includes(resolution)) throw new Error("Invalid media resolution.");
+      const aspectRatio = (scalarValue(mediaArgs, "--aspect") ?? "16:9") as MediaAspectRatio;
+      if (!["16:9", "9:16"].includes(aspectRatio)) throw new Error("Invalid media aspect ratio.");
+      const durationRaw = scalarValue(mediaArgs, "--duration");
+      const durationSeconds = durationRaw === undefined ? undefined : Number(durationRaw) as MediaDurationSeconds;
+      if (durationSeconds !== undefined && ![4, 6, 8].includes(durationSeconds)) throw new Error("Media duration must be 4, 6, or 8 seconds.");
+      const plan = planMediaGeneration(root, {
+        prompt,
+        priority,
+        resolution,
+        aspectRatio,
+        ...(durationSeconds !== undefined ? { durationSeconds } : {}),
+      });
+      print({ ...plan, evidenceTemplate: mediaGenerationEvidenceTemplate(plan) }, true);
       break;
     }
     case "security": {

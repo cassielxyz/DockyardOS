@@ -69,6 +69,13 @@ const PROVIDER_DEFINITIONS = Object.freeze({
     setupOnly: true,
     note: "Sentry account/API authentication is kept outside Dockyard; prefer its supported OAuth/MCP flow where available.",
   },
+  "google-ai": {
+    setupUrl: "https://aistudio.google.com/",
+    secretInput: true,
+    secretStorageKey: "dockyardOS.provider.google-ai.apiKey",
+    secretEnvVar: "GEMINI_API_KEY",
+    note: "Gemini/Veo API credentials are stored only in VS Code SecretStorage. Dockyard passes the key to Core in-memory for read-only verification and approved media execution; it is never written to project/checkpoint state.",
+  },
   "cloud-run": {
     setupUrl: "https://cloud.google.com/sdk/docs/install",
     login: { command: "gcloud", args: ["auth", "login"] },
@@ -154,8 +161,10 @@ function normalizeConnections(providerProbeValue, options = {}) {
         detail: String(signal?.detail || ""),
       })),
       setupUrl: definition.setupUrl || null,
-      canConnect: Boolean(definition.login || definition.fallbackLogin || definition.installers || definition.setupOnly || definition.setupUrl),
-      automaticConnect: Boolean(definition.login || definition.fallbackLogin || definition.installers),
+      canConnect: Boolean(definition.secretInput || definition.login || definition.fallbackLogin || definition.installers || definition.setupOnly || definition.setupUrl),
+      automaticConnect: Boolean(definition.secretInput || definition.login || definition.fallbackLogin || definition.installers),
+      connectionKind: definition.secretInput ? "secret-storage" : "provider-flow",
+      canForgetSecret: Boolean(definition.secretInput),
       connectLabel: definition.setupOnly
         ? "Configure"
         : status.level === "ready"

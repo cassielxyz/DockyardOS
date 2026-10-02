@@ -20,6 +20,7 @@ export interface RunOptions {
 const SECRET_PATTERNS = [
   /(?:token|api[_-]?key|secret|password|passwd|authorization|bearer)\s*[=:]\s*[^\s,;]+/gi,
   /(?:ghp|github_pat|glpat|sk_live|sk_test|sbp|cf|vercel)_[A-Za-z0-9_\-.]{12,}/g,
+  /AIza[0-9A-Za-z_-]{20,}/g,
 ];
 
 export function redactSensitiveOutput(value: string): string {

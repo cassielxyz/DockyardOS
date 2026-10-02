@@ -93,14 +93,38 @@ function readSettings() {
 }
 
 function normalizeAgents(team) {
+  const currentPhase = String(team?.currentPhase || "");
+  const planned = Array.isArray(team?.composition?.phases)
+    ? team.composition.phases.find((phase) => phase?.id === currentPhase)
+    : undefined;
+  const runtime = Array.isArray(team?.phases)
+    ? team.phases.find((phase) => phase?.id === currentPhase)
+    : undefined;
+  const assignments = Array.isArray(planned?.assignments) ? planned.assignments : [];
+  const activeIds = new Set(Array.isArray(runtime?.activeAgents) ? runtime.activeAgents : []);
+  if (assignments.length) {
+    return assignments.slice(0, 12).map((assignment) => ({
+      id: assignment?.agentId || "agent",
+      name: assignment?.agentId || "Agent",
+      status: activeIds.has(assignment?.agentId)
+        ? "working"
+        : runtime?.status === "active"
+          ? "phase-ready"
+          : runtime?.status || planned?.status || "assigned",
+      phase: currentPhase,
+      current: activeIds.has(assignment?.agentId),
+      kind: assignment?.kind || "",
+      isolation: assignment?.isolation || "",
+    }));
+  }
   const raw = Array.isArray(team?.agents) ? team.agents : Array.isArray(team?.members) ? team.members : Array.isArray(team?.assignments) ? team.assignments : [];
   return raw.slice(0, 12).map((value) => {
-    if (typeof value === "string") return { id: value, name: value };
+    if (typeof value === "string") return { id: value, name: value, status: "assigned", phase: currentPhase, current: false };
     return {
       id: value?.id || value?.agent || value?.name || "agent",
       name: value?.name || value?.agent || value?.id || "Agent",
       status: value?.status || value?.state || value?.phase || "assigned",
-      phase: value?.phase || "",
+      phase: value?.phase || currentPhase,
       current: value?.current === true || value?.active === true,
     };
   });
@@ -122,6 +146,7 @@ async function loadDashboardModel(context) {
     memoryPath: "~/.dockyardos/projects/<project-id>/",
     summary: { initialized: false, phase: "", teamStatus: "", readyConnections: 0, latestCheckpoint: "", projectId: "", gitState: "" },
     agents: [],
+    skills: { installed: [], loaded: [], utilized: [] },
     connections: { providers: 0, providerReady: 0, providerAttention: 0, mcps: 0, noAuthMcps: 0 },
   };
   if (!root || !trusted) return model;
@@ -144,6 +169,13 @@ async function loadDashboardModel(context) {
         model.summary.phase = team.currentPhase || team.phase || "";
         model.summary.teamStatus = team.status || team.state || "";
         model.agents = normalizeAgents(team);
+      }
+    } catch {}
+
+    try {
+      const skills = parseJson(await runDockyard(context, ["skills", "status", "--json"]));
+      if (skills && Array.isArray(skills.installed) && Array.isArray(skills.loaded) && Array.isArray(skills.utilized)) {
+        model.skills = skills;
       }
     } catch {}
   }
@@ -245,7 +277,6 @@ const COMMAND_ACTIONS = new Map([
   ["resume", "dockyardOS.resume"],
   ["doctor", "dockyardOS.doctor"],
   ["status", "dockyardOS.status"],
-  ["team-start", "dockyardOS.teamStart"],
   ["team-status", "dockyardOS.teamStatus"],
   ["connections", "dockyardOS.connections"],
   ["community", "dockyardOS.communityBrowse"],

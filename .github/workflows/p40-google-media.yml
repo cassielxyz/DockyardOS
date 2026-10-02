@@ -1,0 +1,82 @@
+name: P40 Google Media Connection and Plan
+
+on:
+  pull_request:
+    paths:
+      - "src/types.ts"
+      - "src/provider-adapters.ts"
+      - "src/provider-detection.ts"
+      - "src/process.ts"
+      - "src/media-generation.ts"
+      - "src/skill-usage.ts"
+      - "src/bundled-capability-guidance.ts"
+      - "src/capability-fulfillment-hook.ts"
+      - "src/media-models.ts"
+      - "src/cli.ts"
+      - "src/index.ts"
+      - "integrations/vscode/connections-*.js"
+      - "integrations/vscode/package.json"
+      - "test/p40-google-media.test.mjs"
+      - "test/p40-autonomous-dashboard-skills.test.mjs"
+      - ".github/workflows/p40-google-media.yml"
+      - "docs/MEDIA_GENERATION.md"
+      - "README.md"
+      - "integrations/vscode/README.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Core dependencies
+        run: npm install --ignore-scripts
+      - name: Build Core
+        run: npm run build
+      - name: Run P40 and compatibility tests
+        run: |
+          node --test test/p40-google-media.test.mjs test/p40-autonomous-dashboard-skills.test.mjs
+          node --test test/p39-autonomous-skills-cinematic-web.test.mjs test/p39-1-selected-skill-loading.test.mjs
+          node --test test/p38-2-guided-connections.test.mjs test/core.test.mjs
+      - name: Plan media without network or spend
+        run: |
+          node dist/main.js media plan --prompt "Cinematic motorcycle reveal" --priority quality --resolution 1080p --aspect 16:9 --duration 8 > /tmp/media-plan.json
+          node - <<'NODE'
+          const p=require('/tmp/media-plan.json');
+          if(p.providerId!=='google-ai'||p.actionId!=='veo-generate-video'||p.billable!==true||p.approvalRequired!==true||p.executionEnabled!==false) process.exit(1);
+          if(!/^[a-f0-9]{64}$/.test(p.approvalSha256)||p.credential?.persistedByDockyardCore!==false) process.exit(1);
+          NODE
+          export GEMINI_API_KEY="AIzaCI_DUMMY_abcdefghijklmnopqrstuvwxyz012345"
+          node dist/main.js providers inspect --id google-ai --json > /tmp/google-local.json
+          node - <<'NODE'
+          const p=require('/tmp/google-local.json')[0];
+          if(p.providerId!=='google-ai'||p.configured!==true||p.readiness!=='configured') process.exit(1);
+          if(JSON.stringify(p).includes(process.env.GEMINI_API_KEY)) process.exit(1);
+          NODE
+      - name: Check extension JavaScript
+        working-directory: integrations/vscode
+        run: |
+          npm install --ignore-scripts
+          npm run check
+      - name: Package and inspect Preview 5 VSIX
+        working-directory: integrations/vscode
+        run: |
+          npm run prepare-core
+          npx @vscode/vsce package --out /tmp/dockyardos-0.1.3-preview5.vsix
+          test -s /tmp/dockyardos-0.1.3-preview5.vsix
+          unzip -l /tmp/dockyardos-0.1.3-preview5.vsix | grep -q 'extension/core/dist/media-generation.js'
+          unzip -l /tmp/dockyardos-0.1.3-preview5.vsix | grep -q 'extension/core/dist/provider-detection.js'
+          unzip -l /tmp/dockyardos-0.1.3-preview5.vsix | grep -q 'extension/core/dist/skill-usage.js'
+          unzip -l /tmp/dockyardos-0.1.3-preview5.vsix | grep -q 'extension/connections-controller.js'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dockyardos-0.1.3-preview5-vsix
+          path: /tmp/dockyardos-0.1.3-preview5.vsix
+          if-no-files-found: error
