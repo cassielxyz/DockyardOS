@@ -90,25 +90,50 @@ function openCommandTerminal(title, specs) {
 }
 
 async function safeWriteMcpJson(plan) {
-  const target = plan.path;
+  const target = path.resolve(plan.path);
+  const allowedRoot = path.resolve(plan.allowedRoot || path.dirname(target));
   await fsp.mkdir(path.dirname(target), { recursive: true });
+
+  const [realParent, realAllowedRoot] = await Promise.all([
+    fsp.realpath(path.dirname(target)),
+    fsp.realpath(allowedRoot),
+  ]);
+  const relativeParent = path.relative(realAllowedRoot, realParent);
+  if (relativeParent === ".." || relativeParent.startsWith(`..${path.sep}`) || path.isAbsolute(relativeParent)) {
+    throw new Error("MCP configuration path escapes the selected host configuration root.");
+  }
+
   let raw = "";
+  let exists = false;
   try {
     const stat = await fsp.lstat(target);
     if (stat.isSymbolicLink() || !stat.isFile()) throw new Error("Existing MCP configuration must be a regular file, not a symlink or special entry.");
     raw = await fsp.readFile(target, "utf8");
+    exists = true;
   } catch (error) {
     if (error?.code !== "ENOENT") throw error;
   }
 
   const merged = mergeJsonMcpConfig(raw, plan);
-  if (raw) {
-    const backup = `${target}.dockyard-backup-${Date.now()}`;
-    await fsp.copyFile(target, backup);
-  }
-  const temporary = `${target}.dockyard-tmp-${process.pid}-${Date.now()}`;
+  const stamp = `${process.pid}-${Date.now()}`;
+  const temporary = `${target}.dockyard-tmp-${stamp}`;
+  const rollback = `${target}.dockyard-rollback-${stamp}`;
   await fsp.writeFile(temporary, `${JSON.stringify(merged, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
-  await fsp.rename(temporary, target);
+
+  try {
+    if (exists) await fsp.rename(target, rollback);
+    await fsp.rename(temporary, target);
+    if (exists) await fsp.rm(rollback, { force: true });
+  } catch (error) {
+    await fsp.rm(temporary, { force: true }).catch(() => undefined);
+    if (exists) {
+      try {
+        await fsp.access(rollback);
+        await fsp.rename(rollback, target);
+      } catch {}
+    }
+    throw error;
+  }
 }
 
 async function watchProviderConnection(context, panel, id) {
