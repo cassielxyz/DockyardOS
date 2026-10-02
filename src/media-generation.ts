@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { expectedVeoRateUsdPerSecond, VEO_PRICING_URL } from "./media-pricing.js";
 import { projectIdForRoot } from "./project.js";
 import {
   selectVideoGenerationModel,
@@ -45,6 +46,11 @@ export interface MediaGenerationPlan {
   };
   pricing: {
     status: "live-review-required";
+    sourceUrl: string;
+    freeTierAvailable: false;
+    billingUnit: "second";
+    expectedRateUsdPerSecond: number;
+    estimatedMaxUsd: number;
     detail: string;
   };
   notes: string[];
@@ -55,7 +61,17 @@ export interface MediaGenerationApprovals {
   expectedPlanSha256?: string;
 }
 
-function sha256(value: string): string {
+export interface MediaGenerationRequestBody {
+  instances: Array<{ prompt: string }>;
+  parameters: {
+    aspectRatio: MediaAspectRatio;
+    durationSeconds: string;
+    resolution: VideoResolution;
+    numberOfVideos: 1;
+  };
+}
+
+export function mediaSha256(value: string | Uint8Array): string {
   return createHash("sha256").update(value).digest("hex");
 }
 
@@ -84,6 +100,37 @@ function validateDurationResolution(durationSeconds: MediaDurationSeconds, resol
   }
 }
 
+function requestBodyFromValues(
+  prompt: string,
+  aspectRatio: MediaAspectRatio,
+  durationSeconds: MediaDurationSeconds,
+  resolution: VideoResolution,
+): MediaGenerationRequestBody {
+  return {
+    instances: [{ prompt }],
+    parameters: {
+      aspectRatio,
+      durationSeconds: String(durationSeconds),
+      resolution,
+      numberOfVideos: 1,
+    },
+  };
+}
+
+export function mediaGenerationRequestBody(plan: MediaGenerationPlan): MediaGenerationRequestBody {
+  const body = requestBodyFromValues(
+    plan.request.prompt,
+    plan.request.aspectRatio,
+    plan.request.durationSeconds,
+    plan.request.resolution,
+  );
+  const digest = mediaSha256(canonical(body));
+  if (digest !== plan.requestBodySha256) {
+    throw new Error("Media generation plan request body no longer matches its SHA-256 binding.");
+  }
+  return body;
+}
+
 export function planMediaGeneration(root: string, request: MediaGenerationPlanRequest): MediaGenerationPlan {
   const prompt = normalizePrompt(request.prompt);
   const resolution = request.resolution ?? "1080p";
@@ -101,16 +148,10 @@ export function planMediaGeneration(root: string, request: MediaGenerationPlanRe
   }
 
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${selected.model.id}:predictLongRunning`;
-  const requestBody = {
-    instances: [{ prompt }],
-    parameters: {
-      aspectRatio,
-      durationSeconds: String(durationSeconds),
-      resolution,
-      numberOfVideos: 1,
-    },
-  };
-  const requestBodySha256 = sha256(canonical(requestBody));
+  const requestBody = requestBodyFromValues(prompt, aspectRatio, durationSeconds, resolution);
+  const requestBodySha256 = mediaSha256(canonical(requestBody));
+  const expectedRateUsdPerSecond = expectedVeoRateUsdPerSecond(selected.model.id, resolution);
+  const estimatedMaxUsd = Number((expectedRateUsdPerSecond * durationSeconds).toFixed(4));
   const approvalPayload = {
     schemaVersion: 1,
     providerId: "google-ai",
@@ -119,14 +160,17 @@ export function planMediaGeneration(root: string, request: MediaGenerationPlanRe
     modelId: selected.model.id,
     endpoint,
     requestBodySha256,
-    promptSha256: sha256(prompt),
+    promptSha256: mediaSha256(prompt),
     aspectRatio,
     resolution,
     durationSeconds,
     numberOfVideos: 1,
     billable: true,
+    pricingSourceUrl: VEO_PRICING_URL,
+    expectedRateUsdPerSecond,
+    estimatedMaxUsd,
   };
-  const approvalSha256 = sha256(canonical(approvalPayload));
+  const approvalSha256 = mediaSha256(canonical(approvalPayload));
 
   return {
     schemaVersion: 1,
@@ -156,18 +200,34 @@ export function planMediaGeneration(root: string, request: MediaGenerationPlanRe
     },
     pricing: {
       status: "live-review-required",
-      detail: "Veo generation is billable. Review current official provider pricing immediately before execution; planning never authorizes spend.",
+      sourceUrl: VEO_PRICING_URL,
+      freeTierAvailable: false,
+      billingUnit: "second",
+      expectedRateUsdPerSecond,
+      estimatedMaxUsd,
+      detail: `Veo generation is billable. This plan binds an expected maximum of $${estimatedMaxUsd.toFixed(2)} USD at $${expectedRateUsdPerSecond.toFixed(2)}/second; live official pricing must match immediately before execution.`,
     },
     notes: [
-      "This command is plan-only and performs no provider mutation or media generation.",
-      "Future execution must re-create the same plan immediately before the request and require exact approvalSha256 binding plus explicit billable approval.",
+      "Planning performs no provider mutation or media generation.",
+      "Live execution must re-create the same plan immediately before the request and require exact approvalSha256 binding plus explicit billable approval.",
       "Provider credentials must come from process memory/environment or host secret storage and must never be written into Dockyard checkpoints, source files, plans, or evidence.",
-      "Durable generation evidence must store hashes/status/timing/output metadata, not the raw credential.",
+      "Durable generation evidence stores hashes/status/timing/output metadata, not the raw credential or prompt text.",
     ],
   };
 }
 
+// P40.1 compatibility guard: callers using the old plan-only gate continue to fail closed.
 export function assertMediaGenerationApproval(
+  plan: MediaGenerationPlan,
+  approvals: MediaGenerationApprovals,
+): void {
+  assertLiveMediaExecutionApproval(plan, approvals);
+  if (!plan.executionEnabled) {
+    throw new Error("Live billable media execution is not enabled through the plan-only P40.1 guard; use the dedicated P40.2 executor.");
+  }
+}
+
+export function assertLiveMediaExecutionApproval(
   plan: MediaGenerationPlan,
   approvals: MediaGenerationApprovals,
 ): void {
@@ -176,9 +236,6 @@ export function assertMediaGenerationApproval(
   }
   if (!approvals.expectedPlanSha256 || approvals.expectedPlanSha256.toLowerCase() !== plan.approvalSha256.toLowerCase()) {
     throw new Error("Billable media generation requires --expected-plan-sha256 matching the exact current plan.");
-  }
-  if (!plan.executionEnabled) {
-    throw new Error("Live billable media execution is not enabled in this build; approval validation passed but no provider request was sent.");
   }
 }
 
@@ -197,7 +254,10 @@ export function mediaGenerationEvidenceTemplate(plan: MediaGenerationPlan): Reco
     durationSeconds: plan.request.durationSeconds,
     numberOfVideos: 1,
     billable: true,
+    expectedRateUsdPerSecond: plan.pricing.expectedRateUsdPerSecond,
+    estimatedMaxUsd: plan.pricing.estimatedMaxUsd,
     credentialStored: false,
+    promptStored: false,
     status: "planned",
   };
 }
