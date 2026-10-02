@@ -1,186 +1,158 @@
 # DockyardOS Current Checkpoint
 
-This file is the durable human-readable continuation checkpoint for DockyardOS. Before starting new work, verify `main` still contains the recorded verified code state, inspect newer commits/PRs/CI, and continue from the newest verified production milestone instead of replaying completed work.
+This is the durable continuation checkpoint. On every future `continue`, inspect live `main`, open PRs/branches, recent CI and this file before changing code. Repository evidence overrides chat memory.
 
-For the complete continuation contract, read [`AGENT_CONTINUATION_GUIDE.md`](AGENT_CONTINUATION_GUIDE.md).
-
-## Checkpoint identity
+## Identity
 
 - Checkpoint date: 2026-10-02
 - Repository: `cassielxyz/DockyardOS`
-- Verified completed code state: `897b87ecfef7236dbd53e0dd5abee984be6475fc`
-- Checkpoint PR: `#55`
-- Last completed milestone: **P38.1 — Auto Initialize / Antigravity fallback hotfix and visible Activity Bar home**
-- Previous completed milestone: **P38 — universal DockyardOS control center and README rebuild**
-- Next continuation milestone: **P39 — stable official-public v0.1.1 and first guarded live VS Code Marketplace publication**
-- P39 status: **preview release published; stable/Marketplace path remains externally gated by the real public control-plane origin, publisher/token/tag setup, and explicit production approval**
+- Verified completed production state: `1d87a611f46a3a6681fd95e3ad2a4ac68a5046c5`
+- Last completed milestone: **P39 — autonomous skill bootstrap + cinematic 3D/2.5D web workflow**
+- Implementation PR: **#60**
+- Checkpoint PR: **#61**
+- Exact verified PR head: `91ccd5a69712a12055fdc34eb22f67eb9a92c905`
+- Current Core / VS Code extension version: **0.1.3**
+- Next milestone: **P40 — credential-safe media generation execution + remaining guarded public release work**
 
-The verified code-state SHA is the production anchor. Later checkpoint-only documentation or test-reliability commits do not make the production checkpoint stale by themselves.
+## P39 completed state
 
-## Completed state through P38
+P39 fixes the installed-extension feedback and adds the cinematic web workflow requested by the user.
 
-P0–P38 are implemented/merged. Do not restart them unless current repository evidence shows a regression.
+### Autonomous skills
 
-### P38 — universal Control Center
+- `DockyardOS: Auto Initialize Project` now bootstraps every **materializable/installable** skill manifest into the user-owned Dockyard library under `~/.dockyardos`.
+- New CLI: `dockyard skills bootstrap --json`.
+- Automatic-safe packages activate only after fresh exact-revision/hash assessment.
+- Approval-required packages may be downloaded/assessed/staged but stay inactive.
+- Quarantined packages remain quarantined.
+- Discovery-only mega-registry entries are never mislabeled installed.
+- Request/invocation fulfillment now automatically activates selected automatic-safe packages; the agent is no longer told to ask the user to run `dockyard capabilities fulfill` manually.
+- Team Start performs the same selected-capability fulfillment.
+- Only selected/phase-relevant bundled skill guidance is injected into model context.
 
-Merged through PR `#54` as `0467a1900a93b79764f5d57c6c062382255e4f42` from exact verified head `7ebc685c19f6174768cdb75a1c41e23e1d10ef39`.
+### Team Start / Antigravity fixes
 
-P38 changed the VS Code extension from a mostly command-driven surface into a UI-first universal control center:
+- Fixed the installed Antigravity/VS Code-compatible crash:
+  `Cannot read properties of undefined (reading 'clear')`.
+- Output Channel creation/use is defensive; missing partial APIs fall back to a normal notification instead of failing the team command.
+- Stack aliases now normalize common user spellings including `react.js`, `ReactJS`, `next.js`, `three.js`, and React Three Fiber aliases.
 
-- Dashboard / Project / Agents / Skills / Connections / Memory / Workflows / Security / Community / Settings navigation;
-- shared Dockyard dark graffiti-inspired design system across the new dashboard, Connections Center and Community Hub;
-- repository-owned fixed background asset under `integrations/vscode/assets/dockyard-graffiti-bg.svg`;
-- one-click **Auto Initialize** that can initialize project state, plan/install the selected default host integration, run Doctor and refresh state;
-- automatic initialization remains opt-in and requires a trusted workspace;
-- the Control Center opens on trusted-workspace startup by default but can be disabled in Settings;
-- UI-backed settings for default host, default Safe/Balanced/Autonomous mode, Auto Initialize behavior, host scope, startup behavior and safe community update options;
-- dashboard action and setting messages are allowlisted; Dockyard Core process execution stays `shell:false`;
-- the production Connections/Community trust boundaries remain intact;
-- a new focused `P38 Universal Control Center` workflow packages a prebuilt preview VSIX and verifies dashboard/theme/background files are inside it;
-- the guarded official VS Code release workflow now also asserts the universal UI files before producing a release VSIX;
-- the root README was completely rebuilt as a product guide rather than a milestone/status list;
-- custom README SVG assets now explain architecture, continuity, workflow, capability stack, connections, creative UI, verification/refactor and cross-host behavior.
+### Cinematic 3D / 2.5D web workflow
 
-## P38 verification evidence
+A request such as:
 
-Exact verified P38 PR head: `7ebc685c19f6174768cdb75a1c41e23e1d10ef39`.
+```text
+create a 3d website for r15
+```
 
-Real GitHub-hosted runner evidence on that exact head:
+now routes to recipe `cinematic-3d-web` instead of a generic new-project/landing flow.
 
-- **CI** — run `36924832259` — success; full repository tests plus provider/security/community/host/VSIX smoke checks passed.
-- **P37 Connections and Creative UI** — run `36924832204` — success; previous Connections/creative-routing regressions stayed green after the UI rebuild.
-- **P38 Universal Control Center** — run `36924832447` — success; Core build, focused P37/P38 tests, extension JavaScript checks, universal preview VSIX packaging/content assertions and artifact upload passed.
+Bundled capabilities:
 
-Produced preview artifact:
+- `threejs-r3f-cinematic`
+- `gsap-scroll-storytelling`
+- `frame-sequence-2-5d`
+- `cinematic-asset-pipeline`
+- `video-model-selection`
+- FFmpeg runtime verification for video/frame work
 
-- artifact: `dockyardos-universal-preview-vsix`
-- artifact id: `11193271894`
-- GitHub digest: `sha256:9ffa31eebf6a4861dc01e35c97c530ed9792753bc97bf1ee02c57adc16d13407`
-- retention expiry reported by GitHub: `2026-12-30T20:53:07Z`
+Dockyard plans one of:
 
-PR `#54` had no submitted reviews or unresolved review threads at the final merge check.
+- **true-3d** — interaction genuinely needs geometry/WebGL/R3F;
+- **frame-sequence-2.5d** — deterministic cinematic scroll motion is the main requirement;
+- **hybrid** — default for a generic product 3D website: real 3D only where interaction earns the runtime cost, frame-sequence storytelling for major transitions.
 
+The planner keeps hero/story/details/closing as separate semantic sections and requires mobile/reduced-motion fallbacks, browser verification and performance budgets.
 
-## First downloadable release — v0.1.0 Preview 1
+### Video model selection
 
-The first user-downloadable VSIX release is now published as GitHub prerelease `v0.1.0-preview.1`.
+Dockyard includes verified non-secret metadata and feature-aware selection for:
 
-Release evidence:
+- `veo-3.1-generate-preview`
+- `veo-3.1-fast-generate-preview`
+- `veo-3.1-lite-generate-preview`
 
-- tag: `v0.1.0-preview.1`;
-- annotated tag resolves to production commit `0baf28bff5a810eb1499ca7cb6a61c1d4cf93b06`;
-- GitHub release id: `401432695`;
-- release workflow: `Release DockyardOS v0.1.0 Preview 1`, run `36941461041` — **success**;
-- VSIX asset: `dockyardos-vscode.vsix`, asset id `604356680`, size `3905750` bytes;
-- VSIX digest reported by GitHub: `sha256:62989a2855e53abbadcfe0a96cbb1284e7a902ec1d011aa77be26ea93e923866`;
-- checksum asset: `dockyardos-vscode.vsix.sha256`, asset id `604356682`;
-- release is explicitly marked **prerelease** and packages the source-development edition.
+Model selection is not authentication and does not generate/spend by itself. Actual billable media generation remains an external provider action boundary. Provider credentials/API keys must not be stored in Dockyard checkpoints, logs or generated source.
 
-A first stable-release attempt (workflow run `36941254160`) passed release identity and the complete Core test suite, then stopped at the official-public stamping gate because repository variable `DOCKYARD_PUBLIC_CONTROL_URL` is not configured. The workflow created **no stable tag and no stable release**, which is the intended fail-closed behavior.
+See `docs/CINEMATIC_WEB.md`.
 
-The connected Vercel account had no existing DockyardOS/control-plane project, and the repository only contained a test placeholder URL. No fake origin was stamped and the official-public gate was not weakened.
+## Verification evidence
 
-### Checkpoint validation flake found and repaired
+Exact PR head `91ccd5a69712a12055fdc34eb22f67eb9a92c905` passed:
 
-The first CI attempt on checkpoint PR `#55` (run `36925314926`) failed one unrelated ad-control tamper test while 295/296 tests passed. The exact rerun passed the full test step, which isolated the problem as test nondeterminism rather than a P38 production regression.
+- CI — `37000029861`
+- P21 Provider Action Plans — `37000029786`
+- P22 Provider Pricing Evidence — `37000029860`
+- P23 Provider Migration Plans — `37000029835`
+- P33 Curated Skill Assessment — `37000030046`
+- P34 Research and Provider Skill Assessment — `37000029912`
+- P35 Runtime Connection Readiness — `37000029921`
+- P36 Host MCP Connection Readiness — `37000029867`
+- P37 Connections and Creative UI — `37000029875`
+- P38 Universal Control Center — `37000030130`
+- P38.2 Guided Connections — `37000029838`
+- P39 Autonomous Skills and Cinematic Web — `37000029880`
 
-The test had been mutating the final Base64URL signature character. Because the final character can contain unused trailing encoding bits, some different final characters can decode to the same signature bytes. The checkpoint branch now mutates the first significant signature character instead, making the tamper test deterministic. This is a test-reliability fix, not a change to the verified P38 production feature state.
+Post-merge `main` at `1d87a611f46a3a6681fd95e3ad2a4ac68a5046c5`:
 
-## P38.1 hotfix — Preview 2
+- CI — `37000135809` — success
+- P21 — `37000135786` — success
+- P22 — `37000135778` — success
+- P23 — `37000135783` — success
 
-Merged through PR `#57` as `897b87ecfef7236dbd53e0dd5abee984be6475fc` from exact verified head `97c12118e3c079296d7fb59627061410f9ef526f`.
+## Preview 3 artifact
 
-This hotfix addresses the first installed-VSIX feedback:
+Validated P39 workflow artifact:
 
-- Auto Initialize no longer performs a duplicate host integration install;
-- Antigravity user-scope installation falls back to the verified IDE-global plugin directory when `agy` is missing or the CLI plugin install fails;
-- host inspection recognizes the fallback afterward, so Doctor does not contradict a successful installation;
-- a DockyardOS Activity Bar home exposes Control Center, Auto Initialize, Connections and Community;
-- the Core and VS Code extension version are now `0.1.1`;
-- local VSIX visibility is documented explicitly: `@installed DockyardOS` / Activity Bar before Marketplace publication.
+- name: `dockyardos-0.1.3-preview3-vsix`
+- artifact id: `11222759988`
+- source head: `91ccd5a69712a12055fdc34eb22f67eb9a92c905`
+- GitHub artifact digest: `sha256:fe4362019927eda0cc66e0e69a035d739b1fd5cdc2f9c8f4c81251e2db2a9103`
+- extracted VSIX size: `3939979` bytes
+- extracted VSIX SHA-256: `a10115ccdfc906321279df0324c35b1e9d472b3e0ae8c6d06797cd8497037e1f`
+- artifact expiry reported by GitHub: `2026-12-31T11:15:42Z`
 
-Verification evidence on exact PR head:
+## Safety/truthfulness invariants
 
-- CI `36942643163` — success;
-- P37 Connections and Creative UI `36942643129` — success;
-- P38 Universal Control Center `36942643188` — success;
-- post-merge main CI `36942734070` — success.
+Future work must preserve:
 
-The fixed downloadable release is GitHub prerelease `v0.1.1-preview.2`:
+- selected != installed != configured != authenticated != connected != approved;
+- Auto Initialize requires a trusted workspace;
+- installable skills may be bootstrapped automatically, but approval-required/quarantined packages never gain silent execution authority;
+- discovery-only capability metadata is not called installed;
+- only selected/phase-relevant skill guidance is loaded into agent context;
+- provider/model credentials are never stored in project/checkpoint state;
+- model selection is not provider authentication and is not permission to incur external spend;
+- external/billable media generation needs an explicit execution/approval boundary;
+- provider/MCP readiness never grants deployment/database/DNS/Git/production approval;
+- child-process execution remains shell-free where designed; do not reintroduce `shell:true` to work around Windows quoting;
+- semantic DOM content, reduced-motion fallback and performance verification remain part of cinematic web output;
+- the Connections Center must continue to verify real account/session readiness rather than treating an opened login page as success.
 
-- release id `401438751`;
-- release workflow `36942826997` — success;
-- tag resolves to `897b87ecfef7236dbd53e0dd5abee984be6475fc`;
-- VSIX asset id `604379402`;
-- VSIX size `3907864` bytes;
-- VSIX SHA-256 `3a544d9b5484264b40b7fbf3d7ad35bd762763c9af6e5d8d9e34b6b7e454856c`;
-- checksum asset id `604379404`.
+## P40 continuation target
 
-Preview 1 is superseded for normal installs.
+P40 should continue from P39 rather than rebuilding it.
 
-## P38 safety/truthfulness invariants
+Primary technical target:
 
-Future changes must preserve these rules:
+1. add a credential-safe Google AI/media-generation connection surface;
+2. represent generation as a bounded, reviewable billable-provider action;
+3. require an explicit spend/generation approval before an actual Veo request;
+4. keep API keys/tokens in provider/host secure storage or process environment, never Dockyard checkpoint/source;
+5. produce durable non-secret generation evidence (model, request hash, output hash/path, timing/status; no secret headers);
+6. connect successful generated clips to the existing FFmpeg/frame-sequence pipeline;
+7. verify responsive 2.5D output through Playwright/performance gates.
 
-- the Universal Control Center is a UI over the existing Dockyard state/policy engine, not a second source of truth;
-- Auto Initialize requires workspace trust;
-- automatic workspace initialization stays explicit opt-in;
-- interactive Auto Initialize confirms host integration changes before applying them;
-- dashboard webview actions and settings remain allowlisted;
-- webview messages must not become arbitrary shell commands, URLs or configuration keys;
-- Dockyard Core child processes remain `shell:false`;
-- the fixed visual background remains local/repository-owned rather than a remote runtime dependency;
-- provider credentials and MCP secrets are not written into project/checkpoint state;
-- installed/configured MCP metadata is not treated as active-session connectivity;
-- provider/MCP readiness never grants mutation approval;
-- Community Hub quarantine/signature/immutable-revision/hash/approval boundaries remain enforced;
-- Creative UI reference use remains original synthesis, not permission to clone another site.
-
-## P39 continuation target — first guarded Marketplace publication
-
-The next explicit production gate is the first live Visual Studio Marketplace listing/publication through the already-implemented guarded release path.
-
-Current release facts:
-
-- extension: `integrations/vscode` / `dockyardos-vscode`;
-- publisher: `cassielxyz`;
-- current extension version: `0.1.1`;
-- published preview tag: `v0.1.0-preview.1` (source-development prerelease);
-- expected stable release tag: `v0.1.1`;
-- stable packaging first requires a real credential-free HTTPS `DOCKYARD_PUBLIC_CONTROL_URL` for the operational public control plane;
-- Marketplace publication is manual `workflow_dispatch` only;
-- publication requires `publish_marketplace=true`;
-- `release_tag` must exactly equal `v<extension version>`;
-- the checked-out publication commit must actually be pointed to by the exact tag;
-- repository Actions must contain a valid `VSCE_PAT` authorized for the Marketplace publisher;
-- the token must remain outside source, checkpoints, issues/PR text, logs and project metadata.
-
-P39 is a production external mutation. Do not create the release tag or dispatch Marketplace publication merely because the universal VSIX is packaged and green. Perform read-only preflight first and require explicit production publication approval for the exact release version/commit.
-
-If the control-plane origin, external publisher/token/tag requirements, or approval are unavailable, preserve stable P39 as blocked rather than weakening the release workflow or claiming publication succeeded. The Preview 1 prerelease does not satisfy the stable official-public or Marketplace milestone.
+Existing public release/Marketplace work also remains externally gated. Do not publish to the VS Code Marketplace without the real public control-plane origin, valid publisher/token/tag setup and explicit production publication approval.
 
 ## Resume procedure
 
 When the user says `continue`:
 
-1. inspect `main`, recent commits, open PRs, branches, roadmap, checkpoint and CI;
-2. verify `897b87ecfef7236dbd53e0dd5abee984be6475fc` remains in current `main` ancestry;
-3. inspect production commits after that anchor before choosing work;
-4. ignore checkpoint-only documentation/test-reliability commits when deciding whether production work advanced;
-5. do not recreate P38/P38.1 dashboard, README, Activity Bar or Auto Initialize fallback work unless regression evidence requires it;
-6. preserve the new universal UI and VSIX package assertions;
-7. if Marketplace publication already occurred, verify exact tag/commit/workflow/listing evidence before marking P39 complete;
-8. if P39 is not published, perform only safe read-only preflight until external setup and explicit approval are present;
-9. distinguish runner-allocation, workflow-definition, flaky-test, external-provider and real code/test failures;
-10. update both this file and `docs/checkpoints/latest.json` after the next completed production milestone.
-
-## Checkpoint maintenance rule
-
-Every completed production milestone must record at least:
-
-- verified completed code-state SHA;
-- last completed milestone;
-- next milestone;
-- important safety/trust invariants;
-- exact verification evidence when available;
-- unresolved external/manual gates.
+1. inspect live `main`, recent commits, open PRs, branches and CI;
+2. verify `1d87a611f46a3a6681fd95e3ad2a4ac68a5046c5` is still in current main ancestry;
+3. inspect any production commits after that SHA before selecting work;
+4. do not recreate P39 skill bootstrap, Output Channel fix, stack aliases, cinematic recipe/model selector or bundled skill docs unless regression evidence requires it;
+5. preserve P38.2 guided Connections behavior while extending provider/media setup;
+6. distinguish external-provider, billable-action, runner, workflow, flaky-test and real code failures;
+7. checkpoint the next completed production milestone immediately.

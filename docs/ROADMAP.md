@@ -459,6 +459,23 @@
 - [x] Operator guide records current application pages and exact GitHub/Vercel configuration names
 - [x] Deterministic runtime, allowlist, CSP, feed-isolation, disclosure, and environment-handling tests
 
-## Next production milestone
+## P39 — Autonomous skill bootstrap and cinematic 3D / 2.5D web
 
-- Perform the first guarded VS Code Marketplace publication after publisher/token/tag setup
+- [x] Auto Initialize bootstraps every materializable skill manifest into the user-owned Dockyard library
+- [x] Automatic-safe packages activate only after fresh pinned revision/hash assessment
+- [x] Approval-required/quarantined packages remain inactive; discovery-only metadata is never labeled installed
+- [x] Selected invocation/team capabilities auto-fulfill without asking the user to install them manually
+- [x] Antigravity/VS Code-compatible Team Start no longer crashes when Output Channel APIs are missing/partial
+- [x] Common stack aliases normalize React/Next/Three/R3F user spellings
+- [x] Dedicated cinematic 3D/2.5D recipe, bundled skill set and FFmpeg readiness
+- [x] True-3D vs frame-sequence vs hybrid route planner with semantic section boundaries
+- [x] Verified Veo 3.1 Standard/Fast/Lite metadata and feature-aware model selector
+- [x] Preview 3 VSIX package assertions and exact-head CI/compatibility verification
+
+## P40 — Credential-safe media execution + guarded public release
+
+- [ ] Add secure Google AI/media-generation connection support without storing API keys in Dockyard state/source
+- [ ] Add explicit billable-generation planning/approval boundary before live Veo calls
+- [ ] Preserve non-secret request/output hash evidence and connect successful clips to FFmpeg/frame-sequence processing
+- [ ] Browser/performance verification of generated 2.5D section output
+- [ ] First guarded VS Code Marketplace publication after control-plane/publisher/token/tag setup and explicit production approval
