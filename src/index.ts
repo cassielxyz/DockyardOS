@@ -6,6 +6,8 @@ export * from "./process.js";
 export * from "./registry.js";
 export * from "./catalog-expanded.js";
 export * from "./catalog-connectors.js";
+export * from "./catalog-cinematic.js";
+export * from "./bundled-capability-guidance.js";
 export * from "./providers-expanded.js";
 export * from "./registry-lock.js";
 export * from "./recipes.js";
