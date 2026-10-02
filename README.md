@@ -375,6 +375,16 @@ Dockyard explicitly tries to avoid defaulting every product into the same giant-
 
 ---
 
+## Autonomous skills + cinematic 3D web
+
+Auto Initialize now bootstraps every **materializable** skill package into Dockyard's user library. Automatic-safe packages activate after a fresh pinned assessment; approval-required or quarantined packages are downloaded/staged but never silently granted execution rights. At runtime Dockyard loads only the selected phase's skills.
+
+For requests such as `create a 3d website for r15`, Dockyard routes into a dedicated **Cinematic 3D / 2.5D Web** workflow. It can choose true Three.js/R3F, video-derived frame-sequence 2.5D, or a hybrid with separate semantic sections. The workflow includes GSAP/ScrollTrigger, FFmpeg frame extraction, asset budgets, mobile/reduced-motion fallbacks, Playwright verification and model selection for the verified Google Veo 3.1 family.
+
+See [Cinematic Web Workflow](docs/CINEMATIC_WEB.md).
+
+---
+
 ## Connections and login UI
 
 <p align="center">
