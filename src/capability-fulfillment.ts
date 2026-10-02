@@ -94,6 +94,7 @@ const TOOL_EXECUTABLES: Record<string, string[]> = {
   helm: ["helm"],
   "docker-cli": ["docker"],
   "typescript-language-service": ["tsc"],
+  ffmpeg: ["ffmpeg"],
 };
 
 function selectionCandidates(selection: SelectionResult): Candidate[] {
