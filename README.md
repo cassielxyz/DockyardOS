@@ -377,7 +377,9 @@ Dockyard explicitly tries to avoid defaulting every product into the same giant-
 
 ## Autonomous skills + cinematic 3D web
 
-Auto Initialize now bootstraps every **materializable** skill package into Dockyard's user library. Automatic-safe packages activate after a fresh pinned assessment; approval-required or quarantined packages are downloaded/staged but never silently granted execution rights. At runtime Dockyard loads only the selected phase's skills.
+Auto Initialize bootstraps every **materializable** skill package into Dockyard's user library on the PC. Automatic-safe packages activate after a fresh pinned assessment; approval-required or quarantined packages are downloaded/staged but never silently granted execution rights. The global library is reused by every project, so Dockyard does not redownload the same active revision for each repository.
+
+**Installed globally is not the same as loaded into the agent.** For each request or active team phase, Dockyard selects the relevant capabilities, verifies readiness, and automatically injects only the selected integrity-verified skill entrypoints into that invocation. Unselected skills stay out of context. Installed skill text is bounded to a per-invocation context budget, and a failed integrity/read check becomes an explicit load warning rather than a false “active” state.
 
 For requests such as `create a 3d website for r15`, Dockyard routes into a dedicated **Cinematic 3D / 2.5D Web** workflow. It can choose true Three.js/R3F, video-derived frame-sequence 2.5D, or a hybrid with separate semantic sections. The workflow includes GSAP/ScrollTrigger, FFmpeg frame extraction, asset budgets, mobile/reduced-motion fallbacks, Playwright verification and model selection for the verified Google Veo 3.1 family.
 
