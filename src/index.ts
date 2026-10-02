@@ -27,6 +27,8 @@ export * from "./provider-detection.js";
 export * from "./provider-planner.js";
 export * from "./media-models.js";
 export * from "./media-generation.js";
+export * from "./media-pricing.js";
+export * from "./media-execution.js";
 export * from "./cinematic-web.js";
 export * from "./provider-pricing.js";
 export * from "./provider-actions.js";
