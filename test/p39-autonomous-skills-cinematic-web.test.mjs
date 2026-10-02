@@ -75,8 +75,8 @@ test("P39 video model selection is feature-gated instead of hard-coded", () => {
   const fourK = dockyard.selectVideoGenerationModel({ priority: "lean", resolution: "4k" }).model;
   assert.notEqual(fourK.tier, "lite");
   assert.throws(
-    () => dockyard.selectVideoGenerationModel({ providerId: "google-ai", priority: "lean", requiresReferenceImages: true, resolution: "4k" }),
-    { name: "AssertionError" },
+    () => dockyard.selectVideoGenerationModel({ providerId: "google-ai", priority: "lean", resolution: "8k" }),
+    /No verified video-generation model/,
   );
 });
 
