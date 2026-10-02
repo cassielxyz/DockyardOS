@@ -14,6 +14,14 @@ const READINESS_RANK: Record<ProviderReadiness, number> = {
   degraded: 1,
 };
 
+export interface ProviderProbeOptions {
+  live?: boolean;
+  httpFetch?: (
+    url: string,
+    init: { headers: Record<string, string>; signal: AbortSignal },
+  ) => Promise<{ ok: boolean; status: number }>;
+}
+
 async function pathExists(root: string, marker: string): Promise<boolean> {
   try {
     await access(resolve(root, marker));
@@ -35,10 +43,50 @@ function safeCommandLabel(command: string, args: string[]): string {
   return `${command} ${args.join(" ")}`.trim();
 }
 
+function secureCredential(adapter: ProviderAdapterDefinition): { envVar: string; value: string } | undefined {
+  for (const envVar of adapter.secureCredentialProbe?.envVars ?? []) {
+    const value = process.env[envVar]?.trim();
+    if (value) return { envVar, value };
+  }
+  return undefined;
+}
+
+async function verifySecureCredential(
+  adapter: ProviderAdapterDefinition,
+  credential: { envVar: string; value: string },
+  httpFetch?: ProviderProbeOptions["httpFetch"],
+): Promise<{ ok: boolean; status?: number; timedOut: boolean }> {
+  const probe = adapter.secureCredentialProbe;
+  if (!probe) return { ok: false, timedOut: false };
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), probe.timeoutMs ?? 10_000);
+  try {
+    const request = httpFetch
+      ? httpFetch(probe.validationUrl, {
+          headers: { [probe.header]: credential.value },
+          signal: controller.signal,
+        })
+      : fetch(probe.validationUrl, {
+          method: "GET",
+          headers: { [probe.header]: credential.value },
+          signal: controller.signal,
+        });
+    const response = await request;
+    return { ok: response.ok, status: response.status, timedOut: false };
+  } catch (error) {
+    return {
+      ok: false,
+      timedOut: error instanceof Error && (error.name === "AbortError" || controller.signal.aborted),
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export async function probeProvider(
   adapter: ProviderAdapterDefinition,
   root: string,
-  options: { live?: boolean } = {},
+  options: ProviderProbeOptions = {},
 ): Promise<ProviderProbeResult> {
   const live = options.live ?? false;
   const signals: ProviderProbeSignal[] = [];
@@ -58,13 +106,27 @@ export async function probeProvider(
   for (const marker of adapter.configMarkers) {
     if (await pathExists(root, marker)) configHits.push(marker);
   }
-  const configured = configHits.length > 0;
+  const credential = secureCredential(adapter);
+  const configured = configHits.length > 0 || Boolean(credential);
   if (configured) readiness = stronger(readiness, "configured");
   signals.push({
     type: "config",
     ok: configured,
-    detail: configured ? `Project markers: ${configHits.join(", ")}` : "No known project configuration marker detected.",
+    detail: configHits.length
+      ? `Project markers: ${configHits.join(", ")}`
+      : credential
+        ? "Secure provider credential is available to this process; its value is never emitted or persisted by the readiness probe."
+        : "No known project configuration marker or secure provider credential detected.",
   });
+  if (adapter.secureCredentialProbe) {
+    signals.push({
+      type: "credential",
+      ok: Boolean(credential),
+      detail: credential
+        ? `Credential source detected: ${credential.envVar} (value hidden).`
+        : `No supported in-memory credential source detected (${adapter.secureCredentialProbe.envVars.join(" / ")}).`,
+    });
+  }
 
   const linkedHits: string[] = [];
   for (const marker of adapter.linkedMarkers ?? []) {
@@ -81,6 +143,28 @@ export async function probeProvider(
   }
 
   let authenticated: boolean | undefined;
+  if (live && adapter.secureCredentialProbe) {
+    if (!credential) {
+      authenticated = false;
+      signals.push({
+        type: "auth",
+        ok: false,
+        detail: "Read-only API authentication probe skipped because no supported secure credential is available.",
+      });
+    } else {
+      const result = await verifySecureCredential(adapter, credential, options.httpFetch);
+      authenticated = result.ok;
+      if (result.ok) readiness = stronger(readiness, adapter.secureCredentialProbe.successReadiness);
+      signals.push({
+        type: "auth",
+        ok: result.ok,
+        detail: result.ok
+          ? "Read-only API authentication probe succeeded; credential value was not logged or persisted."
+          : `Read-only API authentication probe failed${result.timedOut ? " (timeout)" : result.status ? ` (HTTP ${result.status})` : ""}; credential value was not logged or persisted.`,
+      });
+    }
+  }
+
   if (live && adapter.authProbe) {
     let probeCommand = command && adapter.cliCommands.includes(adapter.authProbe.command) ? command : adapter.authProbe.command;
     let probeArgs = adapter.authProbe.args;
