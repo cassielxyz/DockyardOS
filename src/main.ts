@@ -68,7 +68,7 @@ try {
   } else if (command === "capabilities") {
     await handleCapabilityFulfillmentCommand(findWorkspaceRoot(), args);
   } else if (command === "skills") {
-    await handleSkillCommand(args);
+    await handleSkillCommand(findWorkspaceRoot(), args);
   } else if (command === "community" && args[0] === "contribution") {
     await handleCommunityContributionCommand(args.slice(1));
   } else if (command === "community" && args[0] === "maintainer") {
