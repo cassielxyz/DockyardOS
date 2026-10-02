@@ -6,6 +6,7 @@ import {
 } from "./capability-fulfillment.js";
 import { activateAutomaticCapabilities, capabilityActivationAgentText, type CapabilityActivationDependencies, type CapabilityActivationResult } from "./capability-fulfillment-activation.js";
 import { bundledCapabilityAgentText } from "./bundled-capability-guidance.js";
+import { loadSelectedSkillContext, selectedSkillContextAgentText, type SelectedSkillContextDependencies, type SelectedSkillContextResult } from "./selected-skill-context.js";
 import type { RequestMediationResult } from "./request-mediation.js";
 import type { TeamRunState } from "./team-types.js";
 
@@ -15,6 +16,7 @@ export interface InvocationCapabilityFulfillment {
   persistedPath: string;
   agentLines: string[];
   activation?: CapabilityActivationResult;
+  selectedSkillContext?: SelectedSkillContextResult;
 }
 
 function unique(values: string[]): string[] {
@@ -48,7 +50,10 @@ export async function prepareCapabilityFulfillmentForInvocation(
   root: string,
   mediation: RequestMediationResult,
   team?: TeamRunState,
-  options: { activationDependencies?: CapabilityActivationDependencies } = {},
+  options: {
+    activationDependencies?: CapabilityActivationDependencies;
+    selectedSkillContextDependencies?: SelectedSkillContextDependencies;
+  } = {},
 ): Promise<InvocationCapabilityFulfillment | undefined> {
   const candidateIds = capabilityIdsForInvocation(mediation, team);
   if (!candidateIds.length) return undefined;
@@ -69,10 +74,24 @@ export async function prepareCapabilityFulfillmentForInvocation(
     agentLines.push(...capabilityActivationAgentText(activation));
   }
 
+  const selectedSkillContext = await loadSelectedSkillContext(effectivePlan, {
+    ...(options.selectedSkillContextDependencies
+      ? { dependencies: options.selectedSkillContextDependencies }
+      : {}),
+  });
+
   agentLines.push(...capabilityFulfillmentAgentText(effectivePlan));
   agentLines.push(...bundledCapabilityAgentText(effectivePlan.ready));
+  agentLines.push(...selectedSkillContextAgentText(selectedSkillContext));
   if (effectivePlan.unresolved.length) {
     agentLines.push("Proceed using verified-ready capabilities only. Approval-required, quarantined, missing-runtime, or unconnected capabilities remain explicitly unresolved; do not ask the user to download packages manually.");
   }
-  return { candidateIds, plan: effectivePlan, persistedPath, agentLines, ...(activation ? { activation } : {}) };
+  return {
+    candidateIds,
+    plan: effectivePlan,
+    persistedPath,
+    agentLines,
+    selectedSkillContext,
+    ...(activation ? { activation } : {}),
+  };
 }

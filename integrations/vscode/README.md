@@ -32,9 +32,12 @@ After confirmation it can:
 1. detect whether Dockyard state already exists for the workspace;
 2. initialize the project using the configured default mode;
 3. plan and install/update the configured default agent-host integration;
-4. use the configured user/project host scope;
-5. run Dockyard Doctor;
-6. refresh the Control Center with the resulting project state.
+4. bootstrap every materializable skill into Dockyard's PC-wide user library, reusing already-active immutable revisions;
+5. keep approval-required or quarantined packages staged but inactive;
+6. run Dockyard Doctor;
+7. refresh the Control Center with the resulting project state.
+
+The global skill library is **not** dumped into every model prompt. When a project request arrives, Dockyard selects the current task/phase capabilities and automatically loads only the selected integrity-verified skill entrypoints into the agent invocation, with bounded context limits.
 
 Automatic initialization on project open is separately opt-in through `dockyardOS.autoInitialize.enabled` and remains disabled by default.
 
