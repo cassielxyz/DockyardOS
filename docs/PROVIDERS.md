@@ -20,6 +20,10 @@ dockyard providers inspect --live
 
 Live probes are read-only identity/list/status commands with bounded output, timeouts, and credential redaction.
 
+The VS Code Connections Center adds a guided connection layer on top of this truth model. For supported providers it starts the provider-owned browser/device login, then polls the same read-only live probe until authentication is actually verified. Opening a browser or running a login command is **not** itself treated as connection proof.
+
+On systems where a supported Node provider CLI is not globally installed, the verified connection/action path may use an allowlisted ephemeral `npx` launcher. On Windows, Dockyard Core resolves npm/npx through the npm JavaScript launcher with `shell:false`; it does not enable shell interpolation to make `.cmd` shims work.
+
 Examples currently covered include GitHub, Vercel, Cloudflare, Supabase, Firebase, Appwrite, Railway, Fly.io and additional providers with local configuration detection.
 
 ## Capability planning
@@ -46,6 +50,14 @@ The planner considers:
 - capability-specific fallback priority
 
 Planning is read-only. It never turns a selected provider into an external mutation by itself.
+
+## Guided account connection and launcher consistency
+
+Connection setup and later provider actions use the same provider readiness contract. A provider must not become usable only inside the login screen and then fail during an approved action because a global CLI executable is missing.
+
+For supported Node-based provider CLIs, Dockyard therefore reuses the same direct-or-ephemeral launcher model for live authentication and bounded action execution. The action planner still records the exact executable/arguments and every mutation remains behind the existing approval gates.
+
+This launcher fallback does **not** broaden the provider-action API. It only changes how an already-supported provider CLI is invoked.
 
 ## Authenticated provider actions
 
