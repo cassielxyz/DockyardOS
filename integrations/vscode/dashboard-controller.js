@@ -14,6 +14,7 @@ const SETTING_KEYS = new Map([
   ["defaultMode", "defaultMode"],
   ["autoInitialize.enabled", "autoInitialize.enabled"],
   ["autoInitialize.installHostIntegration", "autoInitialize.installHostIntegration"],
+  ["autoInitialize.bootstrapSkills", "autoInitialize.bootstrapSkills"],
   ["autoInitialize.hostScope", "autoInitialize.hostScope"],
   ["dashboard.openOnStartup", "dashboard.openOnStartup"],
   ["communityUpdates.enabled", "communityUpdates.enabled"],
@@ -83,6 +84,7 @@ function readSettings() {
     defaultMode: c.get("defaultMode", "balanced"),
     autoInitializeEnabled: c.get("autoInitialize.enabled", false),
     autoInstallHost: c.get("autoInitialize.installHostIntegration", true),
+    autoBootstrapSkills: c.get("autoInitialize.bootstrapSkills", true),
     hostScope: c.get("autoInitialize.hostScope", "user"),
     openOnStartup: c.get("dashboard.openOnStartup", false),
     updatesEnabled: c.get("communityUpdates.enabled", false),
@@ -177,8 +179,8 @@ async function performAutoInitialize(context, options = {}) {
 
   if (options.interactive !== false) {
     const details = installHost
-      ? `Initialize this project in ${mode} mode and install/update the ${host} integration at ${scope} scope?`
-      : `Initialize this project in ${mode} mode?`;
+      ? `Initialize this project in ${mode} mode, install/update the ${host} integration at ${scope} scope, and bootstrap the Dockyard skill library?`
+      : `Initialize this project in ${mode} mode and bootstrap the Dockyard skill library?`;
     const decision = await vscode.window.showInformationMessage(
       `${details}\n\nDockyardOS project memory remains outside the source repository. Existing different host integration content is not silently overwritten.`,
       { modal: true },
@@ -204,9 +206,29 @@ async function performAutoInitialize(context, options = {}) {
       : `${host} · ${scope}`;
   }
 
+  let skills = { status: "disabled" };
+  if (settings.autoBootstrapSkills !== false) {
+    try {
+      const bootstrapped = parseJson(await runDockyard(context, ["skills", "bootstrap", "--json"], { acceptExitCodes: [2] }));
+      skills = bootstrapped
+        ? {
+            status: bootstrapped.failed ? "attention" : "ready",
+            installable: Number(bootstrapped.installableSkills || 0),
+            activated: Number(bootstrapped.activated || 0),
+            alreadyActive: Number(bootstrapped.alreadyActive || 0),
+            stagedReview: Number(bootstrapped.stagedReview || 0),
+            quarantined: Number(bootstrapped.quarantined || 0),
+            failed: Number(bootstrapped.failed || 0),
+          }
+        : { status: "attention" };
+    } catch (error) {
+      skills = { status: `attention: ${error instanceof Error ? error.message : String(error)}` };
+    }
+  }
+
   let doctor = "completed";
   try { await runDockyard(context, ["doctor", "--json"], { acceptExitCodes: [1] }); } catch (error) { doctor = `attention: ${error.message}`; }
-  return { initialized: true, mode, host: hostResult, doctor };
+  return { initialized: true, mode, host: hostResult, skills, doctor };
 }
 
 async function updateSetting(key, value) {
@@ -215,7 +237,7 @@ async function updateSetting(key, value) {
   if (configKey === "defaultHost" && !HOSTS.has(String(value))) throw new Error("Invalid default host.");
   if (configKey === "defaultMode" && !MODES.has(String(value))) throw new Error("Invalid operating mode.");
   if (configKey === "autoInitialize.hostScope" && !SCOPES.has(String(value))) throw new Error("Invalid host integration scope.");
-  if (["autoInitialize.enabled", "autoInitialize.installHostIntegration", "dashboard.openOnStartup", "communityUpdates.enabled", "communityUpdates.applySafeAutomatically"].includes(configKey) && typeof value !== "boolean") throw new Error("Invalid boolean setting value.");
+  if (["autoInitialize.enabled", "autoInitialize.installHostIntegration", "autoInitialize.bootstrapSkills", "dashboard.openOnStartup", "communityUpdates.enabled", "communityUpdates.applySafeAutomatically"].includes(configKey) && typeof value !== "boolean") throw new Error("Invalid boolean setting value.");
   await vscode.workspace.getConfiguration("dockyardOS").update(configKey, value, vscode.ConfigurationTarget.Global);
 }
 
