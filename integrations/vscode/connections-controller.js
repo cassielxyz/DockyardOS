@@ -15,6 +15,7 @@ const { renderConnectionsHtml } = require("./connections-view.js");
 
 const MAX_OUTPUT_BYTES = 128 * 1024;
 let connectionsPanel;
+let lastVerifiedConnections;
 
 function workspaceRoot() {
   const folder = vscode.workspace.workspaceFolders?.[0];
@@ -166,13 +167,38 @@ async function watchProviderConnection(context, panel, id) {
   });
 }
 
+function mergeVerifiedProviderState(localModel, verifiedModel) {
+  if (!verifiedModel) return localModel;
+  const verifiedById = new Map((verifiedModel.providers || []).map((provider) => [provider.id, provider]));
+  const providers = (localModel.providers || []).map((provider) => {
+    const verified = verifiedById.get(provider.id);
+    if (!verified) return provider;
+    const ready = verified.authenticated === true || verified.linked === true || verified.status?.level === "ready";
+    return ready ? { ...provider, ...verified, liveChecked: true } : provider;
+  });
+  return {
+    ...localModel,
+    providers,
+    summary: {
+      ...(localModel.summary || {}),
+      providerReady: providers.filter((item) => item.status?.level === "ready").length,
+      providerAttention: providers.filter((item) => item.status?.level === "warning" || item.status?.level === "partial").length,
+    },
+  };
+}
+
 async function loadConnections(context, liveChecked) {
   const args = ["providers", "inspect", "--json"];
   if (liveChecked) args.push("--live");
   const output = await runDockyard(context, args, { env: await providerSecretEnvironment(context) });
   const probes = parseJson(output);
   if (!Array.isArray(probes)) throw new Error("DockyardOS provider readiness output was not a JSON array.");
-  return normalizeConnections(probes, { liveChecked });
+  const model = normalizeConnections(probes, { liveChecked });
+  if (liveChecked) {
+    lastVerifiedConnections = model;
+    return model;
+  }
+  return mergeVerifiedProviderState(model, lastVerifiedConnections);
 }
 
 async function postModel(context, panel, liveChecked, notice) {
@@ -338,6 +364,9 @@ async function openConnectionsCenter(context) {
   );
   connectionsPanel = panel;
   panel.webview.html = renderConnectionsHtml(panel.webview, model, backgroundUri(context, panel.webview));
+  void postModel(context, panel, true, "Connected accounts verified automatically.").catch((error) => {
+    void panel.webview.postMessage({ type: "notice", text: `Automatic account verification needs attention: ${error instanceof Error ? error.message : String(error)}` });
+  });
   panel.onDidDispose(() => { if (connectionsPanel === panel) connectionsPanel = undefined; }, null, context.subscriptions);
   panel.webview.onDidReceiveMessage(async (message) => {
     try {
@@ -368,6 +397,7 @@ function activateConnections(context) {
 
 function deactivateConnections() {
   connectionsPanel = undefined;
+  lastVerifiedConnections = undefined;
 }
 
 module.exports = { activateConnections, deactivateConnections, loadConnections };
