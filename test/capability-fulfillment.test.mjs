@@ -82,12 +82,33 @@ test("continuation fulfillment uses the active team phase instead of rerunning/g
   assert.equal(ids.includes("gitleaks"), false);
 });
 
-test("pre-invocation preparation persists readiness and tells the agent to use safe fulfillment", async () => {
+test("pre-invocation preparation persists readiness and autonomously fulfills safe selected capabilities", async () => {
   const { root } = await setup();
-  const prepared = await dockyard.prepareCapabilityFulfillmentForInvocation(root, mediation({ agents: [], tools: [], mcps: [] }));
+  let installCall;
+  const revision = "1".repeat(40);
+  const contentSha256 = "2".repeat(64);
+  const prepared = await dockyard.prepareCapabilityFulfillmentForInvocation(
+    root,
+    mediation({ agents: [], tools: [], mcps: [] }),
+    undefined,
+    {
+      activationDependencies: {
+        assess: async () => ({
+          resolution: { revision, contentSha256 },
+          assessment: { decision: "automatic", reasons: [] },
+        }),
+        install: async (id, expectations) => {
+          installCall = { id, expectations };
+          return { installed: true };
+        },
+      },
+    },
+  );
   assert.ok(prepared);
-  assert.ok(prepared.plan.installable.includes("superpowers"));
-  assert.match(prepared.agentLines.join("\n"), /dockyard capabilities fulfill --ids superpowers/i);
+  assert.equal(prepared.activation?.attempts[0]?.status, "activated");
+  assert.equal(installCall.id, "superpowers-core-skills");
+  assert.equal(installCall.expectations.approve, false);
+  assert.doesNotMatch(prepared.agentLines.join("\n"), /dockyard capabilities fulfill --ids/i);
   assert.match(prepared.persistedPath, /capability-fulfillment/);
 });
 

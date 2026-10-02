@@ -3,6 +3,7 @@ import { catalog as baseCatalog } from "./catalog.js";
 import { expandedCatalog } from "./catalog-expanded.js";
 import { connectorCatalog } from "./catalog-connectors.js";
 import { creativeCatalog } from "./catalog-creative.js";
+import { cinematicCatalog } from "./catalog-cinematic.js";
 import { expandedProviders } from "./providers-expanded.js";
 import { validateRecipes } from "./recipes.js";
 import { validateAgentRouting } from "./team-agent-routing.js";
@@ -109,6 +110,7 @@ export const catalog: Candidate[] = mergeCandidates([
   { name: "expanded-official-and-agents", candidates: expandedCatalog },
   { name: "connectors-and-tools", candidates: connectorCatalog },
   { name: "creative-ui", candidates: creativeCatalog },
+  { name: "cinematic-web", candidates: cinematicCatalog },
 ]);
 
 export const categoryNames = [...new Set(catalog.map((candidate) => candidate.category))].sort();

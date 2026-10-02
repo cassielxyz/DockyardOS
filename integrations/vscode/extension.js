@@ -73,13 +73,26 @@ function parseJson(text) {
 }
 
 function outputChannel(context) {
-  if (!context.__dockyardOutput) context.__dockyardOutput = vscode.window.createOutputChannel("DockyardOS");
-  return context.__dockyardOutput;
+  const existing = context?.__dockyardOutput;
+  if (existing && typeof existing.appendLine === "function") return existing;
+  if (typeof vscode.window.createOutputChannel !== "function") return undefined;
+  try {
+    const created = vscode.window.createOutputChannel("DockyardOS");
+    if (created && typeof created.appendLine === "function") context.__dockyardOutput = created;
+    return created;
+  } catch {
+    return undefined;
+  }
 }
 
 function showResult(context, title, result) {
   const channel = outputChannel(context);
-  channel.clear();
+  if (!channel || typeof channel.appendLine !== "function") {
+    const summary = (result?.stdout || result?.stderr || "completed").split(/\r?\n/)[0].slice(0, 220);
+    vscode.window.showInformationMessage(`DockyardOS · ${title}: ${summary}`);
+    return;
+  }
+  if (typeof channel.clear === "function") channel.clear();
   channel.appendLine(`# ${title}`);
   if (result.runtime) channel.appendLine(`Runtime: ${result.runtime}`);
   channel.appendLine("");
@@ -89,7 +102,7 @@ function showResult(context, title, result) {
     channel.appendLine("# stderr");
     channel.appendLine(result.stderr);
   }
-  channel.show(true);
+  if (typeof channel.show === "function") channel.show(true);
 }
 
 function communityId(value) {

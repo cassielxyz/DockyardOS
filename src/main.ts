@@ -12,11 +12,12 @@ import { handleProviderMigrationCommand } from "./provider-migration-command.js"
 import { checkPublicAdGate } from "./public-ad-gate.js";
 import { handleSecurityEvidenceCommand } from "./security-command.js";
 import { handleCapabilityFulfillmentCommand } from "./capability-fulfillment-command.js";
+import { handleSkillCommand } from "./skill-command.js";
 
 const [, , command, ...args] = process.argv;
 
 function gateExempt(commandName: string | undefined): boolean {
-  return !commandName || ["init", "host", "hook", "--help", "-h", "help"].includes(commandName);
+  return !commandName || ["init", "host", "skills", "hook", "--help", "-h", "help"].includes(commandName);
 }
 
 async function publicCliGate(): Promise<boolean> {
@@ -66,6 +67,8 @@ try {
     await handleHostCommand(findWorkspaceRoot(), args, args.includes("--json"));
   } else if (command === "capabilities") {
     await handleCapabilityFulfillmentCommand(findWorkspaceRoot(), args);
+  } else if (command === "skills") {
+    await handleSkillCommand(args);
   } else if (command === "community" && args[0] === "contribution") {
     await handleCommunityContributionCommand(args.slice(1));
   } else if (command === "community" && args[0] === "maintainer") {

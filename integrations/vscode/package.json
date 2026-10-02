@@ -2,7 +2,7 @@
   "name": "dockyardos-vscode",
   "displayName": "DockyardOS",
   "description": "Universal control center for persistent AI development orchestration, memory, connectors, skills, verification and safe automation.",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "publisher": "cassielxyz",
   "license": "MIT",
   "repository": {
@@ -164,6 +164,11 @@
           "type": "boolean",
           "default": true,
           "description": "When Auto Initialize runs, also install/update the selected default agent-host integration using the configured scope."
+        },
+        "dockyardOS.autoInitialize.bootstrapSkills": {
+          "type": "boolean",
+          "default": true,
+          "description": "During Auto Initialize, download and assess every installable DockyardOS skill into the user library. Automatic-safe packages are activated; approval-required or quarantined packages stay inactive."
         },
         "dockyardOS.autoInitialize.hostScope": {
           "type": "string",

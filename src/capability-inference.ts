@@ -25,6 +25,10 @@ const RULES: SignalRule[] = [
   { pattern: /playwright|browser qa|browser test|e2e|end[- ]to[- ]end|screenshot test|visual regression/i, capabilities: ["browser-automation", "e2e", "screenshots"] },
   { pattern: /accessibilit|\ba11y\b|\bwcag\b/i, capabilities: ["accessibility", "wcag"] },
   { pattern: /lighthouse|core web vitals|web performance/i, capabilities: ["performance", "lighthouse", "core-web-vitals"] },
+  { pattern: /3d (?:website|web|landing|experience)|three\.?js|react[- ]three[- ]fiber|\br3f\b|\bwebgl\b/i, capabilities: ["3d-web", "threejs", "r3f", "webgl", "responsive-3d"], stacks: ["web", "react", "threejs", "r3f"] },
+  { pattern: /2\.5d|frame[- ]sequence|image[- ]sequence|scroll[- ](?:driven|scrubbed).*frames?|video[- ]to[- ]frames/i, capabilities: ["2.5d", "frame-sequence", "video-to-frames", "scroll-scrubbing"], stacks: ["web"] },
+  { pattern: /cinematic (?:website|web|landing|experience)|scroll storytelling|scroll[- ]story/i, capabilities: ["cinematic-web", "motion-design", "scroll-storytelling", "visual-direction"], stacks: ["web"] },
+  { pattern: /video generation|generate (?:a )?video|google veo|\bveo(?: 3\.1)?\b|image[- ]to[- ]video/i, capabilities: ["video-generation", "model-selection", "google-veo", "image-to-video"], stacks: ["google-ai"] },
 
   // Common web and mobile stacks.
   { pattern: /website|web app|webpage|landing page|marketing page|portfolio/i, stacks: ["web"] },

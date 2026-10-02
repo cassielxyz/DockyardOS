@@ -7,8 +7,22 @@ const CHANNEL_RANK: Record<UpdateChannel, number> = { stable: 0, recommended: 1,
 const TRUST_SCORE: Record<Candidate["trust"], number> = { official: 18, dockyard: 17, maintainer: 14, community: 8 };
 const CONTEXT_PENALTY: Record<Candidate["contextCost"], number> = { tiny: 0, small: 1, medium: 4, large: 9 };
 
+const STACK_ALIASES: Record<string, string> = {
+  "react.js": "react",
+  reactjs: "react",
+  "next.js": "nextjs",
+  "three.js": "threejs",
+  three: "threejs",
+  "@react-three/fiber": "r3f",
+  "react-three-fiber": "r3f",
+  reactthreefiber: "r3f",
+};
+
 function normalized(values: string[]): string[] {
-  return values.map((value) => value.trim().toLowerCase()).filter(Boolean);
+  return values
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean)
+    .map((value) => STACK_ALIASES[value] ?? value);
 }
 
 function uniqueNormalized(values: string[]): string[] {
@@ -28,6 +42,7 @@ export function inferTaskType(text: string): string {
   if (/bug|error|crash|broken|fix issue|debug/.test(prompt)) return "bug-fix";
 
   // Specific practical archetypes must win before broad words such as server, feature, cleanup, or deploy.
+  if (/3d (?:website|web|landing|experience)|three\.?js|react[- ]three[- ]fiber|\br3f\b|\bwebgl\b|2\.5d|cinematic (?:website|web|landing)|frame[- ]sequence|scroll[- ](?:driven|scrubbed).*frames?/.test(prompt)) return "3d-web";
   if (/\brag\b|retrieval[- ]augmented|knowledge assistant|knowledge base assistant/.test(prompt)) return "rag";
   if (/\bmcp\b.*(?:server|connector|tool)|model context protocol/.test(prompt)) return "mcp";
   if (/vs ?code extension|visual studio code extension|ide extension|editor extension/.test(prompt)) return "ide-extension";
