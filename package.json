@@ -1,6 +1,6 @@
 {
   "name": "dockyardos",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "description": "Autonomous development orchestration, memory, safety, and provider routing layer for coding agents.",
   "type": "module",
