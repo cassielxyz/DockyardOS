@@ -136,6 +136,12 @@ function definition(providerId: string, actionId: string): AlternativeProviderAc
   return action;
 }
 
+function providerCli(command: string, npmPackage: string): { command: string; prefix: string[] } {
+  if (commandExists(command)) return { command, prefix: [] };
+  if (commandExists("npx")) return { command: "npx", prefix: ["-y", npmPackage] };
+  return { command, prefix: [] };
+}
+
 function safeIdentifier(value: string, label: string): string {
   const trimmed = value.trim();
   if (!SAFE_IDENTIFIER.test(trimmed) || trimmed.startsWith("-") || trimmed.includes("..") || trimmed.includes("@{")) {
@@ -205,13 +211,14 @@ function commandPlan(
   params: Record<string, string>,
 ): { command: string; args: string[]; verification: ProviderActionVerificationPlan } {
   if (action.providerId === "neon" && action.id === "preview-branch-create") {
+    const cli = providerCli("neon", "neon@latest");
     return {
-      command: "neon",
-      args: ["branches", "create", "--project-id", params.project!, "--name", params.branch!, "--output", "json", "--no-secrets"],
+      command: cli.command,
+      args: [...cli.prefix, "branches", "create", "--project-id", params.project!, "--name", params.branch!, "--output", "json", "--no-secrets"],
       verification: {
         strategy: "command",
-        command: "neon",
-        args: ["branches", "list", "--project-id", params.project!, "--output", "json"],
+        command: cli.command,
+        args: [...cli.prefix, "branches", "list", "--project-id", params.project!, "--output", "json"],
         timeoutMs: 30_000,
         description: "List branches for the explicit Neon project after branch creation.",
       },
@@ -219,15 +226,16 @@ function commandPlan(
   }
 
   if (action.providerId === "firebase" && action.id === "hosting-preview-deploy") {
-    const args = ["hosting:channel:deploy", params.channel!, "--project", params.project!, "--json"];
+    const cli = providerCli("firebase", "firebase-tools@latest");
+    const args = [...cli.prefix, "hosting:channel:deploy", params.channel!, "--project", params.project!, "--json"];
     if (params.target) args.push("--only", params.target);
     return {
-      command: "firebase",
+      command: cli.command,
       args,
       verification: {
         strategy: "command",
-        command: "firebase",
-        args: ["hosting:channel:list", "--project", params.project!, "--json"],
+        command: cli.command,
+        args: [...cli.prefix, "hosting:channel:list", "--project", params.project!, "--json"],
         timeoutMs: 30_000,
         description: "List Hosting channels for the explicit Firebase project after preview deploy.",
       },
@@ -235,14 +243,15 @@ function commandPlan(
   }
 
   if (action.providerId === "firebase" && action.id === "hosting-production-deploy") {
+    const cli = providerCli("firebase", "firebase-tools@latest");
     const only = params.target ? `hosting:${params.target}` : "hosting";
     return {
-      command: "firebase",
-      args: ["deploy", "--project", params.project!, "--only", only, "--json"],
+      command: cli.command,
+      args: [...cli.prefix, "deploy", "--project", params.project!, "--only", only, "--json"],
       verification: {
         strategy: "command",
-        command: "firebase",
-        args: ["hosting:channel:list", "--project", params.project!, "--json"],
+        command: cli.command,
+        args: [...cli.prefix, "hosting:channel:list", "--project", params.project!, "--json"],
         timeoutMs: 30_000,
         description: "List Hosting channels including live after the explicit Firebase production deploy.",
       },
@@ -250,7 +259,8 @@ function commandPlan(
   }
 
   if (action.providerId === "railway" && action.id === "service-deploy") {
-    const args = ["up"];
+    const cli = providerCli("railway", "@railway/cli@latest");
+    const args = [...cli.prefix, "up"];
     if (params.path) args.push(params.path);
     args.push(
       "--project", params.project!,
@@ -259,12 +269,13 @@ function commandPlan(
       "--ci", "--json",
     );
     return {
-      command: "railway",
+      command: cli.command,
       args,
       verification: {
         strategy: "command",
-        command: "railway",
+        command: cli.command,
         args: [
+          ...cli.prefix,
           "logs",
           "--project", params.project!,
           "--environment", params["railway-environment"]!,
@@ -294,13 +305,14 @@ function commandPlan(
   }
 
   if (action.providerId === "appwrite" && action.id === "function-deploy") {
+    const cli = providerCli("appwrite", "appwrite-cli@latest");
     return {
-      command: "appwrite",
-      args: ["push", "functions", "--function-id", params["function-id"]!, "--force", "--json"],
+      command: cli.command,
+      args: [...cli.prefix, "push", "functions", "--function-id", params["function-id"]!, "--force", "--json"],
       verification: {
         strategy: "command",
-        command: "appwrite",
-        args: ["functions", "list", "--json"],
+        command: cli.command,
+        args: [...cli.prefix, "functions", "list", "--json"],
         timeoutMs: 45_000,
         description: "List functions in the linked Appwrite project after pushing the selected function.",
       },
@@ -372,18 +384,13 @@ export async function executeAlternativeProviderAction(
   const action = definition(plan.providerId, plan.actionId);
   if (!commandExists(plan.command)) throw new Error(`Provider action CLI is not installed: ${plan.command}`);
 
-  const auth = run(action.authProbe.command, action.authProbe.args, {
-    cwd: root,
-    timeoutMs: action.authProbe.timeoutMs,
-    maxOutputBytes: 16 * 1024,
-  });
-  if (!auth.ok) throw new Error(`${action.displayName} authentication could not be verified; mutation refused.`);
+  const adapter = providerAdapter(action.providerId);
+  if (!adapter) throw new Error(`Provider adapter is unavailable: ${action.providerId}`);
+  const liveProbe = await probeProvider(adapter, root, { live: true });
+  if (liveProbe.authenticated !== true) throw new Error(`${action.displayName} authentication could not be verified; mutation refused.`);
 
-  if (action.requiresLinked) {
-    const adapter = providerAdapter(action.providerId);
-    if (!adapter) throw new Error(`Provider adapter is unavailable: ${action.providerId}`);
-    const probe = await probeProvider(adapter, root, { live: false });
-    if (probe.linked !== true) throw new Error(`${adapter.displayName} project linkage could not be verified; mutation refused.`);
+  if (action.requiresLinked && liveProbe.linked !== true) {
+    throw new Error(`${adapter.displayName} project linkage could not be verified; mutation refused.`);
   }
 
   const startedAt = new Date().toISOString();
