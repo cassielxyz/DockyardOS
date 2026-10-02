@@ -10,6 +10,20 @@ async function projectRoot() {
   return mkdtemp(join(tmpdir(), "dockyard-provider-actions-"));
 }
 
+function providerArgs(plan, command, npmPackage) {
+  if (plan.command === command) return plan.args;
+  assert.equal(plan.command, "npx");
+  assert.deepEqual(plan.args.slice(0, 2), ["-y", npmPackage]);
+  return plan.args.slice(2);
+}
+
+function verificationArgs(plan, command, npmPackage) {
+  if (plan.verification.command === command) return plan.verification.args;
+  assert.equal(plan.verification.command, "npx");
+  assert.deepEqual(plan.verification.args.slice(0, 2), ["-y", npmPackage]);
+  return plan.verification.args.slice(2);
+}
+
 test("P9 exposes authenticated actions for the four initial providers", () => {
   const providers = new Set(dockyard.listProviderActions().map((item) => item.providerId));
   for (const id of ["github", "vercel", "cloudflare", "supabase"]) assert.ok(providers.has(id), `missing ${id}`);
@@ -23,7 +37,7 @@ test("Vercel preview deployment is explicit mutation with post-deploy inspection
     environment: "preview",
     params: { prebuilt: "true" },
   });
-  assert.deepEqual(plan.args, ["deploy", "--yes", "--prebuilt"]);
+  assert.deepEqual(providerArgs(plan, "vercel", "vercel@latest"), ["deploy", "--yes", "--prebuilt"]);
   assert.equal(plan.approvalRequired, true);
   assert.equal(plan.productionApprovalRequired, false);
   assert.equal(plan.verification.strategy, "vercel-deployment-url");
@@ -39,7 +53,7 @@ test("production provider actions require two explicit approvals", async () => {
   assert.throws(() => dockyard.assertProviderActionApproval(plan, {}), /--approve/);
   assert.throws(() => dockyard.assertProviderActionApproval(plan, { approve: true }), /--approve-production/);
   assert.doesNotThrow(() => dockyard.assertProviderActionApproval(plan, { approve: true, approveProduction: true }));
-  assert.ok(plan.args.includes("--prod"));
+  assert.ok(providerArgs(plan, "vercel", "vercel@latest").includes("--prod"));
 });
 
 test("Cloudflare Pages preview refuses common production branches and path escape", async () => {
@@ -66,9 +80,10 @@ test("Cloudflare Worker preview uploads a version instead of deploying productio
     environment: "preview",
     params: { name: "my-worker", alias: "review-42" },
   });
-  assert.deepEqual(plan.args, ["versions", "upload", "--name", "my-worker", "--preview-alias", "review-42"]);
-  assert.deepEqual(plan.verification.args, ["versions", "list", "--name", "my-worker", "--json"]);
-  assert.equal(plan.args.includes("deploy"), false);
+  const args = providerArgs(plan, "wrangler", "wrangler@latest");
+  assert.deepEqual(args, ["versions", "upload", "--name", "my-worker", "--preview-alias", "review-42"]);
+  assert.deepEqual(verificationArgs(plan, "wrangler", "wrangler@latest"), ["versions", "list", "--name", "my-worker", "--json"]);
+  assert.equal(args.includes("deploy"), false);
 });
 
 test("Supabase preview branch creation never clones data or creates a persistent branch implicitly", async () => {
@@ -79,10 +94,11 @@ test("Supabase preview branch creation never clones data or creates a persistent
     environment: "preview",
     params: { "project-ref": "abcdefghijklmnopqrst", branch: "feature-login" },
   });
-  assert.deepEqual(plan.args, ["branches", "create", "feature-login", "--project-ref", "abcdefghijklmnopqrst"]);
-  assert.equal(plan.args.includes("--with-data"), false);
-  assert.equal(plan.args.includes("--persistent"), false);
-  assert.deepEqual(plan.verification.args, ["branches", "get", "feature-login", "--project-ref", "abcdefghijklmnopqrst"]);
+  const args = providerArgs(plan, "supabase", "supabase@latest");
+  assert.deepEqual(args, ["branches", "create", "feature-login", "--project-ref", "abcdefghijklmnopqrst"]);
+  assert.equal(args.includes("--with-data"), false);
+  assert.equal(args.includes("--persistent"), false);
+  assert.deepEqual(verificationArgs(plan, "supabase", "supabase@latest"), ["branches", "get", "feature-login", "--project-ref", "abcdefghijklmnopqrst"]);
 });
 
 test("Supabase function deployment requires an explicit target project and rejects destructive extras", async () => {
@@ -93,9 +109,10 @@ test("Supabase function deployment requires an explicit target project and rejec
     environment: "preview",
     params: { "project-ref": "abcdefghijklmnopqrst", function: "hello-world", "use-api": "true" },
   });
-  assert.deepEqual(plan.args, ["functions", "deploy", "hello-world", "--project-ref", "abcdefghijklmnopqrst", "--use-api"]);
-  assert.equal(plan.args.includes("--prune"), false);
-  assert.equal(plan.args.includes("--no-verify-jwt"), false);
+  const args = providerArgs(plan, "supabase", "supabase@latest");
+  assert.deepEqual(args, ["functions", "deploy", "hello-world", "--project-ref", "abcdefghijklmnopqrst", "--use-api"]);
+  assert.equal(args.includes("--prune"), false);
+  assert.equal(args.includes("--no-verify-jwt"), false);
   assert.throws(() => dockyard.planProviderAction(root, {
     providerId: "supabase",
     actionId: "functions-deploy",
