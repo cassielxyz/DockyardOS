@@ -56,7 +56,7 @@ export const expandedProviders: ProviderDefinition[] = [
   // AI/model providers. These are alternatives, not implicit defaults.
   { id: "openai", displayName: "OpenAI", capabilities: ["ai-models", "embeddings", "realtime-ai", "vision", "speech"], connectionKinds: ["api", "sdk"], tags: ["ai", "models", "embeddings"], requiresLiveAvailabilityCheck: true },
   { id: "anthropic", displayName: "Anthropic", capabilities: ["ai-models", "vision", "tool-use", "agents"], connectionKinds: ["api", "sdk"], tags: ["ai", "models", "agents"], requiresLiveAvailabilityCheck: true },
-  { id: "google-ai", displayName: "Google AI / Gemini API", capabilities: ["ai-models", "embeddings", "vision", "multimodal", "agents"], connectionKinds: ["api", "sdk"], tags: ["ai", "google", "gemini"], requiresLiveAvailabilityCheck: true },
+  { id: "google-ai", displayName: "Google AI / Gemini API", capabilities: ["ai-models", "embeddings", "vision", "multimodal", "agents", "image-generation", "video-generation", "veo"], connectionKinds: ["api", "sdk"], tags: ["ai", "google", "gemini", "veo", "media-generation"], requiresLiveAvailabilityCheck: true },
   { id: "huggingface", displayName: "Hugging Face", capabilities: ["ai-models", "model-hosting", "datasets", "inference", "embeddings"], connectionKinds: ["api", "cli", "sdk"], tags: ["ai", "models", "open-source"], requiresLiveAvailabilityCheck: true },
   { id: "groq", displayName: "GroqCloud", capabilities: ["ai-models", "inference"], connectionKinds: ["api", "sdk"], tags: ["ai", "inference"], requiresLiveAvailabilityCheck: true },
 ];
