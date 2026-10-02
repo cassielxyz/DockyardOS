@@ -34,6 +34,7 @@ export function bundledCapabilityAgentText(candidateIds: string[]): string[] {
   const lines: string[] = [];
   for (const id of bundledCapabilityIds(candidateIds)) {
     const guidance = GUIDANCE[id];
+    if (!guidance) continue;
     lines.push(`DOCKYARD BUNDLED SKILL — ${id}`);
     lines.push(...guidance.map((item) => `- ${item}`));
   }
