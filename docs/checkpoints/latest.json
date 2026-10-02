@@ -3,7 +3,7 @@
   "repository": "cassielxyz/DockyardOS",
   "checkpointDate": "2026-10-02",
   "verifiedCodeSha": "f8a3f57188045da9999c4d8f4b9463ed197685be",
-  "checkpointPr": null,
+  "checkpointPr": 65,
   "lastCompletedMilestone": {
     "id": "P40.1",
     "title": "autonomous dashboard truth, skill lifecycle, and credential-safe media planning",
