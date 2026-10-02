@@ -3,7 +3,7 @@
   "repository": "cassielxyz/DockyardOS",
   "checkpointDate": "2026-10-02",
   "verifiedCodeSha": "c9c4c4f2f0224b25c55c485893a7d5b9461d8df3",
-  "checkpointPr": null,
+  "checkpointPr": 63,
   "lastCompletedMilestone": {
     "id": "P39.1",
     "title": "automatic selected installed skill context loading",
