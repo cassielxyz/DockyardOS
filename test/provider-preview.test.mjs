@@ -10,6 +10,13 @@ async function projectRoot() {
   return mkdtemp(join(tmpdir(), "dockyard-preview-plan-"));
 }
 
+function providerArgs(step, command, npmPackage) {
+  if (step.command === command) return step.args;
+  assert.equal(step.command, "npx");
+  assert.deepEqual(step.args.slice(0, 2), ["-y", npmPackage]);
+  return step.args.slice(2);
+}
+
 test("preview planner composes Supabase before Vercel so dependencies provision first", async () => {
   const root = await projectRoot();
   const plan = dockyard.planPreviewEnvironment(root, {
@@ -43,7 +50,7 @@ test("preview planner can compose Cloudflare Pages plus GitHub workflow with sco
       "github.ref": "feature/docs",
     },
   });
-  assert.deepEqual(plan.steps[0].args, ["pages", "deploy", "dist", "--project-name", "docs-site", "--branch", "feature-docs"]);
+  assert.deepEqual(providerArgs(plan.steps[0], "wrangler", "wrangler@latest"), ["pages", "deploy", "dist", "--project-name", "docs-site", "--branch", "feature-docs"]);
   assert.deepEqual(plan.steps[1].args, ["workflow", "run", "preview.yml", "--ref", "feature/docs"]);
 });
 
