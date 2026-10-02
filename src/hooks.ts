@@ -6,6 +6,7 @@ import { mediateAgentRequest, requestMediationAgentText } from "./request-mediat
 import { prepareCapabilityFulfillmentForInvocation } from "./capability-fulfillment-hook.js";
 import { checkPublicAdGate, publicAdToolAuthorized, sponsoredPlacementAgentText } from "./public-ad-gate.js";
 import { loadTeamRun } from "./team-state.js";
+import { planCinematicWebExperience } from "./cinematic-web.js";
 
 interface HookPayload {
   invocationNum?: number;
@@ -122,6 +123,15 @@ export async function handlePreInvocation(payload: HookPayload): Promise<Record<
       ]
     : requestMediationAgentText(mediation);
 
+  const cinematicLines = !("error" in mediation) && mediation.recipe === "cinematic-3d-web" && mediation.requestAvailable
+    ? [
+        "DOCKYARDOS CINEMATIC WEB PLAN:",
+        JSON.stringify(planCinematicWebExperience(
+          mediation.route === "continuation" ? team?.task ?? "continue cinematic web experience" : latest?.state.activeTask ?? team?.task ?? "cinematic web experience",
+        )),
+      ]
+    : [];
+
   let fulfillmentLines: string[] = [];
   if (!("error" in mediation)) {
     const prepared = await prepareCapabilityFulfillmentForInvocation(project.root, mediation, team).catch((error) => ({
@@ -138,6 +148,7 @@ export async function handlePreInvocation(payload: HookPayload): Promise<Record<
   const lines = [
     ...mediationLines,
     ...(fulfillmentLines.length ? ["", ...fulfillmentLines] : []),
+    ...(cinematicLines.length ? ["", ...cinematicLines] : []),
     "",
     `DockyardOS project: ${project.name}`,
     `Operating mode: ${project.mode}`,
