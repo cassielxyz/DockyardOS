@@ -130,12 +130,21 @@ export interface ProviderCommandProbe {
   };
 }
 
+export interface ProviderSecureCredentialProbe {
+  envVars: string[];
+  validationUrl: string;
+  header: string;
+  successReadiness: ProviderReadiness;
+  timeoutMs?: number;
+}
+
 export interface ProviderAdapterDefinition {
   id: string;
   displayName: string;
   cliCommands: string[];
   configMarkers: string[];
   linkedMarkers?: string[];
+  secureCredentialProbe?: ProviderSecureCredentialProbe;
   authProbe?: ProviderCommandProbe;
   statusProbe?: ProviderCommandProbe;
   capabilities: string[];
@@ -145,7 +154,7 @@ export interface ProviderAdapterDefinition {
 }
 
 export interface ProviderProbeSignal {
-  type: "cli" | "config" | "linked" | "auth" | "status";
+  type: "cli" | "config" | "credential" | "linked" | "auth" | "status";
   ok: boolean;
   detail: string;
 }
