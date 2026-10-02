@@ -57,6 +57,7 @@ declare module "node:fs/promises" {
 
 declare module "node:fs" {
   export const constants: any;
+  export function existsSync(path: string): boolean;
 }
 
 declare module "node:child_process" {
