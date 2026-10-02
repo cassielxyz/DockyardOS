@@ -53,11 +53,20 @@ export function chooseCinematicWebRoute(task: string): { route: CinematicWebRout
       ],
     };
   }
+  if (interactive3d) {
+    return {
+      route: "true-3d",
+      reason: [
+        "The request explicitly benefits from interactive 3D geometry/camera control.",
+        "Use Three.js/R3F for the interactive scene and keep content/navigation as semantic DOM sections.",
+      ],
+    };
+  }
   return {
-    route: "true-3d",
+    route: "hybrid",
     reason: [
-      "The request primarily benefits from interactive 3D geometry/camera control.",
-      "Use Three.js/R3F for the interactive scene and keep content/navigation as semantic DOM sections.",
+      "A generic 3D/cinematic website request benefits from a hybrid default: real 3D only where interaction earns its runtime cost, with deterministic frame-sequence storytelling for major transitions.",
+      "Keep every story beat as a separate semantic section and let the implementation team downgrade either layer when asset availability or performance evidence requires it.",
     ],
   };
 }
