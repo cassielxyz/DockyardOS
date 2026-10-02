@@ -91,11 +91,21 @@ export async function probeProvider(
       fallback = true;
     }
     if (commandExists(probeCommand)) {
-      const result = run(probeCommand, probeArgs, {
+      let result = run(probeCommand, probeArgs, {
         cwd: root,
         timeoutMs: adapter.authProbe.timeoutMs ?? 10_000,
         maxOutputBytes: 8_192,
       });
+      if (!result.ok && !fallback && adapter.authProbe.fallback && commandExists(adapter.authProbe.fallback.command)) {
+        probeCommand = adapter.authProbe.fallback.command;
+        probeArgs = adapter.authProbe.fallback.args;
+        fallback = true;
+        result = run(probeCommand, probeArgs, {
+          cwd: root,
+          timeoutMs: adapter.authProbe.timeoutMs ?? 10_000,
+          maxOutputBytes: 8_192,
+        });
+      }
       authenticated = result.ok;
       if (result.ok) readiness = stronger(readiness, adapter.authProbe.successReadiness);
       signals.push({
