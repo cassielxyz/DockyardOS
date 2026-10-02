@@ -9,6 +9,7 @@ This is the durable continuation checkpoint. On every future `continue`, inspect
 - Verified completed production state: `1d87a611f46a3a6681fd95e3ad2a4ac68a5046c5`
 - Last completed milestone: **P39 — autonomous skill bootstrap + cinematic 3D/2.5D web workflow**
 - Implementation PR: **#60**
+- Checkpoint PR: **#61**
 - Exact verified PR head: `91ccd5a69712a12055fdc34eb22f67eb9a92c905`
 - Current Core / VS Code extension version: **0.1.3**
 - Next milestone: **P40 — credential-safe media generation execution + remaining guarded public release work**
