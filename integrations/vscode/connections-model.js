@@ -1,44 +1,119 @@
 const PROVIDER_DEFINITIONS = Object.freeze({
-  github: { setupUrl: "https://cli.github.com/", loginCommand: "gh auth login" },
-  vercel: { setupUrl: "https://vercel.com/docs/cli", loginCommand: "vercel login" },
-  cloudflare: { setupUrl: "https://developers.cloudflare.com/workers/wrangler/install-and-update/", loginCommand: "wrangler login" },
-  supabase: { setupUrl: "https://supabase.com/docs/guides/local-development/cli/getting-started", loginCommand: "supabase login" },
-  neon: { setupUrl: "https://neon.com/docs/reference/neon-cli" },
-  firebase: { setupUrl: "https://firebase.google.com/docs/cli", loginCommand: "firebase login" },
-  appwrite: { setupUrl: "https://appwrite.io/docs/tooling/command-line/installation" },
-  render: { setupUrl: "https://render.com/docs/cli" },
-  railway: { setupUrl: "https://docs.railway.com/guides/cli", loginCommand: "railway login" },
-  flyio: { setupUrl: "https://fly.io/docs/flyctl/install/", loginCommand: "fly auth login" },
-  pocketbase: { setupUrl: "https://pocketbase.io/docs/" },
-  turso: { setupUrl: "https://docs.turso.tech/cli/introduction" },
-  sentry: { setupUrl: "https://docs.sentry.io/cli/" },
-  "cloud-run": { setupUrl: "https://cloud.google.com/sdk/docs/install", loginCommand: "gcloud auth login" },
-  "github-pages": { setupUrl: "https://cli.github.com/", loginCommand: "gh auth login" },
+  github: {
+    setupUrl: "https://cli.github.com/",
+    login: { command: "gh", args: ["auth", "login", "--hostname", "github.com", "--git-protocol", "https", "--web"] },
+    installers: {
+      win32: { command: "winget", args: ["install", "--id", "GitHub.cli", "--source", "winget", "--accept-package-agreements", "--accept-source-agreements"] },
+      darwin: { command: "brew", args: ["install", "gh"] },
+    },
+  },
+  vercel: {
+    setupUrl: "https://vercel.com/docs/cli",
+    login: { command: "vercel", args: ["login"] },
+    fallbackLogin: { command: "npx", args: ["-y", "vercel@latest", "login"] },
+  },
+  cloudflare: {
+    setupUrl: "https://developers.cloudflare.com/workers/wrangler/install-and-update/",
+    login: { command: "wrangler", args: ["login", "--device"] },
+    fallbackLogin: { command: "npx", args: ["-y", "wrangler@latest", "login", "--device"] },
+  },
+  supabase: {
+    setupUrl: "https://supabase.com/docs/guides/local-development/cli/getting-started",
+    login: { command: "supabase", args: ["login"] },
+    fallbackLogin: { command: "npx", args: ["-y", "supabase@latest", "login"] },
+  },
+  neon: {
+    setupUrl: "https://neon.com/cli",
+    login: { command: "neon", args: ["auth"] },
+    fallbackLogin: { command: "npx", args: ["-y", "neon@latest", "auth"] },
+  },
+  firebase: {
+    setupUrl: "https://firebase.google.com/docs/cli",
+    login: { command: "firebase", args: ["login"] },
+    fallbackLogin: { command: "npx", args: ["-y", "firebase-tools@latest", "login"] },
+  },
+  appwrite: {
+    setupUrl: "https://appwrite.io/docs/tooling/command-line/installation",
+    login: { command: "appwrite", args: ["login"] },
+    fallbackLogin: { command: "npx", args: ["-y", "appwrite-cli@latest", "login"] },
+  },
+  render: {
+    setupUrl: "https://render.com/docs/cli",
+    login: { command: "render", args: ["login"] },
+    installers: {
+      win32: { command: "winget", args: ["install", "--id", "render.cli", "--accept-package-agreements", "--accept-source-agreements"] },
+      darwin: { command: "brew", args: ["install", "render"] },
+    },
+  },
+  railway: {
+    setupUrl: "https://docs.railway.com/guides/cli",
+    login: { command: "railway", args: ["login"] },
+    fallbackLogin: { command: "npx", args: ["-y", "@railway/cli@latest", "login"] },
+  },
+  flyio: {
+    setupUrl: "https://fly.io/docs/flyctl/install/",
+    login: { command: "fly", args: ["auth", "login"] },
+  },
+  pocketbase: {
+    setupUrl: "https://pocketbase.io/docs/",
+    setupOnly: true,
+    note: "PocketBase is normally self-hosted/local; there is no universal managed-account login to perform.",
+  },
+  turso: {
+    setupUrl: "https://docs.turso.tech/cli/introduction",
+    setupOnly: true,
+    note: "Use Turso's current official CLI setup for the target environment before Dockyard performs readiness checks.",
+  },
+  sentry: {
+    setupUrl: "https://docs.sentry.io/api/auth/",
+    setupOnly: true,
+    note: "Sentry account/API authentication is kept outside Dockyard; prefer its supported OAuth/MCP flow where available.",
+  },
+  "cloud-run": {
+    setupUrl: "https://cloud.google.com/sdk/docs/install",
+    login: { command: "gcloud", args: ["auth", "login"] },
+  },
+  "github-pages": {
+    setupUrl: "https://cli.github.com/",
+    login: { command: "gh", args: ["auth", "login", "--hostname", "github.com", "--git-protocol", "https", "--web"] },
+    installers: {
+      win32: { command: "winget", args: ["install", "--id", "GitHub.cli", "--source", "winget", "--accept-package-agreements", "--accept-source-agreements"] },
+      darwin: { command: "brew", args: ["install", "gh"] },
+    },
+  },
 });
 
 const MCP_DEFINITIONS = Object.freeze([
   {
     id: "inspo-mcp",
     name: "Inspo MCP",
+    serverName: "inspo",
     category: "Design inspiration",
-    endpoint: "https://inspomcp.dev/mcp",
-    setupUrl: "https://inspomcp.dev/mcp",
-    setupCommand: "npx -y inspo-mcp install",
+    endpoint: "https://inspomcp.dev/api/mcp",
+    setupUrl: "https://inspomcp.dev/",
     auth: "none",
-    note: "Read-only design reference MCP. Hosted endpoint is free and requires no account login.",
+    note: "Read-only design reference MCP. Dockyard configures the hosted endpoint directly and does not use the third-party installer shell path.",
   },
-  { id: "github-mcp-server", name: "GitHub MCP", category: "Source control", setupUrl: "https://github.com/github/github-mcp-server", auth: "required" },
-  { id: "vercel-mcp-server", name: "Vercel MCP", category: "Deployment", endpoint: "https://mcp.vercel.com", setupUrl: "https://vercel.com/docs/mcp/vercel-mcp", auth: "required" },
-  { id: "supabase-mcp-server", name: "Supabase MCP", category: "Database / backend", endpoint: "https://mcp.supabase.com/mcp", setupUrl: "https://supabase.com/docs/guides/getting-started/mcp", auth: "required" },
-  { id: "neon-mcp-server", name: "Neon MCP", category: "Database", setupUrl: "https://github.com/neondatabase/mcp-server-neon", auth: "required" },
-  { id: "cloudflare-api-mcp", name: "Cloudflare MCP", category: "Edge / cloud", endpoint: "https://mcp.cloudflare.com/mcp", setupUrl: "https://developers.cloudflare.com/agents/model-context-protocol/mcp-servers-for-cloudflare/", auth: "required" },
-  { id: "figma-mcp", name: "Figma MCP", category: "Design", setupUrl: "https://help.figma.com/hc/en-us/articles/32132100833559-Guide-to-the-Dev-Mode-MCP-Server", auth: "required" },
-  { id: "linear-mcp", name: "Linear MCP", category: "Project management", endpoint: "https://mcp.linear.app/mcp", setupUrl: "https://linear.app/docs/mcp", auth: "required" },
-  { id: "notion-mcp", name: "Notion MCP", category: "Knowledge", endpoint: "https://mcp.notion.com/mcp", setupUrl: "https://developers.notion.com/docs/mcp", auth: "required" },
-  { id: "atlassian-rovo-mcp", name: "Atlassian Rovo MCP", category: "Jira / Confluence", endpoint: "https://mcp.atlassian.com/v2/mcp", setupUrl: "https://support.atlassian.com/rovo/docs/setting-up-ides/", auth: "required" },
-  { id: "mongodb-atlas-mcp", name: "MongoDB Atlas MCP", category: "Database", setupUrl: "https://www.mongodb.com/docs/mcp-server/", auth: "required" },
-  { id: "huggingface-mcp", name: "Hugging Face MCP", category: "AI / ML", setupUrl: "https://huggingface.co/docs/hub/en/mcp", auth: "required" },
-  { id: "sentry-mcp", name: "Sentry MCP", category: "Observability", setupUrl: "https://docs.sentry.io/product/sentry-mcp/", auth: "required" },
+  {
+    id: "github-mcp-server",
+    name: "GitHub MCP",
+    serverName: "github",
+    category: "Source control",
+    endpoint: "https://api.githubcopilot.com/mcp/",
+    setupUrl: "https://github.com/github/github-mcp-server/blob/main/docs/remote-server.md",
+    auth: "oauth",
+  },
+  { id: "vercel-mcp-server", name: "Vercel MCP", serverName: "vercel", category: "Deployment", endpoint: "https://mcp.vercel.com", setupUrl: "https://vercel.com/docs/mcp/vercel-mcp", auth: "oauth" },
+  { id: "supabase-mcp-server", name: "Supabase MCP", serverName: "supabase", category: "Database / backend", endpoint: "https://mcp.supabase.com/mcp", setupUrl: "https://supabase.com/docs/guides/getting-started/mcp", auth: "oauth" },
+  { id: "neon-mcp-server", name: "Neon MCP", serverName: "neon", category: "Database", setupUrl: "https://neon.com/docs/ai/neon-mcp-server", auth: "required" },
+  { id: "cloudflare-api-mcp", name: "Cloudflare MCP", serverName: "cloudflare", category: "Edge / cloud", endpoint: "https://mcp.cloudflare.com/mcp", setupUrl: "https://developers.cloudflare.com/agents/model-context-protocol/mcp-servers-for-cloudflare/", auth: "oauth" },
+  { id: "figma-mcp", name: "Figma MCP", serverName: "figma", category: "Design", endpoint: "https://mcp.figma.com/mcp", setupUrl: "https://help.figma.com/hc/en-us/articles/32132100833559-Guide-to-the-Figma-MCP-Server", auth: "oauth" },
+  { id: "linear-mcp", name: "Linear MCP", serverName: "linear", category: "Project management", endpoint: "https://mcp.linear.app/mcp", setupUrl: "https://linear.app/docs/mcp", auth: "oauth" },
+  { id: "notion-mcp", name: "Notion MCP", serverName: "notion", category: "Knowledge", endpoint: "https://mcp.notion.com/mcp", setupUrl: "https://developers.notion.com/docs/mcp", auth: "oauth" },
+  { id: "atlassian-rovo-mcp", name: "Atlassian Rovo MCP", serverName: "atlassian", category: "Jira / Confluence", endpoint: "https://mcp.atlassian.com/v2/mcp", setupUrl: "https://support.atlassian.com/rovo/docs/setting-up-ides/", auth: "oauth" },
+  { id: "mongodb-atlas-mcp", name: "MongoDB Atlas MCP", serverName: "mongodb-atlas", category: "Database", setupUrl: "https://www.mongodb.com/docs/mcp-server/", auth: "required" },
+  { id: "huggingface-mcp", name: "Hugging Face MCP", serverName: "huggingface", category: "AI / ML", setupUrl: "https://huggingface.co/docs/hub/en/mcp", auth: "required" },
+  { id: "sentry-mcp", name: "Sentry MCP", serverName: "sentry", category: "Observability", setupUrl: "https://docs.sentry.io/product/sentry-mcp/", auth: "required" },
 ]);
 
 function asArray(value) {
@@ -79,17 +154,26 @@ function normalizeConnections(providerProbeValue, options = {}) {
         detail: String(signal?.detail || ""),
       })),
       setupUrl: definition.setupUrl || null,
-      canLogin: Boolean(installed && definition.loginCommand),
-      loginCommand: installed && definition.loginCommand ? definition.loginCommand : null,
+      canConnect: Boolean(definition.login || definition.fallbackLogin || definition.installers || definition.setupOnly || definition.setupUrl),
+      automaticConnect: Boolean(definition.login || definition.fallbackLogin || definition.installers),
+      connectLabel: definition.setupOnly
+        ? "Configure"
+        : status.level === "ready"
+          ? "Reconnect"
+          : "Connect",
+      connectionNote: definition.note || null,
     };
   }).filter((item) => item.id);
 
   const mcps = MCP_DEFINITIONS.map((mcp) => ({
     ...mcp,
     kind: "mcp",
+    canConfigure: Boolean(mcp.endpoint),
     status: mcp.auth === "none"
-      ? { state: "ready-to-configure", label: "No login required", level: "ready" }
-      : { state: "host-verification-required", label: "Host verification required", level: "partial" },
+      ? { state: "ready-to-configure", label: "Ready to configure", level: "ready" }
+      : mcp.endpoint
+        ? { state: "oauth-configuration-ready", label: "Connect with host OAuth", level: "partial" }
+        : { state: "host-verification-required", label: "Host setup required", level: "partial" },
     verificationScope: "host-session",
   }));
 
