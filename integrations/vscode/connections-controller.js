@@ -30,14 +30,14 @@ function dockyardInvocation(context) {
   return { command: "dockyard", prefix: [] };
 }
 
-function runDockyard(context, args) {
+function runDockyard(context, args, options = {}) {
   return new Promise((resolve, reject) => {
     const invocation = dockyardInvocation(context);
     const child = spawn(invocation.command, [...invocation.prefix, ...args], {
       cwd: workspaceRoot(),
       shell: false,
       windowsHide: true,
-      env: process.env,
+      env: { ...process.env, ...(options.env || {}) },
     });
     let stdout = "";
     let stderr = "";
@@ -72,8 +72,21 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function verifyOneProvider(context, id) {
-  const output = await runDockyard(context, ["providers", "inspect", "--live", "--id", id, "--json"]);
+async function providerSecretEnvironment(context, onlyId) {
+  const env = {};
+  for (const id of ["google-ai"]) {
+    if (onlyId && onlyId !== id) continue;
+    const definition = providerDefinition(id);
+    if (!definition?.secretStorageKey || !definition?.secretEnvVar) continue;
+    const secret = await context.secrets.get(definition.secretStorageKey);
+    if (secret) env[definition.secretEnvVar] = secret;
+  }
+  return env;
+}
+
+async function verifyOneProvider(context, id, envOverride = {}) {
+  const env = { ...(await providerSecretEnvironment(context, id)), ...envOverride };
+  const output = await runDockyard(context, ["providers", "inspect", "--live", "--id", id, "--json"], { env });
   const probes = parseJson(output);
   if (!Array.isArray(probes) || probes.length !== 1) return undefined;
   return probes[0];
@@ -156,7 +169,7 @@ async function watchProviderConnection(context, panel, id) {
 async function loadConnections(context, liveChecked) {
   const args = ["providers", "inspect", "--json"];
   if (liveChecked) args.push("--live");
-  const output = await runDockyard(context, args);
+  const output = await runDockyard(context, args, { env: await providerSecretEnvironment(context) });
   const probes = parseJson(output);
   if (!Array.isArray(probes)) throw new Error("DockyardOS provider readiness output was not a JSON array.");
   return normalizeConnections(probes, { liveChecked });
@@ -187,6 +200,31 @@ async function connectProvider(context, panel, id) {
   const definition = providerDefinition(id);
   if (!definition) throw new Error(`Unknown provider connection: ${id}.`);
 
+  if (definition.secretInput) {
+    const value = await vscode.window.showInputBox({
+      title: "Connect Google AI / Gemini API",
+      prompt: "Paste a Gemini API key. DockyardOS verifies it read-only before storing it in VS Code SecretStorage.",
+      password: true,
+      ignoreFocusOut: true,
+      validateInput: (raw) => {
+        const key = String(raw || "").trim();
+        if (key.length < 16) return "API key is too short.";
+        if (key.length > 4096) return "API key is too long.";
+        if (/\s/.test(key)) return "API key must not contain whitespace.";
+        return undefined;
+      },
+    });
+    if (value === undefined) return;
+    const key = value.trim();
+    const probe = await verifyOneProvider(context, id, { [definition.secretEnvVar]: key });
+    if (probe?.authenticated !== true && probe?.readiness !== "authenticated") {
+      throw new Error("Google AI rejected the key or the read-only verification request could not be authenticated. The key was not stored.");
+    }
+    await context.secrets.store(definition.secretStorageKey, key);
+    await postModel(context, panel, true, "Google AI connected and verified. The API key is stored only in VS Code SecretStorage.");
+    return;
+  }
+
   const localModel = await loadConnections(context, false);
   const provider = localModel.providers.find((item) => item.id === id);
   const plan = providerConnectPlan(definition, provider, process.platform);
@@ -214,6 +252,19 @@ async function connectProvider(context, panel, id) {
     text: `${provider?.name || id} login started. Complete the browser/device flow; DockyardOS is verifying in the background.`,
   });
   void watchProviderConnection(context, panel, id);
+}
+
+async function forgetProviderSecret(context, panel, id) {
+  const definition = providerDefinition(id);
+  if (!definition?.secretStorageKey) throw new Error(`Provider ${id} does not use DockyardOS-managed SecretStorage.`);
+  const answer = await vscode.window.showWarningMessage(
+    `Forget the stored ${id} credential from VS Code SecretStorage?`,
+    { modal: true },
+    "Forget credential",
+  );
+  if (answer !== "Forget credential") return;
+  await context.secrets.delete(definition.secretStorageKey);
+  await postModel(context, panel, false, `${id} credential removed from VS Code SecretStorage.`);
 }
 
 async function openMcpSetup(id) {
@@ -296,6 +347,7 @@ async function openConnectionsCenter(context) {
         case "refresh-local": await postModel(context, panel, false, "Local readiness refreshed."); return;
         case "verify-live": await postModel(context, panel, true, "Read-only live verification completed."); return;
         case "provider-connect": await connectProvider(context, panel, id); return;
+        case "provider-forget-secret": await forgetProviderSecret(context, panel, id); return;
         case "provider-setup": await openProviderSetup(id); return;
         case "mcp-setup": await openMcpSetup(id); return;
         case "mcp-configure": await configureMcp(context, panel, id); return;
