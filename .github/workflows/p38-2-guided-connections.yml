@@ -1,0 +1,60 @@
+name: P38.2 Guided Connections
+
+on:
+  pull_request:
+    paths:
+      - "src/provider-adapters.ts"
+      - "src/provider-detection.ts"
+      - "src/provider-actions.ts"
+      - "src/provider-actions-alternative.ts"
+      - "src/process.ts"
+      - "src/types.ts"
+      - "src/catalog-creative.ts"
+      - "integrations/vscode/**"
+      - "test/p37-connections-creative-ui.test.mjs"
+      - "test/p38-2-guided-connections.test.mjs"
+      - ".github/workflows/p38-2-guided-connections.yml"
+      - "README.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Core dependencies
+        run: npm install --ignore-scripts
+      - name: Build Core
+        run: npm run build
+      - name: Run guided Connections tests
+        run: node --test test/p37-connections-creative-ui.test.mjs test/p38-2-guided-connections.test.mjs test/provider-actions.test.mjs test/provider-actions-alternative.test.mjs
+      - name: Check extension JavaScript
+        working-directory: integrations/vscode
+        run: |
+          npm install --ignore-scripts
+          npm run check
+      - name: Package and verify guided Connections VSIX
+        working-directory: integrations/vscode
+        run: |
+          npm run prepare-core
+          npx @vscode/vsce package --out /tmp/dockyardos-guided-connections.vsix
+          test -s /tmp/dockyardos-guided-connections.vsix
+          unzip -p /tmp/dockyardos-guided-connections.vsix extension/package.json > /tmp/vsix-package.json
+          node -e "const p=require('/tmp/vsix-package.json'); if(p.version!=='0.1.2') process.exit(1)"
+          unzip -l /tmp/dockyardos-guided-connections.vsix | grep -q 'extension/connections-controller.js'
+          unzip -l /tmp/dockyardos-guided-connections.vsix | grep -q 'extension/connections-model.js'
+          unzip -l /tmp/dockyardos-guided-connections.vsix | grep -q 'extension/connections-setup.js'
+          unzip -l /tmp/dockyardos-guided-connections.vsix | grep -q 'extension/connections-view.js'
+          unzip -l /tmp/dockyardos-guided-connections.vsix | grep -q 'extension/core/dist/main.js'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dockyardos-guided-connections-vsix
+          path: /tmp/dockyardos-guided-connections.vsix
+          if-no-files-found: error

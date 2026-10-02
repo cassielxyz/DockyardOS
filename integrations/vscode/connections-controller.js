@@ -1,8 +1,16 @@
 const vscode = require("vscode");
 const { spawn } = require("node:child_process");
 const fs = require("node:fs");
+const fsp = require("node:fs/promises");
 const path = require("node:path");
 const { normalizeConnections, providerDefinition, mcpDefinition } = require("./connections-model.js");
+const {
+  mcpSetupPlan,
+  mergeJsonMcpConfig,
+  platformExecutable,
+  providerConnectPlan,
+  terminalLine,
+} = require("./connections-setup.js");
 const { renderConnectionsHtml } = require("./connections-view.js");
 
 const MAX_OUTPUT_BYTES = 128 * 1024;
@@ -60,6 +68,91 @@ function parseJson(text) {
   try { return JSON.parse(text); } catch { return undefined; }
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function verifyOneProvider(context, id) {
+  const output = await runDockyard(context, ["providers", "inspect", "--live", "--id", id, "--json"]);
+  const probes = parseJson(output);
+  if (!Array.isArray(probes) || probes.length !== 1) return undefined;
+  return probes[0];
+}
+
+function openCommandTerminal(title, specs) {
+  const terminal = vscode.window.createTerminal({ name: title, cwd: workspaceRoot() });
+  terminal.show();
+  for (const spec of specs) {
+    const line = terminalLine({ command: platformExecutable(spec.command), args: spec.args || [] });
+    terminal.sendText(line, true);
+  }
+  return terminal;
+}
+
+async function safeWriteMcpJson(plan) {
+  const target = path.resolve(plan.path);
+  const allowedRoot = path.resolve(plan.allowedRoot || path.dirname(target));
+  await fsp.mkdir(path.dirname(target), { recursive: true });
+
+  const [realParent, realAllowedRoot] = await Promise.all([
+    fsp.realpath(path.dirname(target)),
+    fsp.realpath(allowedRoot),
+  ]);
+  const relativeParent = path.relative(realAllowedRoot, realParent);
+  if (relativeParent === ".." || relativeParent.startsWith(`..${path.sep}`) || path.isAbsolute(relativeParent)) {
+    throw new Error("MCP configuration path escapes the selected host configuration root.");
+  }
+
+  let raw = "";
+  let exists = false;
+  try {
+    const stat = await fsp.lstat(target);
+    if (stat.isSymbolicLink() || !stat.isFile()) throw new Error("Existing MCP configuration must be a regular file, not a symlink or special entry.");
+    raw = await fsp.readFile(target, "utf8");
+    exists = true;
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
+  }
+
+  const merged = mergeJsonMcpConfig(raw, plan);
+  const stamp = `${process.pid}-${Date.now()}`;
+  const temporary = `${target}.dockyard-tmp-${stamp}`;
+  const rollback = `${target}.dockyard-rollback-${stamp}`;
+  await fsp.writeFile(temporary, `${JSON.stringify(merged, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
+
+  try {
+    if (exists) await fsp.rename(target, rollback);
+    await fsp.rename(temporary, target);
+    if (exists) await fsp.rm(rollback, { force: true });
+  } catch (error) {
+    await fsp.rm(temporary, { force: true }).catch(() => undefined);
+    if (exists) {
+      try {
+        await fsp.access(rollback);
+        await fsp.rename(rollback, target);
+      } catch {}
+    }
+    throw error;
+  }
+}
+
+async function watchProviderConnection(context, panel, id) {
+  for (let attempt = 0; attempt < 24; attempt += 1) {
+    await sleep(attempt === 0 ? 3500 : 4000);
+    try {
+      const probe = await verifyOneProvider(context, id);
+      if (probe?.authenticated === true || probe?.readiness === "authenticated" || probe?.readiness === "linked") {
+        await postModel(context, panel, true, `${probe.displayName || id} connected and verified.`);
+        return;
+      }
+    } catch {}
+  }
+  await panel.webview.postMessage({
+    type: "notice",
+    text: "Login/setup is still pending. Complete the provider browser/device flow, then use Verify connections.",
+  });
+}
+
 async function loadConnections(context, liveChecked) {
   const args = ["providers", "inspect", "--json"];
   if (liveChecked) args.push("--live");
@@ -90,21 +183,37 @@ async function openProviderSetup(id) {
   await vscode.env.openExternal(safeUrl(definition.setupUrl));
 }
 
-async function openProviderLogin(id) {
+async function connectProvider(context, panel, id) {
   const definition = providerDefinition(id);
-  if (!definition?.loginCommand) {
-    await openProviderSetup(id);
-    return;
+  if (!definition) throw new Error(`Unknown provider connection: ${id}.`);
+
+  const localModel = await loadConnections(context, false);
+  const provider = localModel.providers.find((item) => item.id === id);
+  const plan = providerConnectPlan(definition, provider, process.platform);
+
+  if (!plan.commands.length) {
+    if (plan.setupUrl) {
+      await vscode.env.openExternal(safeUrl(plan.setupUrl));
+      await panel.webview.postMessage({ type: "notice", text: `${provider?.name || id} needs provider-managed setup. Dockyard opened the official setup page.` });
+      return;
+    }
+    throw new Error(`No safe automatic connection flow is registered for ${id}.`);
   }
+
+  const commandPreview = plan.commands.map((spec) => terminalLine({ command: platformExecutable(spec.command), args: spec.args || [] })).join("\n");
   const answer = await vscode.window.showInformationMessage(
-    `DockyardOS will open a visible terminal and run the official ${id} login command. Credentials are handled by that provider CLI and are not captured by DockyardOS.\n\nCommand: ${definition.loginCommand}`,
+    `DockyardOS will start the official ${provider?.name || id} setup/login flow in a visible terminal. The provider owns the browser/device authorization and stores its own credentials; DockyardOS does not capture tokens.\n\n${commandPreview}`,
     { modal: true },
-    "Open login terminal",
+    plan.kind === "install-login" ? "Install & connect" : "Connect",
   );
-  if (answer !== "Open login terminal") return;
-  const terminal = vscode.window.createTerminal({ name: `DockyardOS · ${id} login`, cwd: workspaceRoot() });
-  terminal.show();
-  terminal.sendText(definition.loginCommand, true);
+  if (!answer) return;
+
+  openCommandTerminal(`DockyardOS · ${provider?.name || id}`, plan.commands);
+  await panel.webview.postMessage({
+    type: "notice",
+    text: `${provider?.name || id} login started. Complete the browser/device flow; DockyardOS is verifying in the background.`,
+  });
+  void watchProviderConnection(context, panel, id);
 }
 
 async function openMcpSetup(id) {
@@ -113,21 +222,41 @@ async function openMcpSetup(id) {
   await vscode.env.openExternal(safeUrl(definition.setupUrl));
 }
 
-async function runMcpSetupCommand(id) {
+async function configureMcp(context, panel, id) {
   const definition = mcpDefinition(id);
-  if (!definition?.setupCommand) {
+  if (!definition) throw new Error(`Unknown MCP connector: ${id}.`);
+  if (!definition.endpoint) {
     await openMcpSetup(id);
     return;
   }
+
+  const host = vscode.workspace.getConfiguration("dockyardOS").get("defaultHost", "antigravity");
+  const plan = mcpSetupPlan(host, definition);
+  if (plan.kind === "docs") {
+    await openMcpSetup(id);
+    return;
+  }
+
+  const detail = plan.kind === "json-file"
+    ? `Update ${plan.path} and preserve all unrelated MCP servers.`
+    : `Run ${terminalLine({ command: platformExecutable(plan.command), args: plan.args || [] })}.`;
   const answer = await vscode.window.showInformationMessage(
-    `DockyardOS will run this connector's official setup command in a visible terminal. Review any configuration changes before accepting them.\n\nCommand: ${definition.setupCommand}`,
+    `Configure ${definition.name} for ${host}?\n\n${detail}\n\nDockyardOS will not add credentials or OAuth tokens to the config. If authentication is required, the selected host remains responsible for its own OAuth flow.`,
     { modal: true },
-    "Open setup terminal",
+    "Configure MCP",
   );
-  if (answer !== "Open setup terminal") return;
-  const terminal = vscode.window.createTerminal({ name: `DockyardOS · ${definition.name}`, cwd: workspaceRoot() });
-  terminal.show();
-  terminal.sendText(definition.setupCommand, true);
+  if (answer !== "Configure MCP") return;
+
+  if (plan.kind === "json-file") {
+    await safeWriteMcpJson(plan);
+  } else if (plan.kind === "command") {
+    openCommandTerminal(`DockyardOS · ${definition.name} · ${host}`, [{ command: plan.command, args: plan.args }]);
+  }
+
+  const authText = definition.auth === "none"
+    ? "No account login is required. Reload/restart the selected host if it does not pick up the server immediately."
+    : "The MCP is configured. The selected host will perform OAuth/authentication when it starts the server; complete the browser prompt there.";
+  await panel.webview.postMessage({ type: "notice", text: `${definition.name} configured for ${host}. ${authText}` });
 }
 
 async function copyMcpEndpoint(id) {
@@ -166,10 +295,10 @@ async function openConnectionsCenter(context) {
       switch (message.type) {
         case "refresh-local": await postModel(context, panel, false, "Local readiness refreshed."); return;
         case "verify-live": await postModel(context, panel, true, "Read-only live verification completed."); return;
-        case "provider-login": await openProviderLogin(id); return;
+        case "provider-connect": await connectProvider(context, panel, id); return;
         case "provider-setup": await openProviderSetup(id); return;
         case "mcp-setup": await openMcpSetup(id); return;
-        case "mcp-command": await runMcpSetupCommand(id); return;
+        case "mcp-configure": await configureMcp(context, panel, id); return;
         case "mcp-copy-endpoint": await copyMcpEndpoint(id); return;
         default: throw new Error("Unsupported Connections Center action.");
       }

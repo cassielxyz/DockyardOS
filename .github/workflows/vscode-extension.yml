@@ -84,6 +84,7 @@ jobs:
           unzip -l dockyardos-vscode.vsix | grep -q 'extension/assets/dockyard-graffiti-bg.svg'
           unzip -l dockyardos-vscode.vsix | grep -q 'extension/assets/dockyard-activity.svg'
           unzip -l dockyardos-vscode.vsix | grep -q 'extension/connections-controller.js'
+          unzip -l dockyardos-vscode.vsix | grep -q 'extension/connections-setup.js'
           unzip -l dockyardos-vscode.vsix | grep -q 'extension/community-hub-view.js'
           unzip -l dockyardos-vscode.vsix | grep -q 'extension/community-update-scheduler.js'
           unzip -l dockyardos-vscode.vsix | grep -q 'extension/partner-offers.js'

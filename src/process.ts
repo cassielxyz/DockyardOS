@@ -1,4 +1,6 @@
 import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
+import { dirname, join } from "node:path";
 
 export interface ProcessResult {
   ok: boolean;
@@ -32,10 +34,28 @@ function bounded(value: string, maxOutputBytes: number): string {
   return `${Buffer.from(clean, "utf8").subarray(0, maxOutputBytes).toString("utf8")}\n[output truncated]`;
 }
 
+function wherePaths(command: string): string[] {
+  if (process.platform !== "win32") return [];
+  const found = spawnSync("where.exe", [command], { encoding: "utf8", windowsHide: true, timeout: 2_000 });
+  if (found.status !== 0) return [];
+  return String(found.stdout || "").split(/\r?\n/).map((value) => value.trim()).filter(Boolean);
+}
+
+function windowsPackageManagerInvocation(command: string, args: string[]): { command: string; args: string[] } {
+  if (process.platform !== "win32" || !["npm", "npx"].includes(command)) return { command, args };
+  const shim = wherePaths(command).find((value) => /\.cmd$/i.test(value)) ?? wherePaths(command)[0];
+  const node = wherePaths("node").find((value) => /\.exe$/i.test(value)) ?? wherePaths("node")[0];
+  if (!shim || !node) return { command, args };
+  const script = join(dirname(shim), "node_modules", "npm", "bin", command === "npx" ? "npx-cli.js" : "npm-cli.js");
+  if (!existsSync(script)) return { command, args };
+  return { command: node, args: [script, ...args] };
+}
+
 export function run(command: string, args: string[], cwdOrOptions?: string | RunOptions): ProcessResult {
   const options: RunOptions = typeof cwdOrOptions === "string" ? { cwd: cwdOrOptions } : (cwdOrOptions ?? {});
   const maxOutputBytes = options.maxOutputBytes ?? 32_768;
-  const result = spawnSync(command, args, {
+  const invocation = windowsPackageManagerInvocation(command, args);
+  const result = spawnSync(invocation.command, invocation.args, {
     cwd: options.cwd,
     encoding: "utf8",
     windowsHide: true,

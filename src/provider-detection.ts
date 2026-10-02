@@ -82,25 +82,45 @@ export async function probeProvider(
 
   let authenticated: boolean | undefined;
   if (live && adapter.authProbe) {
-    const probeCommand = command && adapter.cliCommands.includes(adapter.authProbe.command) ? command : adapter.authProbe.command;
+    let probeCommand = command && adapter.cliCommands.includes(adapter.authProbe.command) ? command : adapter.authProbe.command;
+    let probeArgs = adapter.authProbe.args;
+    let fallback = false;
+    if (!commandExists(probeCommand) && adapter.authProbe.fallback && commandExists(adapter.authProbe.fallback.command)) {
+      probeCommand = adapter.authProbe.fallback.command;
+      probeArgs = adapter.authProbe.fallback.args;
+      fallback = true;
+    }
     if (commandExists(probeCommand)) {
-      const result = run(probeCommand, adapter.authProbe.args, {
+      let result = run(probeCommand, probeArgs, {
         cwd: root,
         timeoutMs: adapter.authProbe.timeoutMs ?? 10_000,
         maxOutputBytes: 8_192,
       });
+      if (!result.ok && !fallback && adapter.authProbe.fallback && commandExists(adapter.authProbe.fallback.command)) {
+        probeCommand = adapter.authProbe.fallback.command;
+        probeArgs = adapter.authProbe.fallback.args;
+        fallback = true;
+        result = run(probeCommand, probeArgs, {
+          cwd: root,
+          timeoutMs: adapter.authProbe.timeoutMs ?? 10_000,
+          maxOutputBytes: 8_192,
+        });
+      }
       authenticated = result.ok;
       if (result.ok) readiness = stronger(readiness, adapter.authProbe.successReadiness);
       signals.push({
         type: "auth",
         ok: result.ok,
         detail: result.ok
-          ? `Authentication probe succeeded: ${safeCommandLabel(probeCommand, adapter.authProbe.args)}`
-          : `Authentication probe failed${result.timedOut ? " (timeout)" : ""}: ${safeCommandLabel(probeCommand, adapter.authProbe.args)}`,
+          ? `Authentication probe succeeded: ${safeCommandLabel(probeCommand, probeArgs)}${fallback ? " (fallback launcher)" : ""}`
+          : `Authentication probe failed${result.timedOut ? " (timeout)" : ""}: ${safeCommandLabel(probeCommand, probeArgs)}`,
       });
     } else {
       authenticated = false;
-      signals.push({ type: "auth", ok: false, detail: `Authentication probe skipped; ${probeCommand} is not installed.` });
+      const expected = adapter.authProbe.fallback
+        ? `${adapter.authProbe.command} or ${adapter.authProbe.fallback.command}`
+        : adapter.authProbe.command;
+      signals.push({ type: "auth", ok: false, detail: `Authentication probe skipped; ${expected} is not installed.` });
     }
   }
 
@@ -126,7 +146,7 @@ export async function probeProvider(
     }
   }
 
-  if (!installed && !configured && !linked) readiness = "unavailable";
+  if (!installed && !configured && !linked && authenticated !== true) readiness = "unavailable";
 
   return {
     providerId: adapter.id,

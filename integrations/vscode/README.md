@@ -66,10 +66,13 @@ The first view uses local-only provider checks. **Verify connections** explicitl
 
 Provider account actions follow these rules:
 
+- every provider card has a primary **Connect / Reconnect / Configure** action instead of making users infer the next step from CLI state;
 - only extension-owned provider IDs are accepted;
 - the webview cannot submit a shell command or arbitrary URL;
-- setup links are fixed HTTPS definitions;
-- supported logins run the provider's own CLI in a visible terminal after confirmation;
+- supported browser/device logins run through fixed allowlisted provider commands in a visible terminal;
+- Vercel, Cloudflare, Supabase, Neon, Firebase, Appwrite and Railway can use a bounded `npx` launcher when their global CLI is absent;
+- Dockyard automatically polls the provider's existing read-only live probe after login and only shows a verified account state when that probe succeeds;
+- provider-managed/self-hosted cases open the official setup surface instead of inventing credentials or OAuth behavior;
 - passwords, OAuth tokens, API keys and MCP credentials are not written into Dockyard project/checkpoint state;
 - installed/configured MCP metadata is not called connected;
 - host-session evidence remains the authority for current-session MCP connectivity;
@@ -82,16 +85,12 @@ Useful cards include GitHub, Vercel, Supabase, Cloudflare, Neon, Firebase, Figma
 Inspo is a read-only/no-login design-reference MCP:
 
 ```text
-https://inspomcp.dev/mcp
+https://inspomcp.dev/api/mcp
 ```
 
-The Connections Center can copy the endpoint, open the official setup page, or open the official installer in a visible terminal after confirmation:
+The Connections Center configures this hosted endpoint **directly for the selected Dockyard host**. Dockyard does not invoke `inspo-mcp install`, so Windows shell quoting in that third-party installer cannot corrupt the VS Code setup path.
 
-```bash
-npx -y inspo-mcp install
-```
-
-“No login required” does not mean “already connected”. The active host still needs to verify actual MCP use for current-session connection truth.
+“No login required” does not mean “already connected”. The active host still needs to load/use the server before current-session connection truth is established.
 
 ## Creative UI workflow
 

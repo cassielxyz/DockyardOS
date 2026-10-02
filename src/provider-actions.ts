@@ -222,6 +222,13 @@ function safeProjectPath(root: string, value: string, label: string): string {
   return rel === "" ? "." : rel.replace(/\\/g, "/");
 }
 
+function providerCli(command: string, npmPackage: string): { command: string; prefix: string[] } {
+  if (process.platform === "win32" && commandExists("npx")) return { command: "npx", prefix: ["-y", npmPackage] };
+  if (commandExists(command)) return { command, prefix: [] };
+  if (commandExists("npx")) return { command: "npx", prefix: ["-y", npmPackage] };
+  return { command, prefix: [] };
+}
+
 function boolParam(params: Record<string, string>, name: string): boolean {
   const raw = params[name];
   if (raw === undefined) return false;
@@ -282,22 +289,26 @@ function commandPlan(
   }
 
   if (action.providerId === "vercel" && (action.id === "preview-deploy" || action.id === "production-deploy")) {
-    const args = ["deploy", "--yes"];
+    const cli = providerCli("vercel", "vercel@latest");
+    const args = [...cli.prefix, "deploy", "--yes"];
     if (params.prebuilt === "true") args.push("--prebuilt");
     if (action.id === "production-deploy") args.push("--prod");
     return {
-      command: "vercel",
+      command: cli.command,
       args,
       verification: {
         strategy: "vercel-deployment-url",
+        command: cli.command,
+        args: cli.prefix,
         timeoutMs: 180_000,
-        description: "Parse the HTTPS deployment URL from deploy stdout and verify it with `vercel inspect <url> --wait`.",
+        description: "Parse the HTTPS deployment URL from deploy stdout and verify it with the same Vercel CLI launcher.",
       },
     };
   }
 
   if (action.providerId === "cloudflare" && action.id === "worker-preview-upload") {
-    const args = ["versions", "upload"];
+    const cli = providerCli("wrangler", "wrangler@latest");
+    const args = [...cli.prefix, "versions", "upload"];
     if (params.path) args.push(params.path);
     if (params.name) args.push("--name", params.name);
     if (params.alias) args.push("--preview-alias", params.alias);
@@ -305,12 +316,12 @@ function commandPlan(
     if (params.name) verifyArgs.push("--name", params.name);
     verifyArgs.push("--json");
     return {
-      command: "wrangler",
+      command: cli.command,
       args,
       verification: {
         strategy: "command",
-        command: "wrangler",
-        args: verifyArgs,
+        command: cli.command,
+        args: [...cli.prefix, ...verifyArgs],
         timeoutMs: 60_000,
         description: "List recent Worker versions after the preview upload.",
       },
@@ -318,13 +329,14 @@ function commandPlan(
   }
 
   if (action.providerId === "cloudflare" && action.id === "pages-preview-deploy") {
+    const cli = providerCli("wrangler", "wrangler@latest");
     return {
-      command: "wrangler",
-      args: ["pages", "deploy", params.directory!, "--project-name", params.project!, "--branch", params.branch!],
+      command: cli.command,
+      args: [...cli.prefix, "pages", "deploy", params.directory!, "--project-name", params.project!, "--branch", params.branch!],
       verification: {
         strategy: "command",
-        command: "wrangler",
-        args: ["pages", "deployment", "list", "--project-name", params.project!, "--environment", "preview", "--json"],
+        command: cli.command,
+        args: [...cli.prefix, "pages", "deployment", "list", "--project-name", params.project!, "--environment", "preview", "--json"],
         timeoutMs: 60_000,
         description: "List preview deployments for the explicit Cloudflare Pages project.",
       },
@@ -332,13 +344,14 @@ function commandPlan(
   }
 
   if (action.providerId === "supabase" && action.id === "preview-branch-create") {
+    const cli = providerCli("supabase", "supabase@latest");
     return {
-      command: "supabase",
-      args: ["branches", "create", params.branch!, "--project-ref", params["project-ref"]!],
+      command: cli.command,
+      args: [...cli.prefix, "branches", "create", params.branch!, "--project-ref", params["project-ref"]!],
       verification: {
         strategy: "command",
-        command: "supabase",
-        args: ["branches", "get", params.branch!, "--project-ref", params["project-ref"]!],
+        command: cli.command,
+        args: [...cli.prefix, "branches", "get", params.branch!, "--project-ref", params["project-ref"]!],
         timeoutMs: 60_000,
         description: "Retrieve the explicit Supabase preview branch after creation.",
       },
@@ -346,15 +359,16 @@ function commandPlan(
   }
 
   if (action.providerId === "supabase" && action.id === "functions-deploy") {
-    const args = ["functions", "deploy", params.function!, "--project-ref", params["project-ref"]!];
+    const cli = providerCli("supabase", "supabase@latest");
+    const args = [...cli.prefix, "functions", "deploy", params.function!, "--project-ref", params["project-ref"]!];
     if (params["use-api"] === "true") args.push("--use-api");
     return {
-      command: "supabase",
+      command: cli.command,
       args,
       verification: {
         strategy: "command",
-        command: "supabase",
-        args: ["functions", "list", "--project-ref", params["project-ref"]!],
+        command: cli.command,
+        args: [...cli.prefix, "functions", "list", "--project-ref", params["project-ref"]!],
         timeoutMs: 60_000,
         description: "List Edge Functions on the explicit target project after deployment.",
       },
@@ -460,8 +474,8 @@ export async function executeProviderAction(
         status = "verification-failed";
         summary = "Vercel mutation succeeded but no HTTPS deployment URL could be safely extracted for verification.";
       } else {
-        verifyCommand = "vercel";
-        verifyArgs = ["inspect", reference, "--wait"];
+        verifyCommand = plan.verification.command ?? "vercel";
+        verifyArgs = [...(plan.verification.args ?? []), "inspect", reference, "--wait"];
       }
     } else {
       verifyCommand = plan.verification.command;

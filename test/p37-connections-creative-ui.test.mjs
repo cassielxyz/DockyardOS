@@ -35,7 +35,7 @@ test("P37 registers Taste, Awesome Design Skills, and Inspo without overstating 
   assert.ok(inspo);
   assert.equal(inspo.kind, "mcp");
   assert.equal(inspo.source.type, "website");
-  assert.equal(inspo.source.locator, "https://inspomcp.dev/mcp");
+  assert.equal(inspo.source.locator, "https://inspomcp.dev/api/mcp");
   assert.equal(inspo.source.revisionStrategy, "live-metadata-only");
   assert.deepEqual(inspo.permissions, ["network"]);
   assert.equal(inspo.risk, "low");
@@ -89,9 +89,10 @@ test("P37 Connections Center keeps local, live, and host-session connection stat
   const github = local.providers.find((item) => item.id === "github");
   const vercel = local.providers.find((item) => item.id === "vercel");
   assert.equal(github.status.state, "installed");
-  assert.equal(github.canLogin, true);
+  assert.equal(github.canConnect, true);
   assert.equal(github.authenticated, false);
-  assert.equal(vercel.canLogin, false, "missing CLI must not expose a login command button");
+  assert.equal(vercel.canConnect, true, "missing global CLI should still expose the safe guided Connect flow");
+  assert.equal(vercel.automaticConnect, true);
   assert.equal(local.liveChecked, false);
 
   const verified = normalizeConnections([
@@ -115,7 +116,8 @@ test("P37 Connections Center keeps local, live, and host-session connection stat
   assert.equal(inspo.auth, "none");
   assert.equal(inspo.status.state, "ready-to-configure");
   assert.notEqual(inspo.status.state, "connected");
-  assert.equal(githubMcp.status.state, "host-verification-required");
+  assert.equal(githubMcp.status.state, "oauth-configuration-ready");
+  assert.notEqual(githubMcp.status.state, "connected");
   assert.equal(githubMcp.verificationScope, "host-session");
 });
 
@@ -124,12 +126,17 @@ test("P37 Connections actions are allowlisted metadata, not caller supplied comm
   assert.equal(mcpDefinition("unknown-mcp"), undefined);
 
   const github = providerDefinition("github");
-  assert.equal(github.loginCommand, "gh auth login");
+  assert.equal(github.login.command, "gh");
+  assert.deepEqual(github.login.args.slice(0, 2), ["auth", "login"]);
   assert.match(github.setupUrl, /^https:\/\//);
 
+  const vercel = providerDefinition("vercel");
+  assert.equal(vercel.fallbackLogin.command, "npx");
+  assert.ok(vercel.fallbackLogin.args.includes("vercel@latest"));
+
   const inspo = mcpDefinition("inspo-mcp");
-  assert.equal(inspo.setupCommand, "npx -y inspo-mcp install");
-  assert.equal(inspo.endpoint, "https://inspomcp.dev/mcp");
+  assert.equal(inspo.setupCommand, undefined);
+  assert.equal(inspo.endpoint, "https://inspomcp.dev/api/mcp");
 
   for (const entry of MCP_DEFINITIONS) {
     if (entry.setupUrl) assert.match(entry.setupUrl, /^https:\/\//, `${entry.id} setup URL must be HTTPS`);

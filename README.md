@@ -383,7 +383,23 @@ Dockyard explicitly tries to avoid defaulting every product into the same giant-
 
 The **Connections Center** is the login/readiness UI for provider accounts and MCP connectors.
 
-It is deliberately not a password vault.
+It is deliberately not a password vault. The normal user flow is UI-first:
+
+```text
+Not connected
+   ↓
+Connect
+   ↓
+provider-owned browser / device login
+   ↓
+Dockyard read-only verification
+   ↓
+Authenticated / linked
+```
+
+When a supported Node-based provider CLI is not installed globally, DockyardOS can use a bounded ephemeral `npx` launcher instead of making the user install the CLI first. The login still belongs to the provider, and Dockyard only changes the card to a ready state after its existing live probe verifies the account.
+
+Providers that do not expose a safe universal automated login remain provider-managed setup flows instead of being falsely presented as one-click OAuth.
 
 ### Provider examples
 
@@ -402,7 +418,7 @@ DockyardOS can inspect or guide setup for providers such as:
 - Sentry
 - other provider alternatives represented by the provider layer
 
-Provider login flows run through the provider’s own CLI or supported mechanism. Credentials remain with the provider tooling rather than being copied into Dockyard checkpoints.
+Provider login flows run through the provider’s own CLI or supported mechanism. Credentials remain with the provider tooling rather than being copied into Dockyard checkpoints. Vercel, Cloudflare, Supabase, Neon, Firebase, Appwrite and Railway can use Dockyard's allowlisted ephemeral CLI path when the global command is absent; GitHub and selected native CLIs use their verified install/login surfaces.
 
 ### MCP / connector examples
 
@@ -422,6 +438,8 @@ The catalogue includes connectors such as:
 - Notion MCP
 - Atlassian / Jira / Confluence MCP
 - Inspo MCP
+
+For remote MCPs with a verified endpoint, **Configure for host** writes or invokes only the selected host's supported MCP registration path. OAuth tokens are not written by DockyardOS; the host/provider owns the browser OAuth flow. Inspo is configured directly at `https://inspomcp.dev/api/mcp`, avoiding the third-party Windows installer quoting failure while preserving unrelated MCP entries.
 
 ### Connection truth
 

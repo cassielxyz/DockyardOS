@@ -124,6 +124,10 @@ export interface ProviderCommandProbe {
   args: string[];
   successReadiness: ProviderReadiness;
   timeoutMs?: number;
+  fallback?: {
+    command: string;
+    args: string[];
+  };
 }
 
 export interface ProviderAdapterDefinition {
