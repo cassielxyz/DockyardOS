@@ -223,6 +223,7 @@ function safeProjectPath(root: string, value: string, label: string): string {
 }
 
 function providerCli(command: string, npmPackage: string): { command: string; prefix: string[] } {
+  if (process.platform === "win32" && commandExists("npx")) return { command: "npx", prefix: ["-y", npmPackage] };
   if (commandExists(command)) return { command, prefix: [] };
   if (commandExists("npx")) return { command: "npx", prefix: ["-y", npmPackage] };
   return { command, prefix: [] };
