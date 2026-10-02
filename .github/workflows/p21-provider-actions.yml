@@ -4,6 +4,9 @@ on:
   pull_request:
     paths:
       - "src/provider-actions-alternative.ts"
+      - "src/provider-actions.ts"
+      - "src/provider-detection.ts"
+      - "src/process.ts"
       - "src/provider-action-router.ts"
       - "src/provider-command.ts"
       - "src/provider-adapters.ts"
@@ -42,21 +45,21 @@ jobs:
 
           node dist/main.js providers actions --provider neon > /tmp/neon-actions.json
           node dist/main.js providers action plan --provider neon --action preview-branch-create --environment preview --param project=quiet-snow-1234 --param branch=preview/pr-42 > /tmp/neon-plan.json
-          node -e "const p=JSON.parse(require('fs').readFileSync('/tmp/neon-plan.json','utf8')); if(p.command!=='neon'||!p.args.includes('--no-secrets')||p.productionApprovalRequired) process.exit(1)"
+          node -e "const p=JSON.parse(require('fs').readFileSync('/tmp/neon-plan.json','utf8')); const ok=p.command==='neon'||(p.command==='npx'&&p.args?.[0]==='-y'&&p.args?.[1]==='neon@latest'); if(!ok||!p.args.includes('--no-secrets')||p.productionApprovalRequired) process.exit(1)"
 
           node dist/main.js providers actions --provider firebase > /tmp/firebase-actions.json
           node dist/main.js providers action plan --provider firebase --action hosting-preview-deploy --environment preview --param project=dockyard-preview --param channel=pr-42 --param target=web > /tmp/firebase-preview.json
           node dist/main.js providers action plan --provider firebase --action hosting-production-deploy --environment production --param project=dockyard-prod --param target=web > /tmp/firebase-production.json
-          node -e "const p=JSON.parse(require('fs').readFileSync('/tmp/firebase-production.json','utf8')); if(!p.productionApprovalRequired||p.command!=='firebase') process.exit(1)"
+          node -e "const p=JSON.parse(require('fs').readFileSync('/tmp/firebase-production.json','utf8')); const ok=p.command==='firebase'||(p.command==='npx'&&p.args?.[0]==='-y'&&p.args?.[1]==='firebase-tools@latest'); if(!p.productionApprovalRequired||!ok) process.exit(1)"
 
           node dist/main.js providers action plan --provider railway --action service-deploy --environment preview --param project=project123 --param railway-environment=preview --param service=web --param path=apps/web > /tmp/railway-plan.json
-          node -e "const p=JSON.parse(require('fs').readFileSync('/tmp/railway-plan.json','utf8')); if(p.command!=='railway'||!p.args.includes('--project')||!p.args.includes('--service')||p.verification?.args?.[0]!=='logs') process.exit(1)"
+          node -e "const p=JSON.parse(require('fs').readFileSync('/tmp/railway-plan.json','utf8')); const ok=p.command==='railway'||(p.command==='npx'&&p.args?.[0]==='-y'&&p.args?.[1]==='@railway/cli@latest'); if(!ok||!p.args.includes('--project')||!p.args.includes('--service')||!p.verification?.args?.includes('logs')) process.exit(1)"
 
           node dist/main.js providers action plan --provider render --action service-deploy --environment preview --param service=srv-cafe123 --param commit=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa > /tmp/render-plan.json
           node -e "const p=JSON.parse(require('fs').readFileSync('/tmp/render-plan.json','utf8')); if(p.command!=='render'||p.args?.[0]!=='deploys'||!p.args.includes('--wait')) process.exit(1)"
 
           node dist/main.js providers action plan --provider appwrite --action function-deploy --environment preview --param function-id=function_123 > /tmp/appwrite-plan.json
-          node -e "const p=JSON.parse(require('fs').readFileSync('/tmp/appwrite-plan.json','utf8')); if(p.command!=='appwrite'||!p.requiresLinked||!p.args.includes('--function-id')) process.exit(1)"
+          node -e "const p=JSON.parse(require('fs').readFileSync('/tmp/appwrite-plan.json','utf8')); const ok=p.command==='appwrite'||(p.command==='npx'&&p.args?.[0]==='-y'&&p.args?.[1]==='appwrite-cli@latest'); if(!ok||!p.requiresLinked||!p.args.includes('--function-id')) process.exit(1)"
 
           if node dist/main.js providers action run --provider render --action service-deploy --environment production --param service=srv-cafe123 --approve >/tmp/p21-should-fail.log 2>&1; then
             echo "Render production action unexpectedly crossed the production approval boundary"
