@@ -7,6 +7,7 @@ import { loadTeamMetrics, teamMetricsSummary } from "./team-metrics.js";
 import { createWorktree, planWorktree, verifyWorktree } from "./worktrees.js";
 import { planCapabilityFulfillmentForIds } from "./capability-fulfillment.js";
 import { activateAutomaticCapabilities } from "./capability-fulfillment-activation.js";
+import { planCinematicWebExperience } from "./cinematic-web.js";
 
 function values(args: string[], name: string): string[] {
   const result: string[] = [];
@@ -64,10 +65,13 @@ export async function handleTeamCommand(root: string, args: string[], json: bool
     ])];
     const capabilityPlan = await planCapabilityFulfillmentForIds(root, selectedIds);
     const capabilityActivation = await activateAutomaticCapabilities(root, capabilityPlan, { maxAutomaticInstalls: 8 });
+    const cinematicPlan = selection.recipe?.id === "cinematic-3d-web"
+      ? planCinematicWebExperience(task)
+      : undefined;
     console.log(JSON.stringify(
       json
-        ? { ...started, capabilityActivation }
-        : { composition: teamCompositionSummary(started.composition), run: teamRunSummary(started.state), capabilityActivation },
+        ? { ...started, capabilityActivation, ...(cinematicPlan ? { cinematicPlan } : {}) }
+        : { composition: teamCompositionSummary(started.composition), run: teamRunSummary(started.state), capabilityActivation, ...(cinematicPlan ? { cinematicPlan } : {}) },
       null,
       2,
     ));
