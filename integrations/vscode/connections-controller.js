@@ -222,6 +222,13 @@ async function loadConnections(context, liveChecked) {
 
 async function postModel(context, panel, liveChecked, notice) {
   const model = await loadConnections(context, liveChecked);
+  if (liveChecked) {
+    for (const provider of model.providers || []) {
+      if (provider.authenticated === true || provider.linked === true || provider.status?.level === "ready") {
+        await rememberVerifiedProvider(context, provider.id);
+      }
+    }
+  }
   await panel.webview.postMessage({ type: "model", model, notice });
 }
 
