@@ -2,122 +2,128 @@
   "schemaVersion": 1,
   "repository": "cassielxyz/DockyardOS",
   "checkpointDate": "2026-10-02",
-  "verifiedCodeSha": "c9c4c4f2f0224b25c55c485893a7d5b9461d8df3",
-  "checkpointPr": 63,
+  "verifiedCodeSha": "f8a3f57188045da9999c4d8f4b9463ed197685be",
+  "checkpointPr": null,
   "lastCompletedMilestone": {
+    "id": "P40.1",
+    "title": "autonomous dashboard truth, skill lifecycle, and credential-safe media planning",
+    "mergedSha": "f8a3f57188045da9999c4d8f4b9463ed197685be",
+    "pr": 64,
+    "verifiedHeadSha": "5cd92f1c3d585377496342eb9939fa1306313979"
+  },
+  "previousMilestone": {
     "id": "P39.1",
     "title": "automatic selected installed skill context loading",
     "mergedSha": "c9c4c4f2f0224b25c55c485893a7d5b9461d8df3",
     "pr": 62,
     "verifiedHeadSha": "70ab54647bb5d32ea0d6ff234978d277a6e7ed04"
   },
-  "previousMilestone": {
-    "id": "P39",
-    "title": "autonomous skill bootstrap and cinematic 3D/2.5D web workflow",
-    "mergedSha": "1d87a611f46a3a6681fd95e3ad2a4ac68a5046c5",
-    "pr": 60,
-    "verifiedHeadSha": "91ccd5a69712a12055fdc34eb22f67eb9a92c905"
-  },
   "verification": [
     {
       "name": "CI",
-      "runId": 37001673487,
+      "runId": 37004548187,
+      "conclusion": "success"
+    },
+    {
+      "name": "P40 Google Media Connection and Plan",
+      "runId": 37004548271,
       "conclusion": "success"
     },
     {
       "name": "P39.1 Selected Skill Loading",
-      "runId": 37001673602,
+      "runId": 37004548264,
       "conclusion": "success"
     },
     {
       "name": "P39 Autonomous Skills and Cinematic Web",
-      "runId": 37001673545,
+      "runId": 37004548145,
       "conclusion": "success"
     },
     {
       "name": "P38.2 Guided Connections",
-      "runId": 37001673332,
+      "runId": 37004548239,
       "conclusion": "success"
     },
     {
       "name": "P38 Universal Control Center",
-      "runId": 37001673554,
+      "runId": 37004548242,
       "conclusion": "success"
     },
     {
       "name": "P37 Connections and Creative UI",
-      "runId": 37001673549,
+      "runId": 37004548193,
       "conclusion": "success"
     },
     {
       "name": "P36 Host MCP Connection Readiness",
-      "runId": 37001673389,
+      "runId": 37004548489,
       "conclusion": "success"
     },
     {
       "name": "P33 Curated Skill Assessment",
-      "runId": 37001673348,
+      "runId": 37004548186,
       "conclusion": "success"
     },
     {
       "name": "P21 Provider Action Plans",
-      "runId": 37001673502,
+      "runId": 37004548260,
       "conclusion": "success"
     },
     {
       "name": "P22 Provider Pricing Evidence",
-      "runId": 37001673488,
+      "runId": 37004548223,
       "conclusion": "success"
     },
     {
       "name": "P23 Provider Migration Plans",
-      "runId": 37001673420,
+      "runId": 37004548199,
       "conclusion": "success"
     }
   ],
   "artifacts": [
     {
-      "name": "dockyardos-0.1.3-preview4-vsix",
-      "artifactId": 11224186878,
-      "githubArtifactSha256": "bed234740f5b0adc881fdd7ebcd9eb274e95fd295e4210c0e23c80e6e865739e",
-      "extractedVsixSha256": "37c97430f3ab9b321a1ceef373d0c55af7e3f0247afba76a605d70b91b049504",
-      "extractedVsixSizeBytes": 3945089,
-      "expiresAt": "2026-12-31T11:33:41Z"
+      "name": "dockyardos-0.1.3-preview5-vsix",
+      "artifactId": 11224504822,
+      "artifactSha256": "87e16e3421aca7796580451b1713c926cc87c471308f6fc8f2467aa76dbc9036",
+      "archiveSizeBytes": 3671835,
+      "expiresAt": "2026-12-31T12:04:28Z",
+      "sourceHeadSha": "5cd92f1c3d585377496342eb9939fa1306313979"
     }
   ],
   "safetyInvariants": [
+    "normal users do not manually start specialist teams; request mediation creates or reuses the bounded team automatically for substantial work",
+    "Safe/Balanced/Autonomous controls permission policy, not whether specialist routing is automatic",
+    "dashboard agent state comes from current team phase composition/runtime activeAgents rather than legacy top-level fields",
+    "installed != loaded != utilized; installed skills are PC-wide/bundled, loaded skills are latest/current invocation guidance, utilized skills are durable project history",
+    "Auto Initialize bootstraps materializable skills once into the user-owned Dockyard library and later invocations load only selected verified skills",
     "selected != installed != loaded != configured != authenticated != connected != approved",
-    "Auto Initialize requires workspace trust",
-    "Auto Initialize bootstraps every materializable skill into the user-owned PC-wide Dockyard library and reuses already-active immutable revisions across projects",
-    "approval-required and quarantined packages may be staged but remain inactive and are never injected automatically",
-    "discovery-only catalogue entries are never represented as installed",
-    "only current request/phase selected ready skill packages with immutable active revisions are eligible for automatic model-context loading",
-    "selected installed skill text is re-read through the integrity-verifying active community entrypoint path before injection",
-    "selected skill context is bounded by skill count, per-skill characters and total characters; failed verification/read becomes an explicit warning",
-    "upstream skill text is scoped guidance and never overrides the user request, Dockyard approval policy, security gates or repository evidence",
-    "provider/model credentials are never stored in Dockyard project/checkpoint state",
-    "provider/MCP readiness never grants mutation approval"
+    "Connections may remember non-secret provider IDs after successful verification, but authentication is re-probed and stale readiness must not imply mutation approval",
+    "Google AI API keys are stored only in VS Code SecretStorage or provided via process environment and never written to Dockyard project/checkpoint state or sent to webviews",
+    "Google AI live readiness uses a bounded read-only models request and never logs the credential",
+    "Veo planning is billable-aware and hash-bound but execution remains disabled until a separate explicit billable execution gate is implemented",
+    "provider/MCP readiness never grants deployment, database, DNS, Git, destructive, production, or billable-media approval"
   ],
   "nextMilestone": {
-    "id": "P40",
-    "title": "credential-safe billable media generation execution and remaining guarded public release work",
-    "status": "planned-and-externally-gated",
+    "id": "P40.2",
+    "title": "mock-verified live Veo execution, durable non-secret media evidence, and FFmpeg handoff",
+    "status": "planned",
     "goals": [
-      "add secure Google AI/media-generation connection support without checkpoint/source secrets",
-      "plan and execute Veo generation only through an explicit billable-action approval boundary",
-      "record non-secret generation evidence and connect verified clips to the FFmpeg frame pipeline",
-      "verify generated 2.5D output through browser/performance gates",
-      "preserve the separate externally gated Marketplace publication path"
+      "implement a real Veo execution adapter but keep tests fully mocked and make no paid request during development or CI",
+      "require exact current plan SHA-256 plus explicit billable approval immediately before provider execution",
+      "re-verify Google AI authentication and current pricing evidence before execution",
+      "poll long-running generation operations with bounded timeouts and redacted failures",
+      "download and hash generated clips into a project-external media workspace",
+      "persist only non-secret request/output evidence and expose verified clip metadata to the cinematic FFmpeg/frame-sequence pipeline"
     ],
     "currentVersion": "0.1.3"
   },
   "resumeRules": [
     "inspect live main, open PRs/branches, roadmap/checkpoint and CI before continuing",
-    "treat verifiedCodeSha as the P39.1 completed production anchor and inspect newer production commits before work",
-    "do not replay P39/P39.1 skill bootstrap or selected-skill loading unless regression evidence requires it",
-    "preserve PC-wide installation with task/phase-specific loading; never dump the complete skill library into model context",
-    "preserve P38.2 guided Connections and truthful connection-state boundaries",
-    "keep billable external model generation distinct from model selection and require explicit execution approval",
+    "treat verifiedCodeSha as the P40.1 completed production anchor and inspect newer production commits before work",
+    "do not reintroduce manual Start Team in the normal dashboard",
+    "preserve current-phase agent rendering and Installed/Loaded/Utilized skill truth",
+    "preserve SecretStorage/in-memory credential handling and never persist Google API keys in Dockyard state",
+    "do not make a live billable Veo request without the user's explicit billable-generation approval for the exact current plan",
     "update this checkpoint after the next completed production milestone"
   ]
 }
