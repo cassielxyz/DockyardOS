@@ -9,7 +9,7 @@ This is the durable continuation checkpoint. On every future `continue`, inspect
 - Verified completed production state: `c9c4c4f2f0224b25c55c485893a7d5b9461d8df3`
 - Last completed milestone: **P39.1 — automatic selected installed skill context loading**
 - Implementation PR: **#62**
-- Checkpoint PR: pending
+- Checkpoint PR: **#63**
 - Exact verified PR head: `70ab54647bb5d32ea0d6ff234978d277a6e7ed04`
 - Current Core / VS Code extension version: **0.1.3**
 - Next milestone: **P40 — credential-safe media generation execution + remaining guarded public release work**
