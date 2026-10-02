@@ -3,7 +3,7 @@
   "repository": "cassielxyz/DockyardOS",
   "checkpointDate": "2026-10-02",
   "verifiedCodeSha": "1d87a611f46a3a6681fd95e3ad2a4ac68a5046c5",
-  "checkpointPr": null,
+  "checkpointPr": 61,
   "lastCompletedMilestone": {
     "id": "P39",
     "title": "autonomous skill bootstrap and cinematic 3D/2.5D web workflow",
