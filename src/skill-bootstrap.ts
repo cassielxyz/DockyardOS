@@ -25,6 +25,22 @@ export interface SkillBootstrapEntry {
   quarantinePath?: string;
 }
 
+export interface SkillBootstrapDependencies {
+  loadRegistry: typeof loadEffectiveCommunityRegistry;
+  status: typeof communityStatus;
+  assess: typeof resolveAssessEffectiveCommunityPackage;
+  install: typeof resolveAssessInstallPinnedEffectiveCommunityPackage;
+  persist: typeof writeJsonAtomic;
+}
+
+const DEFAULT_DEPENDENCIES: SkillBootstrapDependencies = {
+  loadRegistry: loadEffectiveCommunityRegistry,
+  status: communityStatus,
+  assess: resolveAssessEffectiveCommunityPackage,
+  install: resolveAssessInstallPinnedEffectiveCommunityPackage,
+  persist: writeJsonAtomic,
+};
+
 export interface SkillBootstrapResult {
   schemaVersion: 1;
   generatedAt: string;
@@ -47,8 +63,10 @@ export async function bootstrapInstallableSkills(options: {
   ids?: string[];
   activateAutomatic?: boolean;
   maxPackages?: number;
+  dependencies?: SkillBootstrapDependencies;
 } = {}): Promise<SkillBootstrapResult> {
-  const registry = await loadEffectiveCommunityRegistry();
+  const dependencies = options.dependencies ?? DEFAULT_DEPENDENCIES;
+  const registry = await dependencies.loadRegistry();
   const wanted = new Set(options.ids ?? []);
   const limit = Math.max(1, Math.min(options.maxPackages ?? 128, 256));
   const packages = registry.packages
@@ -60,7 +78,7 @@ export async function bootstrapInstallableSkills(options: {
 
   for (const { manifest } of packages) {
     try {
-      const status = await communityStatus(manifest.id) as { activeRevision?: string };
+      const status = await dependencies.status(manifest.id) as { activeRevision?: string };
       if (status.activeRevision) {
         entries.push({
           packageId: manifest.id,
@@ -74,7 +92,7 @@ export async function bootstrapInstallableSkills(options: {
 
       // Resolution intentionally downloads into Dockyard's quarantine/cache first.
       // No fetched package receives execution authority merely because it is present on disk.
-      const assessed = await resolveAssessEffectiveCommunityPackage(manifest.id);
+      const assessed = await dependencies.assess(manifest.id);
       const base = {
         packageId: manifest.id,
         displayName: manifest.displayName,
@@ -84,7 +102,7 @@ export async function bootstrapInstallableSkills(options: {
       };
 
       if (assessed.assessment.decision === "automatic" && activateAutomatic) {
-        await resolveAssessInstallPinnedEffectiveCommunityPackage(manifest.id, {
+        await dependencies.install(manifest.id, {
           expectedRevision: assessed.resolution.revision,
           expectedContentSha256: assessed.resolution.contentSha256,
           approve: false,
@@ -135,6 +153,6 @@ export async function bootstrapInstallableSkills(options: {
     entries,
     reportPath,
   };
-  await writeJsonAtomic(reportPath, result);
+  await dependencies.persist(reportPath, result);
   return result;
 }
