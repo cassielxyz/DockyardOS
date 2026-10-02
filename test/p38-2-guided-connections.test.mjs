@@ -8,6 +8,8 @@ import test from "node:test";
 const dockyard = await import("../dist/index.js");
 const require = createRequire(import.meta.url);
 const { mcpDefinition, normalizeConnections, providerDefinition } = require("../integrations/vscode/connections-model.js");
+const controllerUrl = new URL("../integrations/vscode/connections-controller.js", import.meta.url);
+const processUrl = new URL("../src/process.ts", import.meta.url);
 const {
   mcpSetupPlan,
   mergeJsonMcpConfig,
@@ -108,4 +110,22 @@ test("P38.2 OAuth MCPs are configured as endpoint metadata, never as stored cred
     assert.deepEqual(Object.keys(plan.entry), ["url"]);
     assert.equal(plan.entry.url, mcp.endpoint);
   }
+});
+
+
+test("P38.2 Connections controller keeps webview input identifier-only and avoids shell execution", async () => {
+  const controller = await import("node:fs/promises").then((fs) => fs.readFile(controllerUrl, "utf8"));
+  assert.match(controller, /case "provider-connect": await connectProvider\(context, panel, id\)/);
+  assert.match(controller, /case "mcp-configure": await configureMcp\(context, panel, id\)/);
+  assert.doesNotMatch(controller, /message\.command|message\.args|message\.url/);
+  assert.doesNotMatch(controller, /shell\s*:\s*true/);
+  assert.doesNotMatch(controller, /dockyard-backup/);
+  assert.match(controller, /dockyard-rollback/);
+});
+
+test("P38.2 Windows npm/npx support stays shell-free in Dockyard Core", async () => {
+  const source = await import("node:fs/promises").then((fs) => fs.readFile(processUrl, "utf8"));
+  assert.match(source, /windowsPackageManagerInvocation/);
+  assert.match(source, /npx-cli\.js/);
+  assert.doesNotMatch(source, /shell\s*:\s*true/);
 });
