@@ -116,7 +116,8 @@ test("P37 Connections Center keeps local, live, and host-session connection stat
   assert.equal(inspo.auth, "none");
   assert.equal(inspo.status.state, "ready-to-configure");
   assert.notEqual(inspo.status.state, "connected");
-  assert.equal(githubMcp.status.state, "host-verification-required");
+  assert.equal(githubMcp.status.state, "oauth-configuration-ready");
+  assert.notEqual(githubMcp.status.state, "connected");
   assert.equal(githubMcp.verificationScope, "host-session");
 });
 
